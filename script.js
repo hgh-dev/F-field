@@ -51,7 +51,7 @@ const map = L.map('map', {
     tap: false,
     maxZoom: 22,
     doubleClickZoom: false
-}).setView([37.245911, 126.960302], 15);
+}).setView([37.245911, 126.960302], 10);
 
 L.control.zoom({ position: 'bottomleft' }).addTo(map);
 L.control.scale({ imperial: false, metric: true }).addTo(map);
