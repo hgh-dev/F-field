@@ -766,7 +766,7 @@ window.exportSelectedGeoJSON = function () {
     if (!confirm('선택한 기록이 한 개의 파일로 저장됩니다.')) { return; }
     
     const featureCollection = L.layerGroup(visibleLayers).toGeoJSON();
-    const fileName = "Works_" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + ".geojson";
+    const fileName = "Project_" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + ".geojson";
     const content = JSON.stringify(featureCollection, null, 2);
 
     saveOrShareFile(content, fileName);
