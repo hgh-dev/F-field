@@ -693,7 +693,7 @@
         .leaflet-control-zoom {
             position: fixed !important;
             bottom: calc(90px + env(safe-area-inset-bottom)) !important;
-            left: 10px !important;
+            right: 20px !important;
             top: auto !important;
             margin: 0 !important;
             border: 2px solid rgba(0, 0, 0, 0.2) !important;
@@ -707,7 +707,7 @@
         .leaflet-control-scale-line {
             position: fixed !important;
             bottom: calc(60px + env(safe-area-inset-bottom)) !important;
-            left: 0px !important;
+            right: 0px !important;
             background: rgba(255, 255, 255, 0.8);
             border: 1px solid #777;
             font-size: 11px;
@@ -834,7 +834,7 @@
         </button>
     </div>
 
-    <input type="file" id="geoJsonInput" style="display:none" onchange="handleFileSelect(this)" />
+    <input type="file" id="geoJsonInput" style="display:none" onchange="handleFileSelect(this)" accept=".geojson, .json, application/geo+json, application/json" />
 
     <div id="sidebar-overlay" class="sidebar-overlay" onclick="if(event.target === this) closeSidebar()">
         <div class="sidebar-content">

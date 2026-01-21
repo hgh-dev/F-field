@@ -1,8 +1,8 @@
 /* ==========================================================================
    프로젝트: 국유림 현장조사 앱
-   버전: v1.0.1 (Bug Fix)
-   작성일: 2025-12-27
-   설명: iOS 파일 저장 호환성 문제 해결 (Web Share API 적용)
+   버전: v1.0.2 (Feature Update)
+   작성일: 2026-01-22
+   설명: 안드로이드 저장 호환성 개선 (공유 실패 시 자동 다운로드 전환)
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -48,6 +48,7 @@ L.Draw.Polyline.prototype._onTouch = function (e) { return; };
 
 const map = L.map('map', { 
     zoomControl: false,
+    attributionControl: false,
     tap: false,
     maxZoom: 22,
     doubleClickZoom: false
@@ -570,6 +571,7 @@ map.on('draw:drawstop', function () { setTimeout(function () { if (!currentDrawe
 
 /* --------------------------------------------------------------------------
    9. 데이터 관리 (목록 표시, 저장, 삭제)
+   [v1.0.2] Android 저장 문제 해결 적용
 -------------------------------------------------------------------------- */
 
 function renderSurveyList() {
@@ -690,49 +692,81 @@ window.deleteLayerById = function (id) {
     } 
 };
 
-// [v1.0.1] iOS 호환성을 위한 저장/공유 통합 함수
+
+/* [v1.0.2] 데이터 저장 및 공유 기능 (Android 호환성 개선) */
+
+// 1. [플랜 B] 다운로드 전용 함수 (공유 실패 시 실행될 안전장치)
+function saveToDevice(content, fileName) {
+    const blob = new Blob([content], { type: "application/geo+json" });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    
+    // 사용자 눈에 안 보이게 클릭하고 바로 제거
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    
+    console.log("파일 다운로드 완료:", fileName);
+}
+
+// 2. [플랜 A -> B] 공유 시도 함수 (실패하면 플랜 B 가동)
 function saveOrShareFile(content, fileName) {
+    // 윈도우 OS 등 PC 환경에서는 바로 다운로드
+    if (!navigator.canShare) {
+        saveToDevice(content, fileName);
+        return;
+    }
+
     const file = new File([content], fileName, { type: "application/json" });
 
-    // navigator.share: 모바일 기기의 '공유' 기능을 호출 (iOS 호환)
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    // 공유 가능한 환경인지 체크
+    if (navigator.canShare({ files: [file] })) {
         navigator.share({
             files: [file],
-            title: 'F-Field 기록 저장',
-            text: fileName + ' 파일을 저장합니다.'
-        }).catch(err => {
-            console.log('공유 취소 또는 실패:', err);
+            title: 'F-Field 기록',
+            text: fileName + ' 파일을 공유합니다.'
+        })
+        .then(() => {
+            console.log("공유 성공");
+        })
+        .catch((error) => {
+            // [핵심 수정] 안드로이드가 공유를 거절하거나(에러), 사용자가 취소했을 때
+            console.warn("공유 실패 또는 취소됨. 다운로드로 전환합니다.", error);
+            // 현재는 무조건 실패하면 다운로드 시도 (확실한 저장 보장)
+            saveToDevice(content, fileName);
         });
     } else {
-        // PC 또는 공유 미지원 브라우저: 기존 방식(a 태그 다운로드) 사용
-        const blob = new Blob([content], { type: "application/geo+json" });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = fileName;
-        a.click();
+        // 공유 기능을 지원하지만 이 파일 형식은 거부하는 경우 -> 바로 다운로드
+        console.log("이 파일 형식은 공유 불가. 다운로드로 전환합니다.");
+        saveToDevice(content, fileName);
     }
 }
 
-// [v1.0.1] 개별 파일 저장 함수 수정
+// [개별 저장] 기존 함수 유지 (내부에서 saveOrShareFile 호출)
 window.exportSingleLayer = function (id) { 
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id); 
     if (!layer) return; 
 
-    const fileName = (layer.feature.properties.memo || "unnamed") + ".geojson";
+    // 파일명에 공백 제거 및 안전한 문자로 변환
+    let safeMemo = (layer.feature.properties.memo || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
+    const fileName = safeMemo + ".geojson";
     const content = JSON.stringify(layer.toGeoJSON(), null, 2);
     
     saveOrShareFile(content, fileName);
 };
 
-// [v1.0.1] 전체 파일 저장 함수 수정
+// [전체 저장] 기존 함수 유지 (내부에서 saveOrShareFile 호출)
 window.exportSelectedGeoJSON = function () {
     const allLayers = drawnItems.getLayers();
     const visibleLayers = allLayers.filter(function (layer) { return !layer.feature.properties.isHidden; });
+    
     if (visibleLayers.length === 0) { alert("저장할 항목이 선택되지 않았습니다."); return; }
     if (!confirm('선택한 기록이 한 개의 파일로 저장됩니다.')) { return; }
     
     const featureCollection = L.layerGroup(visibleLayers).toGeoJSON();
-    const fileName = "Works_" + new Date().toISOString().slice(0, 10) + ".geojson";
+    const fileName = "Works_" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + ".geojson";
     const content = JSON.stringify(featureCollection, null, 2);
 
     saveOrShareFile(content, fileName);
