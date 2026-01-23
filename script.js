@@ -1,8 +1,8 @@
 /* ==========================================================================
-   프로젝트: 국유림 현장조사 앱
-   버전: v1.0.2 (Feature Update)
-   작성일: 2026-01-22
-   설명: 안드로이드 저장 호환성 개선 (공유 실패 시 자동 다운로드 전환)
+   프로젝트: 국유림 현장조사 앱 (F-Field)
+   버전: v1.0.4
+   작성일: 2026-01-23
+   설명: 탭 기반 UI, 카드 디자인, 슬라이드 애니메이션 적용
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -109,13 +109,28 @@ function showInfoPopup(lat, lng) {
 map.on('dblclick', function(e) { showInfoPopup(e.latlng.lat, e.latlng.lng); });
 document.getElementById('map').oncontextmenu = function(e) { e.preventDefault(); e.stopPropagation(); return false; };
 
+// [UI] 사이드바 열기 애니메이션
 function openSidebar() { 
     syncSidebarUI();
     renderSurveyList();
-    document.getElementById('sidebar-overlay').style.display = 'block';
+    const overlay = document.getElementById('sidebar-overlay');
+    overlay.style.display = 'block';
+    
+    // 부드러운 애니메이션 효과를 위해 약간의 지연
+    setTimeout(() => {
+        overlay.classList.add('visible');
+    }, 10);
 }
+
+// [UI] 사이드바 닫기 애니메이션
 function closeSidebar() { 
-    document.getElementById('sidebar-overlay').style.display = 'none';
+    const overlay = document.getElementById('sidebar-overlay');
+    overlay.classList.remove('visible');
+    
+    // CSS transition(0.3s)이 끝난 후 숨김 처리
+    setTimeout(() => {
+        overlay.style.display = 'none';
+    }, 300);
 }
 
 function syncSidebarUI() {
@@ -563,6 +578,9 @@ map.on(L.Draw.Event.CREATED, function (event) {
     currentDrawer = null; 
     resetButtonStyles(); 
     layer.openPopup(); 
+    
+    // [UI] 저장 후에는 기록 탭으로 이동
+    switchSidebarTab('record');
     renderSurveyList();
 });
 
@@ -571,7 +589,6 @@ map.on('draw:drawstop', function () { setTimeout(function () { if (!currentDrawe
 
 /* --------------------------------------------------------------------------
    9. 데이터 관리 (목록 표시, 저장, 삭제)
-   [v1.0.2] Android 저장 문제 해결 적용
 -------------------------------------------------------------------------- */
 
 function renderSurveyList() {
@@ -692,28 +709,21 @@ window.deleteLayerById = function (id) {
     } 
 };
 
+/* [Android 호환성] 데이터 저장 및 공유 기능 */
 
-/* [v1.0.2] 데이터 저장 및 공유 기능 (Android 호환성 개선) */
-
-// 1. [플랜 B] 다운로드 전용 함수 (공유 실패 시 실행될 안전장치)
 function saveToDevice(content, fileName) {
     const blob = new Blob([content], { type: "application/geo+json" });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = fileName;
-    
-    // 사용자 눈에 안 보이게 클릭하고 바로 제거
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
-    
     console.log("파일 다운로드 완료:", fileName);
 }
 
-// 2. [플랜 A -> B] 공유 시도 함수 (실패하면 플랜 B 가동)
 function saveOrShareFile(content, fileName) {
-    // 윈도우 OS 등 PC 환경에서는 바로 다운로드
     if (!navigator.canShare) {
         saveToDevice(content, fileName);
         return;
@@ -721,7 +731,6 @@ function saveOrShareFile(content, fileName) {
 
     const file = new File([content], fileName, { type: "application/json" });
 
-    // 공유 가능한 환경인지 체크
     if (navigator.canShare({ files: [file] })) {
         navigator.share({
             files: [file],
@@ -732,24 +741,19 @@ function saveOrShareFile(content, fileName) {
             console.log("공유 성공");
         })
         .catch((error) => {
-            // [핵심 수정] 안드로이드가 공유를 거절하거나(에러), 사용자가 취소했을 때
-            console.warn("공유 실패 또는 취소됨. 다운로드로 전환합니다.", error);
-            // 현재는 무조건 실패하면 다운로드 시도 (확실한 저장 보장)
+            console.warn("공유 실패/취소 -> 다운로드로 전환", error);
             saveToDevice(content, fileName);
         });
     } else {
-        // 공유 기능을 지원하지만 이 파일 형식은 거부하는 경우 -> 바로 다운로드
-        console.log("이 파일 형식은 공유 불가. 다운로드로 전환합니다.");
+        console.log("공유 불가 -> 다운로드로 전환");
         saveToDevice(content, fileName);
     }
 }
 
-// [개별 저장] 기존 함수 유지 (내부에서 saveOrShareFile 호출)
 window.exportSingleLayer = function (id) { 
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id); 
     if (!layer) return; 
 
-    // 파일명에 공백 제거 및 안전한 문자로 변환
     let safeMemo = (layer.feature.properties.memo || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
     const fileName = safeMemo + ".geojson";
     const content = JSON.stringify(layer.toGeoJSON(), null, 2);
@@ -757,7 +761,6 @@ window.exportSingleLayer = function (id) {
     saveOrShareFile(content, fileName);
 };
 
-// [전체 저장] 기존 함수 유지 (내부에서 saveOrShareFile 호출)
 window.exportSelectedGeoJSON = function () {
     const allLayers = drawnItems.getLayers();
     const visibleLayers = allLayers.filter(function (layer) { return !layer.feature.properties.isHidden; });
@@ -884,4 +887,21 @@ loadFromStorage();
 if (navigator.geolocation) { 
     navigator.geolocation.watchPosition(onTrackSuccess, null, { enableHighAccuracy: true }); 
     navigator.geolocation.getCurrentPosition(onFirstLoadSuccess, null, { enableHighAccuracy: true }); 
+}
+
+/* --------------------------------------------------------------------------
+   11. UI 탭 전환 기능 (New)
+-------------------------------------------------------------------------- */
+function switchSidebarTab(tabName) {
+    // 1. 탭 버튼 상태 초기화
+    document.getElementById('tab-btn-map').classList.remove('active');
+    document.getElementById('tab-btn-record').classList.remove('active');
+
+    // 2. 탭 내용 숨기기
+    document.getElementById('content-map').classList.remove('active');
+    document.getElementById('content-record').classList.remove('active');
+
+    // 3. 선택한 탭 활성화
+    document.getElementById('tab-btn-' + tabName).classList.add('active');
+    document.getElementById('content-' + tabName).classList.add('active');
 }
