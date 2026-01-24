@@ -2,7 +2,7 @@
    프로젝트: 국유림 현장조사 앱 (F-Field)
    버전: v1.1.0
    작성일: 2026-01-24
-   설명: 지적 경계 강조 기능, 주소 표시 UI 변경, 내 위치 공유 기능 추가, 좌표 표시 기능 수정
+   설명: 지적 경계 강조 기능, 주소 표시 UI 변경, 내 위치 공유 기능 추가, 좌표 표시 기능 수정, 로그인 기능 추가
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -25,6 +25,153 @@ let trackingCircle = null;
 let currentDrawer = null;
 let currentBoundaryLayer = null; // 지적 경계 레이어
 let currentSearchMarker = null; // 검색/더블클릭 마커
+let firebaseApp = null;
+let auth = null;
+let db = null;
+let currentUser = null;
+let isFirebaseInitialized = false;
+
+// Firebase 설정 (사용자 입력 필요)
+const firebaseConfig = {
+    apiKey: "AIzaSyBo5tkMWBLFFiZwYfshhfVh_venKS-plcg",
+    authDomain: "f-field-f7b65.firebaseapp.com",
+    projectId: "f-field-f7b65",
+    storageBucket: "f-field-f7b65.firebasestorage.app",
+    messagingSenderId: "174823124514",
+    appId: "1:174823124514:web:6e15a7698226c64d3f647b",
+};
+
+/* --------------------------------------------------------------------------
+   Firebase 초기화 및 인증 관리
+-------------------------------------------------------------------------- */
+async function initFirebase() {
+    if (!window.firebaseModules) {
+        setTimeout(initFirebase, 500); // 모듈 로드 대기
+        return;
+    }
+
+    // config 값이 유효하지 않으면 초기화 중단 (플레이스홀더 체크)
+    if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+        console.warn("Firebase 설정이 완료되지 않았습니다.");
+        return;
+    }
+
+    try {
+        const { initializeApp, getAuth, onAuthStateChanged, getFirestore } = window.firebaseModules;
+        firebaseApp = initializeApp(firebaseConfig);
+        auth = getAuth(firebaseApp);
+        db = getFirestore(firebaseApp);
+        isFirebaseInitialized = true;
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            updateLoginUI(user);
+            if (user) {
+                // 로그인 시 Firestore에서 데이터 로드
+                loadFromFirestore(user.uid);
+            } else {
+                // 로그아웃 시 로컬 데이터 유지 또는 비우기 (정책에 따라 결정, 여기선 유지)
+            }
+        });
+    } catch (e) {
+        console.error("Firebase 초기화 실패:", e);
+    }
+}
+
+// 페이지 로드 시 Firebase 초기화 시도
+window.addEventListener('load', initFirebase);
+
+function updateLoginUI(user) {
+    const btnLogin = document.getElementById('btn-login');
+    const userInfo = document.getElementById('user-info');
+    const userEmail = document.getElementById('user-email');
+    const notice = document.querySelector('.login-notice');
+
+    if (user) {
+        btnLogin.style.display = 'none';
+        userInfo.style.display = 'flex';
+        userEmail.innerText = user.displayName || user.email;
+        if (notice) notice.style.display = 'none';
+    } else {
+        btnLogin.style.display = 'inline-flex';
+        userInfo.style.display = 'none';
+        userEmail.innerText = '';
+        if (notice) notice.style.display = 'block';
+    }
+}
+
+async function loginWithGoogle() {
+    if (!isFirebaseInitialized) { alert("Firebase 설정이 필요합니다."); return; }
+    const { signInWithPopup, GoogleAuthProvider } = window.firebaseModules;
+    const provider = new GoogleAuthProvider();
+    try {
+        await signInWithPopup(auth, provider);
+    } catch (error) {
+        console.error("로그인 실패:", error);
+        alert("로그인에 실패했습니다.");
+    }
+}
+
+async function logout() {
+    if (!auth) return;
+    const { signOut } = window.firebaseModules;
+    try {
+        await signOut(auth);
+        alert("로그아웃 되었습니다.");
+    } catch (error) {
+        console.error("로그아웃 실패:", error);
+    }
+}
+
+// Firestore 데이터 동기화
+async function saveToFirestore() {
+    if (!currentUser || !db) return;
+    const { doc, setDoc } = window.firebaseModules;
+    try {
+        // 배열을 JSON 문자열로 변환하여 저장하거나, 필드로 저장
+        // 여기서는 기존 로직과 호환성을 위해 JSON 문자열로 변환된 데이터를 저장
+        // 하지만 Firestore는 문서 기반이므로, 개별 feature를 하위 컬렉션에 넣거나,
+        // 전체를 하나의 문서(survey_data) 필드로 저장할 수 있음.
+        // 편의상 단일 문서 필드에 저장.
+        const layers = drawnItems.getLayers();
+        const features = layers.map(layer => {
+            const geojson = layer.toGeoJSON();
+            geojson.properties = layer.feature.properties; // properties 보존
+            return geojson;
+        });
+
+        await setDoc(doc(db, "users", currentUser.uid), {
+            survey_data: JSON.stringify(features),
+            updatedAt: new Date()
+        }, { merge: true });
+
+        console.log("Firestore 저장 완료");
+    } catch (e) {
+        console.error("Firestore 저장 실패:", e);
+    }
+}
+
+async function loadFromFirestore(uid) {
+    if (!db) return;
+    const { doc, getDoc } = window.firebaseModules;
+    try {
+        const docRef = doc(db, "users", uid);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.survey_data) {
+                // 기존 로컬 데이터에 덮어쓰기 or 병합?
+                // 여기서는 복원(덮어쓰기) 수행
+                restoreFeatures(JSON.parse(data.survey_data));
+                console.log("Firestore 데이터 로드 완료");
+            }
+        }
+    } catch (e) {
+        console.error("Firestore 로드 실패:", e);
+    }
+}
+
 
 /* --------------------------------------------------------------------------
    2. 아이콘 디자인 (SVG Images)
@@ -932,6 +1079,7 @@ function restoreFeatures(geoJsonData) {
 }
 
 function loadFromStorage() {
+    // 초기 로드는 로컬 먼저, 이후 AuthStateChanged에서 Firestore 로드 시도
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) restoreFeatures(JSON.parse(saved));
