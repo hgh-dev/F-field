@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>F-Field v1.0.5</title>
+    <title>F-Field</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta charset="utf-8" />
 
@@ -80,7 +80,7 @@
             height: 24px;
             fill: currentColor;
         }
-        
+
         .svg-inline {
             width: 16px;
             height: 16px;
@@ -280,18 +280,18 @@
             filter: grayscale(100%);
             opacity: 0.6;
         }
-        
+
         .tracking-active #tracking-svg-icon {
             filter: none;
             opacity: 1;
         }
-        
+
         .tracking-btn-on {
             background-color: #e8f0fe !important;
             border: 2px solid #aecbfa !important;
         }
 
-       /* --- 사이드바 (Modern Card UI & Tabs) --- */
+        /* --- 사이드바 (Modern Card UI & Tabs) --- */
         .sidebar-overlay {
             display: none;
             position: fixed;
@@ -305,7 +305,7 @@
             opacity: 0;
             transition: opacity 0.3s ease;
         }
-        
+
         .sidebar-overlay.visible {
             opacity: 1;
         }
@@ -325,7 +325,7 @@
             transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
             padding-top: env(safe-area-inset-top);
         }
-        
+
         .sidebar-overlay.visible .sidebar-content {
             transform: translateX(0);
         }
@@ -415,8 +415,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(5px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* 메뉴 그룹 (카드 UI) */
@@ -447,7 +454,7 @@
             cursor: pointer;
             border-bottom: 1px solid #f5f5f5;
         }
-        
+
         .option-row:last-child {
             border-bottom: none;
         }
@@ -476,7 +483,7 @@
             height: 22px;
             background: white;
             border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             transition: transform 0.3s;
         }
 
@@ -497,11 +504,11 @@
             margin-right: 10px;
             position: relative;
         }
-        
+
         .option-row input[type="radio"]:checked {
             border-color: #3B82F6;
         }
-        
+
         .option-row input[type="radio"]:checked::after {
             content: '';
             position: absolute;
@@ -542,7 +549,7 @@
             max-height: 300px;
             overflow-y: auto;
             margin-bottom: 15px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.03);
         }
 
         .survey-item {
@@ -554,7 +561,7 @@
             background: white;
             transition: background 0.2s;
         }
-        
+
         .survey-item:active {
             background-color: #f7f9fc;
         }
@@ -567,7 +574,7 @@
         }
 
         .survey-checkbox {
-            width: 20px; 
+            width: 20px;
             height: 20px;
             cursor: pointer;
             accent-color: #3B82F6;
@@ -611,7 +618,7 @@
             align-items: center;
             padding: 4px;
         }
-        
+
         .action-icon-btn svg {
             width: 16px;
             height: 16px;
@@ -649,7 +656,7 @@
             color: #555;
             padding: 0;
         }
-        
+
         .btn-edit-memo-inline svg {
             width: 14px;
             height: 14px;
@@ -677,7 +684,7 @@
             border: none;
             transition: transform 0.1s, opacity 0.2s;
         }
-        
+
         .btn-group .half-btn:active {
             transform: scale(0.98);
             opacity: 0.9;
@@ -693,7 +700,8 @@
             background: linear-gradient(135deg, #10B981 0%, #059669 100%);
             color: white;
             box-shadow: 0 4px 6px rgba(16, 185, 129, 0.25);
-            margin-top: 0; /* 가로 배치 시 상단 여백 제거 */
+            margin-top: 0;
+            /* 가로 배치 시 상단 여백 제거 */
         }
 
         .full-width-btn {
@@ -767,7 +775,7 @@
             background-color: #007bff !important;
             color: white !important;
         }
-        
+
         .active-btn .svg-icon {
             fill: white;
             stroke: white;
@@ -810,7 +818,7 @@
             justify-content: center;
             gap: 6px;
         }
-        
+
         .action-btn svg {
             width: 16px;
             height: 16px;
@@ -891,7 +899,7 @@
             align-items: center;
             gap: 5px;
         }
-        
+
         .info-popup-title svg {
             width: 16px;
             height: 16px;
@@ -909,7 +917,7 @@
     <div class="top-toolbar">
         <button class="top-icon-btn" onclick="openSidebar()">
             <svg class="svg-icon" viewBox="0 0 24 24">
-                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
             </svg>
         </button>
         <div class="top-info-container" onclick="toggleCoordMode()">
@@ -918,7 +926,8 @@
         </div>
         <button id="btn-search-toggle" class="top-icon-btn" onclick="toggleSearchBox()">
             <svg class="svg-icon" viewBox="0 0 24 24">
-                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                <path
+                    d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
             </svg>
         </button>
     </div>
@@ -942,7 +951,8 @@
 
     <div class="gps-btn-group">
         <button class="circle-btn" onclick="findMe()" title="내 위치로 이동">
-            <svg class="svg-icon-lg" viewBox="0 0 100 100" style="fill:none; stroke:black; stroke-width:8; stroke-linecap:round;">
+            <svg class="svg-icon-lg" viewBox="0 0 100 100"
+                style="fill:none; stroke:black; stroke-width:8; stroke-linecap:round;">
                 <line x1="50" y1="10" x2="50" y2="35" />
                 <line x1="50" y1="65" x2="50" y2="90" />
                 <line x1="10" y1="50" x2="35" y2="50" />
@@ -954,20 +964,26 @@
 
         <button id="toggle-track-btn" class="circle-btn" onclick="toggleTracking()" title="위치 추적">
             <svg id="tracking-svg-icon" viewBox="0 0 100 100">
-                <path d="M20 35 L20 20 L35 20" fill="none" stroke="#2196F3" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M80 35 L80 20 L65 20" fill="none" stroke="#2196F3" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M20 65 L20 80 L35 80" fill="none" stroke="#2196F3" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M80 65 L80 80 L65 80" fill="none" stroke="#2196F3" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-                
+                <path d="M20 35 L20 20 L35 20" fill="none" stroke="#2196F3" stroke-width="8" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                <path d="M80 35 L80 20 L65 20" fill="none" stroke="#2196F3" stroke-width="8" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                <path d="M20 65 L20 80 L35 80" fill="none" stroke="#2196F3" stroke-width="8" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                <path d="M80 65 L80 80 L65 80" fill="none" stroke="#2196F3" stroke-width="8" stroke-linecap="round"
+                    stroke-linejoin="round" />
+
                 <circle cx="50" cy="50" r="28" fill="none" stroke="#FFC107" stroke-width="6" />
-                
-                <path d="M50 35 C42 35 38 42 38 48 C38 58 50 72 50 72 C50 72 62 58 62 48 C62 42 58 35 50 35 Z" fill="#F44336" stroke="#B71C1C" stroke-width="2"/>
-                <circle cx="50" cy="46" r="4" fill="white"/>
+
+                <path d="M50 35 C42 35 38 42 38 48 C38 58 50 72 50 72 C50 72 62 58 62 48 C62 42 58 35 50 35 Z"
+                    fill="#F44336" stroke="#B71C1C" stroke-width="2" />
+                <circle cx="50" cy="46" r="4" fill="white" />
             </svg>
         </button>
     </div>
 
-    <input type="file" id="geoJsonInput" style="display:none" onchange="handleFileSelect(this)" accept=".geojson, .json, application/geo+json, application/json" />
+    <input type="file" id="geoJsonInput" style="display:none" onchange="handleFileSelect(this)"
+        accept=".geojson, .json, application/geo+json, application/json" />
 
     <div id="sidebar-overlay" class="sidebar-overlay" onclick="if(event.target === this) closeSidebar()">
         <div class="sidebar-content">
@@ -975,7 +991,7 @@
                 <div class="sidebar-title">F-Field</div>
                 <button class="btn-close-sidebar" onclick="closeSidebar()">
                     <svg class="svg-icon" viewBox="0 0 24 24">
-                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
                     </svg>
                 </button>
             </div>
@@ -986,18 +1002,22 @@
             </div>
 
             <div class="sidebar-body">
-                
+
                 <div id="content-map" class="tab-content active">
                     <div class="menu-section">
                         <div class="menu-title">배경 지도</div>
                         <div class="check-group">
                             <label class="option-row" style="font-weight:bold;">
                                 <span style="flex:1;">배경지도 켜기</span>
-                                <input type="checkbox" id="chk-base-layer" checked onchange="toggleBaseLayer(this.checked)">
+                                <input type="checkbox" id="chk-base-layer" checked
+                                    onchange="toggleBaseLayer(this.checked)">
                             </label>
                             <div id="base-layer-options" style="margin-left: 0; margin-top: 0px;">
-                                <label class="option-row"><span style="flex:1;">위성 지도</span><input type="radio" name="baseMap" value="satellite" onchange="changeBaseMap('satellite')"></label>
-                                <label class="option-row" style="border:none;"><span style="flex:1;">일반 지도</span><input type="radio" name="baseMap" value="base" onchange="changeBaseMap('base')"></label>
+                                <label class="option-row"><span style="flex:1;">위성 지도</span><input type="radio"
+                                        name="baseMap" value="satellite" onchange="changeBaseMap('satellite')"></label>
+                                <label class="option-row" style="border:none;"><span style="flex:1;">일반 지도</span><input
+                                        type="radio" name="baseMap" value="base"
+                                        onchange="changeBaseMap('base')"></label>
                             </div>
                             <label class="option-row">
                                 <span style="flex:1;">하이브리드(지명)</span>
@@ -1005,7 +1025,8 @@
                             </label>
                             <label class="option-row">
                                 <span style="flex:1;">지적도(토지경계)</span>
-                                <input type="checkbox" id="chk-cadastral" onchange="toggleOverlay('cadastral', this.checked)">
+                                <input type="checkbox" id="chk-cadastral"
+                                    onchange="toggleOverlay('cadastral', this.checked)">
                             </label>
                         </div>
                     </div>
@@ -1016,13 +1037,16 @@
                             <span style="flex:1;">국유재산기본도(수원)</span>
                             <input type="checkbox" id="chk-nas-guk" onchange="toggleOverlay('nasGuk', this.checked)">
                         </label>
-                        <div id="nas-guk-legend" style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
+                        <div id="nas-guk-legend"
+                            style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
                             <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                                <span style="width: 16px; height: 16px; background-color: #4CAF50; opacity: 0.6; border: 1px solid #999; margin-right: 8px; border-radius: 3px;"></span>
+                                <span
+                                    style="width: 16px; height: 16px; background-color: #4CAF50; opacity: 0.6; border: 1px solid #999; margin-right: 8px; border-radius: 3px;"></span>
                                 <span style="font-size: 13px; color: #555;">보전국유림(행정재산)</span>
                             </div>
                             <div style="display: flex; align-items: center;">
-                                <span style="width: 16px; height: 16px; background-color: #FFC107; opacity: 0.6; border: 1px solid #999; margin-right: 8px; border-radius: 3px;"></span>
+                                <span
+                                    style="width: 16px; height: 16px; background-color: #FFC107; opacity: 0.6; border: 1px solid #999; margin-right: 8px; border-radius: 3px;"></span>
                                 <span style="font-size: 13px; color: #555;">준보전국유림(일반재산)</span>
                             </div>
                         </div>
@@ -1032,9 +1056,12 @@
                 <div id="content-record" class="tab-content">
                     <div class="menu-section" style="min-height: 300px;">
                         <div class="menu-title-header">
-                            <span>저장된 기록 <span id="record-count" style="font-size: 13px; font-weight: normal; color: #888;">(0개)</span></span>
-                            <label style="font-size: 13px; font-weight: normal; display: flex; align-items: center; cursor: pointer; color:#333;">
-                                <input type="checkbox" id="chk-select-all" checked onchange="toggleAllLayers(this.checked)" style="margin-right: 5px;"> 전체 선택
+                            <span>저장된 기록 <span id="record-count"
+                                    style="font-size: 13px; font-weight: normal; color: #888;">(0개)</span></span>
+                            <label
+                                style="font-size: 13px; font-weight: normal; display: flex; align-items: center; cursor: pointer; color:#333;">
+                                <input type="checkbox" id="chk-select-all" checked
+                                    onchange="toggleAllLayers(this.checked)" style="margin-right: 5px;"> 전체 선택
                             </label>
                         </div>
 
@@ -1043,14 +1070,16 @@
                         <div class="btn-group">
                             <button class="half-btn btn-import-card" onclick="triggerFileInput()">
                                 <svg width="18" height="18" viewBox="0 0 24 24" style="fill:currentColor;">
-                                    <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2zM19 18H5V8h14v10z"/>
-                                    <path d="M8 13h3v4h2v-4h3l-4-4-4 4z"/>
+                                    <path
+                                        d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2zM19 18H5V8h14v10z" />
+                                    <path d="M8 13h3v4h2v-4h3l-4-4-4 4z" />
                                 </svg>
                                 불러오기
                             </button>
                             <button class="half-btn btn-save-all" onclick="exportSelectedGeoJSON()">
                                 <svg class="svg-inline" viewBox="0 0 24 24" style="fill:white;">
-                                    <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+                                    <path
+                                        d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
                                 </svg>
                                 저장하기
                             </button>
@@ -1058,7 +1087,8 @@
 
                         <button class="full-width-btn btn-reset-all" onclick="clearAllData()">
                             <svg width="18" height="18" viewBox="0 0 24 24" style="margin-right:5px; fill:#D32F2F;">
-                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                <path
+                                    d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
                             </svg>
                             초기화
                         </button>
@@ -1071,19 +1101,30 @@
 
     <div id="action-toolbar" class="action-toolbar">
         <button class="action-btn btn-gps" onclick="addGpsVertex()">
-            <svg viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+            <svg viewBox="0 0 24 24">
+                <path
+                    d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z" />
+            </svg>
             현 위치 기록
         </button>
         <button class="action-btn btn-done" onclick="completeDrawing()">
-            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            <svg viewBox="0 0 24 24">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+            </svg>
             기록 완료
         </button>
         <button class="action-btn" onclick="deleteLastVertex()">
-            <svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+            <svg viewBox="0 0 24 24">
+                <path
+                    d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
+            </svg>
             되돌리기
         </button>
         <button class="action-btn" onclick="cancelDrawing()">
-            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            <svg viewBox="0 0 24 24">
+                <path
+                    d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+            </svg>
             취소
         </button>
     </div>
@@ -1092,23 +1133,26 @@
         <button id="btn-poly" class="bottom-btn" onclick="startDraw('polygon')">
             <div class="icon-box">
                 <svg class="svg-icon" viewBox="0 0 24 24">
-                    <path d="M12 2L2 9L6 21H18L22 9L12 2Z" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M12 2L2 9L6 21H18L22 9L12 2Z" fill="currentColor" fill-opacity="0.3" stroke="currentColor"
+                        stroke-width="2" stroke-linejoin="round" />
                 </svg>
             </div>
             <span>면</span>
         </button>
         <button id="btn-line" class="bottom-btn" onclick="startDraw('polyline')">
-             <div class="icon-box">
+            <div class="icon-box">
                 <svg class="svg-icon" viewBox="0 0 24 24">
-                    <path d="M23 8c0 1.1-.9 2-2 2-.18 0-.35-.02-.51-.07l-3.56 3.55c.05.16.07.34.07.52 0 1.1-.9 2-2 2s-2-.9-2-2c0-.18.02-.36.07-.52l-2.55-2.55c-.16.05-.34.07-.52.07s-.36-.02-.52-.07l-4.55 4.56c.05.16.07.33.07.51 0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2c.18 0 .35.02.51.07l4.56-4.55C8.02 9.36 8 9.18 8 9c0-1.1.9-2 2-2s2 .9 2 2c0 .18-.02.36-.07.52l2.55 2.55c.16-.05.34-.07.52-.07s.36.02.52.07l3.55-3.56C19.02 8.35 19 8.18 19 8c0-1.1.9-2 2-2s2 .9 2 2z"/>
+                    <path
+                        d="M23 8c0 1.1-.9 2-2 2-.18 0-.35-.02-.51-.07l-3.56 3.55c.05.16.07.34.07.52 0 1.1-.9 2-2 2s-2-.9-2-2c0-.18.02-.36.07-.52l-2.55-2.55c-.16.05-.34.07-.52.07s-.36-.02-.52-.07l-4.55 4.56c.05.16.07.33.07.51 0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2c.18 0 .35.02.51.07l4.56-4.55C8.02 9.36 8 9.18 8 9c0-1.1.9-2 2-2s2 .9 2 2c0 .18-.02.36-.07.52l2.55 2.55c.16-.05.34-.07.52-.07s.36.02.52.07l3.55-3.56C19.02 8.35 19 8.18 19 8c0-1.1.9-2 2-2s2 .9 2 2z" />
                 </svg>
-             </div>
+            </div>
             <span>선</span>
         </button>
         <button id="btn-point" class="bottom-btn" onclick="startDraw('marker')">
             <div class="icon-box">
                 <svg class="svg-icon" viewBox="0 0 24 24">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    <path
+                        d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
                 </svg>
             </div>
             <span>점</span>
@@ -1116,7 +1160,8 @@
         <button id="btn-edit" class="bottom-btn" onclick="startEditMode()">
             <div class="icon-box">
                 <svg class="svg-icon" viewBox="0 0 24 24">
-                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                    <path
+                        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
                 </svg>
             </div>
             <span>수정</span>
@@ -1137,4 +1182,5 @@
     <script src="script.js"></script>
 
 </body>
+
 </html>

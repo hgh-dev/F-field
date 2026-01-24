@@ -1,5 +1,5 @@
 // 버전이 바뀔 때마다 캐시 이름도 바꿔주면, 사용자는 새로운 파일을 다시 다운받습니다.
-const CACHE_NAME = 'forest-survey-v1.0.0';
+const CACHE_NAME = 'F-field-v1.1.0';
 
 // 미리 저장해둘 파일 목록 (앱이 오프라인일 때도 실행되게 함)
 const FILES_TO_CACHE = [

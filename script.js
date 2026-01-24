@@ -1,8 +1,8 @@
 /* ==========================================================================
    프로젝트: 국유림 현장조사 앱 (F-Field)
-   버전: v1.0.4
-   작성일: 2026-01-23
-   설명: 탭 기반 UI, 카드 디자인, 슬라이드 애니메이션 적용
+   버전: v1.1.0
+   작성일: 2026-01-24
+   설명: 지적 경계 강조 기능, 주소 표시 UI 변경
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -24,6 +24,7 @@ let trackingMarker = null;
 let trackingCircle = null;
 let currentDrawer = null;
 let currentBoundaryLayer = null; // 지적 경계 레이어
+let currentSearchMarker = null; // 검색/더블클릭 마커
 
 /* --------------------------------------------------------------------------
    2. 아이콘 디자인 (SVG Images)
@@ -90,11 +91,18 @@ function showInfoPopup(lat, lng) {
             addrText = "주소 정보 없음";
         }
 
-        const content = `<div class="info-popup-content">
-                            <span class="info-popup-title">${SVG_ICONS.marker} 선택 위치 주소</span>
-                            <span style="font-size:13px; font-weight:normal;">${addrText}</span>
-                       </div>`;
-        L.popup().setLatLng([lat, lng]).setContent(content).openOn(map);
+        if (currentSearchMarker) {
+            map.removeLayer(currentSearchMarker);
+        }
+
+        // 점 측량과 동일한 스타일의 마커 생성 (빨간색)
+        currentSearchMarker = L.marker([lat, lng], { icon: createColoredMarkerIcon('#FF0000') }).addTo(map);
+
+        // 점 측량과 동일한 스타일의 팝업 내용
+        let infoText = isTmMode ? "X:" + getTmCoords(lat, lng).x + ", Y:" + getTmCoords(lat, lng).y : convertToDms(lat, 'lat') + "<br>" + convertToDms(lng, 'lng');
+        const content = "<b style='color:#3B82F6;'>" + addrText + "</b>";
+
+        currentSearchMarker.bindPopup(content).openPopup();
 
         delete window[callbackName];
         const scriptTag = document.getElementById(callbackName);
@@ -112,11 +120,15 @@ map.on('dblclick', function (e) {
     fetchAndHighlightBoundary(e.latlng.lng, e.latlng.lat);
 });
 
-// [기능추가] 지도 클릭 시 지적 경계 해제
+// [기능추가] 지도 클릭 시 지적 경계 및 마커 해제
 map.on('click', function (e) {
     if (currentBoundaryLayer) {
         map.removeLayer(currentBoundaryLayer);
         currentBoundaryLayer = null;
+    }
+    if (currentSearchMarker) {
+        map.removeLayer(currentSearchMarker);
+        currentSearchMarker = null;
     }
 });
 
@@ -274,7 +286,14 @@ function executeSearch(keyword) {
                 } else {
                     callVworldCoordApi(query, function (coordResult) {
                         if (coordResult) {
-                            const finalResult = { point: coordResult.point, title: query, address: { road: "", parcel: "지번/임야 주소 검색됨" } };
+                            const finalResult = {
+                                point: coordResult.point,
+                                title: query,
+                                address: {
+                                    road: "",
+                                    parcel: (coordResult.refined && coordResult.refined.text) ? coordResult.refined.text : query
+                                }
+                            };
                             moveToSearchResult(finalResult);
                         } else {
                             alert("검색 결과가 없습니다.\n정확한 주소(예: 화성시 장안면 장안리 산124)를 입력해보세요.");
@@ -289,9 +308,9 @@ function executeSearch(keyword) {
 function moveToSearchResult(result) {
     const point = result.point;
     map.flyTo([point.y, point.x], 16, { duration: 1.5 });
-    L.popup().setLatLng([point.y, point.x])
-        .setContent("<b>" + (result.title || "검색 위치") + "</b><br>" + (result.address ? (result.address.road || result.address.parcel || "") : ""))
-        .openOn(map);
+
+    // 검색 결과에서도 전체 주소를 표시하기 위해 showInfoPopup (반향 지리코딩) 사용
+    showInfoPopup(point.y, point.x);
 
     // 검색 위치의 지적 경계 강조
     fetchAndHighlightBoundary(point.x, point.y);
