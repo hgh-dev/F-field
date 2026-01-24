@@ -306,6 +306,110 @@
             transition: opacity 0.3s ease;
         }
 
+        /* [UI] 네비게이션 선택 모달 */
+        .nav-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 6000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .nav-modal-overlay.visible {
+            opacity: 1;
+        }
+
+        .nav-modal-content {
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            border-radius: 20px 20px 0 0;
+            padding: 24px;
+            box-sizing: border-box;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .nav-modal-overlay.visible .nav-modal-content {
+            transform: translateY(0);
+        }
+
+        .nav-modal-header {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .nav-app-list {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+
+        .nav-app-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            width: 80px;
+        }
+
+        .nav-app-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            background-size: cover;
+            background-position: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 간단한 플레이스홀더 아이콘 (실제 이미지가 없을 때) */
+        .nav-icon-tmap {
+            background: linear-gradient(135deg, #FF0054 0%, #E6004C 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .nav-icon-naver {
+            background: #07C860;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .nav-icon-kakao {
+            background: #FEE500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #191919;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .nav-app-name {
+            font-size: 13px;
+            color: #555;
+            text-align: center;
+        }
+
         .sidebar-overlay.visible {
             opacity: 1;
         }
@@ -1184,6 +1288,29 @@
             });
         }
     </script>
+
+    <!-- [UI] 네비게이션 선택 모달 -->
+    <div id="nav-modal-overlay" class="nav-modal-overlay" onclick="closeNavModal()">
+        <div class="nav-modal-content" onclick="event.stopPropagation()">
+            <div class="nav-modal-header">길찾기 앱 선택</div>
+            <div class="nav-app-list">
+                <div class="nav-app-item" onclick="executeNavigation('tmap')">
+                    <div class="nav-app-icon nav-icon-tmap">T</div>
+                    <span class="nav-app-name">티맵</span>
+                </div>
+                <div class="nav-app-item" onclick="executeNavigation('naver')">
+                    <div class="nav-app-icon nav-icon-naver">N</div>
+                    <span class="nav-app-name">네이버</span>
+                </div>
+                <div class="nav-app-item" onclick="executeNavigation('kakao')">
+                    <div class="nav-app-icon nav-icon-kakao">K</div>
+                    <span class="nav-app-name">카카오</span>
+                </div>
+            </div>
+            <button onclick="closeNavModal()"
+                style="width:100%; padding:14px; border:none; background:#f5f5f5; border-radius:12px; font-weight:bold; color:#666; font-size:15px;">취소</button>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 

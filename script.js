@@ -1,8 +1,8 @@
 /* ==========================================================================
    프로젝트: 국유림 현장조사 앱 (F-Field)
-   버전: v1.1.1
+   버전: v1.2.0
    작성일: 2026-01-25
-   설명: 공유된 링크 열었을 때 현재 위치로 이동하지 않도록 수정
+   설명: 네비 기능 추가
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -37,7 +37,9 @@ const SVG_ICONS = {
     trash: `<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`,
     save: `<svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>`,
     memo: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
-    close: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`
+    memo: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
+    close: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,
+    car: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>`
 };
 
 /* [패치] Leaflet 라이브러리의 터치 오류 방지 */
@@ -113,13 +115,19 @@ function showInfoPopup(lat, lng) {
                                 <hr style="margin: 5px 0; border: none; border-top: 1px solid #eee;">
                                 <span style="font-size: 12px; color: #666;">${infoText}</span>
                             </div>
-                            <button onclick="shareLocationText('${addrText}', '${lat}', '${lng}')" style="background:none; border:none; cursor:pointer; padding:0; margin-left:10px; margin-bottom:8px; color:#666;">
-                                <svg viewBox="0 0 24 24" style="width:20px; height:20px; fill:currentColor;">
-                                    <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.66 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
-                                </svg>
-                            </button>
+                            <div style="display:flex; align-items:center;">
+                                <button onclick="shareLocationText('${addrText}', '${lat}', '${lng}')" style="background:none; border:none; cursor:pointer; padding:5px; margin-left:5px; color:#666;" title="공유">
+                                    <svg viewBox="0 0 24 24" style="width:20px; height:20px; fill:currentColor;">
+                                        <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.66 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+                                    </svg>
+                                </button>
+                                <button onclick="openNavModal('${addrText}', ${lat}, ${lng})" style="background:none; border:none; cursor:pointer; padding:5px; margin-left:2px; color:#007bff;" title="길찾기">
+                                    <svg viewBox="0 0 24 24" style="width:22px; height:22px; fill:currentColor;">
+                                        <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>`;
-
         currentSearchMarker.bindPopup(content).openPopup();
 
         delete window[callbackName];
@@ -322,6 +330,44 @@ let isSearchHistoryEnabled = true;
     if (setting !== null) { isSearchHistoryEnabled = (setting === 'true'); }
     document.getElementById('chk-history-save').checked = isSearchHistoryEnabled;
 })();
+
+/* --------------------------------------------------------------------------
+   13. 길찾기 기능 (Navigation)
+-------------------------------------------------------------------------- */
+let navTarget = { name: '', lat: 0, lng: 0 };
+
+function openNavModal(name, lat, lng) {
+    navTarget = { name: name || "목적지", lat: lat, lng: lng };
+    const overlay = document.getElementById('nav-modal-overlay');
+    overlay.style.display = 'flex';
+    setTimeout(() => { overlay.classList.add('visible'); }, 10);
+}
+
+function closeNavModal() {
+    const overlay = document.getElementById('nav-modal-overlay');
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+}
+
+function executeNavigation(type) {
+    const { name, lat, lng } = navTarget;
+    let url = "";
+
+    if (type === 'tmap') {
+        url = `tmap://route?goalname=${encodeURIComponent(name)}&goalx=${lng}&goaly=${lat}`;
+    } else if (type === 'naver') {
+        url = `nmap://navigation?dlat=${lat}&dlng=${lng}&dname=${encodeURIComponent(name)}&appname=F-Field`;
+    } else if (type === 'kakao') {
+        url = `kakaomap://route?ep=${lat},${lng}&by=CAR`;
+    }
+
+    // 모바일이 아니거나 앱이 없을 경우를 대비해 처리할 수 있지만, 
+    // 기본적으로 URL Scheme 시도
+    window.location.href = url;
+
+    // 약간의 딜레이 후 모달 닫기
+    setTimeout(closeNavModal, 500);
+}
 
 function toggleSearchBox() {
     const box = document.getElementById('search-container');
