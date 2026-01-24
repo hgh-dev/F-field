@@ -2,7 +2,7 @@
    프로젝트: 국유림 현장조사 앱 (F-Field)
    버전: v1.1.0
    작성일: 2026-01-24
-   설명: 지적 경계 강조 기능, 주소 표시 UI 변경
+   설명: 지적 경계 강조 기능, 주소 표시 UI 변경, 내 위치 공유 기능
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -207,6 +207,37 @@ function fetchAndHighlightBoundary(x, y) {
     // VWorld Data API: LP_PA_CBND_BUBUN (연속지적도)
     script.src = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LP_PA_CBND_BUBUN&key=${VWORLD_API_KEY}&domain=${window.location.hostname}&geomFilter=POINT(${x} ${y})&format=json&errorformat=json&callback=${callbackName}`;
     document.body.appendChild(script);
+}
+
+// [기능추가] 내 위치 공유하기
+function shareMyLocation() {
+    const center = map.getCenter();
+    const lat = center.lat;
+    const lng = center.lng;
+    const address = document.getElementById('address-display').innerText;
+
+    // 현재 페이지 URL에 좌표 파라미터 추가
+    // 주의: hash router를 사용하는 경우 처리가 다를 수 있음. 여기서는 query parameter 사용.
+    const shareUrl = `${window.location.origin}${window.location.pathname}?lat=${lat}&lng=${lng}`;
+
+    const shareData = {
+        title: 'F-Field 위치 공유',
+        text: `[F-Field] 위치 공유\n주소: ${address}\n좌표: ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+        url: shareUrl
+    };
+
+    if (navigator.share) {
+        navigator.share(shareData)
+            .then(() => console.log('공유 성공'))
+            .catch((error) => console.log('공유 실패/취소', error));
+    } else {
+        // PC 등 navigator.share 미지원 시 클립보드 복사
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            alert("공유 링크가 클립보드에 복사되었습니다.\n" + shareUrl);
+        }).catch(err => {
+            prompt("URL을 복사하세요:", shareUrl);
+        });
+    }
 }
 
 /* --------------------------------------------------------------------------
@@ -976,3 +1007,28 @@ function switchSidebarTab(tabName) {
     document.getElementById('tab-btn-' + tabName).classList.add('active');
     document.getElementById('content-' + tabName).classList.add('active');
 }
+
+/* --------------------------------------------------------------------------
+   12. 초기 실행 및 딥링크 처리
+-------------------------------------------------------------------------- */
+(function handleDeepLink() {
+    const params = new URLSearchParams(window.location.search);
+    const latParam = params.get('lat');
+    const lngParam = params.get('lng');
+
+    if (latParam && lngParam) {
+        const lat = parseFloat(latParam);
+        const lng = parseFloat(lngParam);
+
+        if (!isNaN(lat) && !isNaN(lng)) {
+            // 지도 이동 및 정보 표시
+            map.setView([lat, lng], 19); // 줌 레벨을 높게 설정하여 정확한 위치 표시
+
+            // 약간의 지연 후 팝업 및 경계 표시 (지도 로딩 안정화)
+            setTimeout(() => {
+                showInfoPopup(lat, lng);
+                fetchAndHighlightBoundary(lng, lat);
+            }, 500);
+        }
+    }
+})();
