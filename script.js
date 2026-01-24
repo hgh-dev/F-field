@@ -1,8 +1,8 @@
 /* ==========================================================================
    프로젝트: 국유림 현장조사 앱 (F-Field)
-   버전: v1.1.0
-   작성일: 2026-01-24
-   설명: 지적 경계 강조 기능, 주소 표시 UI 변경, 위치 공유 기능 추가, 좌표 표시 기능 수정
+   버전: v1.1.1
+   작성일: 2026-01-25
+   설명: 공유된 링크 열었을 때 현재 위치로 이동하지 않도록 수정
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -1076,7 +1076,11 @@ function findMe() {
 loadFromStorage();
 if (navigator.geolocation) {
     navigator.geolocation.watchPosition(onTrackSuccess, null, { enableHighAccuracy: true });
-    navigator.geolocation.getCurrentPosition(onFirstLoadSuccess, null, { enableHighAccuracy: true });
+    // [기능수정] 공유 링크(lat, lng)가 없을 때만 내 위치로 초기 이동
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('lat') || !params.has('lng')) {
+        navigator.geolocation.getCurrentPosition(onFirstLoadSuccess, null, { enableHighAccuracy: true });
+    }
 }
 
 /* --------------------------------------------------------------------------
