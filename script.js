@@ -2,7 +2,7 @@
    프로젝트: 국유림 현장조사 앱 (F-Field)
    버전: v1.1.0
    작성일: 2026-01-24
-   설명: 지적 경계 강조 기능, 주소 표시 UI 변경, 내 위치 공유 기능 추가, 좌표 표시 기능 수정
+   설명: 지적 경계 강조 기능, 주소 표시 UI 변경, 위치 공유 기능 추가, 좌표 표시 기능 수정
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -107,9 +107,18 @@ function showInfoPopup(lat, lng) {
         } else {
             infoText = convertToDms(lat, 'lat') + "<br>" + convertToDms(lng, 'lng');
         }
-        const content = "<b style='color:#3B82F6;'>" + addrText + "</b>"
-                    + "<hr style='margin: 5px 0; border: none; border-top: 1px solid #eee;'>" 
-                    + "<span style='font-size: 12px; color: #666;'>" + infoText + "</span>";
+        const content = `<div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                            <div>
+                                <b style="color:#3B82F6;">${addrText}</b>
+                                <hr style="margin: 5px 0; border: none; border-top: 1px solid #eee;">
+                                <span style="font-size: 12px; color: #666;">${infoText}</span>
+                            </div>
+                            <button onclick="shareLocationText('${addrText}', '${lat}', '${lng}')" style="background:none; border:none; cursor:pointer; padding:0; margin-left:10px; margin-bottom:8px; color:#666;">
+                                <svg viewBox="0 0 24 24" style="width:20px; height:20px; fill:currentColor;">
+                                    <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.66 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+                                </svg>
+                            </button>
+                        </div>`;
 
         currentSearchMarker.bindPopup(content).openPopup();
 
@@ -140,6 +149,50 @@ map.on('click', function (e) {
         currentSearchMarker = null;
     }
 });
+
+// [기능추가] 팝업 위치 공유 함수
+function shareLocationText(address, lat, lng) {
+    let coordText = `${lat}, ${lng}`;
+
+    // 현재 좌표 모드에 맞춰 공유 텍스트 형식 변환
+    if (coordMode === 2) { // TM
+        const tm = getTmCoords(lat, lng);
+        coordText = `X: ${tm.x}, Y: ${tm.y}`;
+    } else if (coordMode === 1) { // Decimal
+        coordText = `N ${parseFloat(lat).toFixed(4)}° , E ${parseFloat(lng).toFixed(4)}°`;
+    } else { // DMS (기본)
+        coordText = `${convertToDms(lat, 'lat')}, ${convertToDms(lng, 'lng')}`;
+    }
+
+    // 내 위치 공유(shareMyLocation)와 동일한 포맷 사용
+    const shareUrl = `${window.location.origin}${window.location.pathname}?lat=${lat}&lng=${lng}`;
+
+    const shareData = {
+        title: '[F-Field] 위치 공유',
+        text: `\n링크를 클릭하면 공유된 위치로 이동합니다.\n주소: ${address}\n좌표: ${coordText}`,
+        url: shareUrl
+    };
+
+    if (navigator.share) {
+        navigator.share(shareData).catch(err => {
+            console.log('공유 취소 또는 실패', err);
+        });
+    } else {
+        // PC 등 navigator.share 미지원 시 클립보드 복사 (URL + 텍스트)
+        const clipText = `${shareData.text}\n${shareUrl}`;
+        navigator.clipboard.writeText(clipText).then(() => {
+            alert("위치 정보가 복사되었습니다.\n" + clipText);
+        }).catch(() => {
+            const tempInput = document.createElement("textarea");
+            document.body.appendChild(tempInput);
+            tempInput.value = clipText;
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            alert("위치 정보가 복사되었습니다.");
+        });
+    }
+}
 
 document.getElementById('map').oncontextmenu = function (e) { e.preventDefault(); e.stopPropagation(); return false; };
 
