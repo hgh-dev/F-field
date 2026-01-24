@@ -169,7 +169,7 @@ function shareLocationText(address, lat, lng) {
 
     const shareData = {
         title: '[F-Field] 위치 공유',
-        text: `\n링크를 클릭하면 공유된 위치로 이동합니다.\n주소: ${address}\n좌표: ${coordText}`,
+        text: `\n주소: ${address}\n좌표: ${coordText}\n링크를 클릭하면 공유된 위치로 이동합니다.\n`,
         url: shareUrl
     };
 
@@ -294,7 +294,7 @@ function shareMyLocation() {
 
     const shareData = {
         title: '[F-Field] 내 위치 공유',
-        text: `\n링크를 클릭하면 공유된 위치로 이동합니다.\n주소: ${address}\n좌표: ${coordText}`,
+        text: `\n주소: ${address}\n좌표: ${coordText}\n링크를 클릭하면 공유된 위치로 이동합니다.\n`,
         url: shareUrl
     };
 
