@@ -23,6 +23,7 @@ let lastHeading = 0;
 let trackingMarker = null;
 let trackingCircle = null;
 let currentDrawer = null;
+let currentBoundaryLayer = null; // 지적 경계 레이어
 
 /* --------------------------------------------------------------------------
    2. 아이콘 디자인 (SVG Images)
@@ -46,7 +47,7 @@ L.Draw.Polyline.prototype._onTouch = function (e) { return; };
    3. 지도 생성 및 레이어(Layer) 설정
 -------------------------------------------------------------------------- */
 
-const map = L.map('map', { 
+const map = L.map('map', {
     zoomControl: false,
     attributionControl: false,
     tap: false,
@@ -82,40 +83,52 @@ function showInfoPopup(lat, lng) {
     const callbackName = 'vworld_popup_' + Math.floor(Math.random() * 100000);
     window[callbackName] = function (data) {
         let addrText = "주소 검색 실패";
-        if (data.response.status === "OK") { 
-            const result = data.response.result[0]; 
-            addrText = result.text; 
-        } else { 
-            addrText = "주소 정보 없음"; 
+        if (data.response.status === "OK") {
+            const result = data.response.result[0];
+            addrText = result.text;
+        } else {
+            addrText = "주소 정보 없음";
         }
-        
+
         const content = `<div class="info-popup-content">
                             <span class="info-popup-title">${SVG_ICONS.marker} 선택 위치 주소</span>
                             <span style="font-size:13px; font-weight:normal;">${addrText}</span>
                        </div>`;
         L.popup().setLatLng([lat, lng]).setContent(content).openOn(map);
-        
-        delete window[callbackName]; 
-        const scriptTag = document.getElementById(callbackName); 
+
+        delete window[callbackName];
+        const scriptTag = document.getElementById(callbackName);
         if (scriptTag) scriptTag.remove();
     };
 
-    const script = document.createElement('script'); 
+    const script = document.createElement('script');
     script.id = callbackName;
     script.src = `https://api.vworld.kr/req/address?service=address&request=getAddress&version=2.0&crs=epsg:4326&point=${lng},${lat}&format=jsonp&type=BOTH&zipcode=false&simple=false&key=${VWORLD_API_KEY}&callback=${callbackName}`;
     document.body.appendChild(script);
 }
 
-map.on('dblclick', function(e) { showInfoPopup(e.latlng.lat, e.latlng.lng); });
-document.getElementById('map').oncontextmenu = function(e) { e.preventDefault(); e.stopPropagation(); return false; };
+map.on('dblclick', function (e) {
+    showInfoPopup(e.latlng.lat, e.latlng.lng);
+    fetchAndHighlightBoundary(e.latlng.lng, e.latlng.lat);
+});
+
+// [기능추가] 지도 클릭 시 지적 경계 해제
+map.on('click', function (e) {
+    if (currentBoundaryLayer) {
+        map.removeLayer(currentBoundaryLayer);
+        currentBoundaryLayer = null;
+    }
+});
+
+document.getElementById('map').oncontextmenu = function (e) { e.preventDefault(); e.stopPropagation(); return false; };
 
 // [UI] 사이드바 열기 애니메이션
-function openSidebar() { 
+function openSidebar() {
     syncSidebarUI();
     renderSurveyList();
     const overlay = document.getElementById('sidebar-overlay');
     overlay.style.display = 'block';
-    
+
     // 부드러운 애니메이션 효과를 위해 약간의 지연
     setTimeout(() => {
         overlay.classList.add('visible');
@@ -123,10 +136,10 @@ function openSidebar() {
 }
 
 // [UI] 사이드바 닫기 애니메이션
-function closeSidebar() { 
+function closeSidebar() {
     const overlay = document.getElementById('sidebar-overlay');
     overlay.classList.remove('visible');
-    
+
     // CSS transition(0.3s)이 끝난 후 숨김 처리
     setTimeout(() => {
         overlay.style.display = 'none';
@@ -137,15 +150,51 @@ function syncSidebarUI() {
     const hasBase = map.hasLayer(vworldBase);
     const hasSat = map.hasLayer(vworldSatellite);
     document.getElementById('chk-base-layer').checked = (hasBase || hasSat);
-    if (hasSat) { 
-        document.querySelector('input[name="baseMap"][value="satellite"]').checked = true; 
-    } else if (hasBase) { 
-        document.querySelector('input[name="baseMap"][value="base"]').checked = true; 
+    if (hasSat) {
+        document.querySelector('input[name="baseMap"][value="satellite"]').checked = true;
+    } else if (hasBase) {
+        document.querySelector('input[name="baseMap"][value="base"]').checked = true;
     }
     toggleBaseLayer(hasBase || hasSat);
     document.getElementById('chk-hybrid').checked = map.hasLayer(vworldHybrid);
     document.getElementById('chk-cadastral').checked = map.hasLayer(vworldCadastral);
     document.getElementById('chk-nas-guk').checked = map.hasLayer(nasGukLayer);
+    document.getElementById('chk-nas-guk').checked = map.hasLayer(nasGukLayer);
+}
+
+// [기능추가] 지적 경계 가져오기 및 강조 표시
+function fetchAndHighlightBoundary(x, y) {
+    // x: longitude, y: latitude
+    const callbackName = 'vworld_boundary_' + Math.floor(Math.random() * 100000);
+    window[callbackName] = function (data) {
+        delete window[callbackName];
+        document.getElementById(callbackName)?.remove();
+
+        if (data.response.status === "OK" && data.response.result && data.response.result.featureCollection.features.length > 0) {
+            const feature = data.response.result.featureCollection.features[0];
+
+            if (currentBoundaryLayer) {
+                map.removeLayer(currentBoundaryLayer);
+            }
+
+            // 강조 스타일 적용 (빨간색 굵은 테두리, 채우기 없음)
+            currentBoundaryLayer = L.geoJSON(feature, {
+                style: {
+                    color: '#FF0000',
+                    weight: 4,
+                    opacity: 0.8,
+                    fillColor: '#FF0000',
+                    fillOpacity: 0
+                }
+            }).addTo(map);
+        }
+    };
+
+    const script = document.createElement('script');
+    script.id = callbackName;
+    // VWorld Data API: LP_PA_CBND_BUBUN (연속지적도)
+    script.src = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LP_PA_CBND_BUBUN&key=${VWORLD_API_KEY}&domain=${window.location.hostname}&geomFilter=POINT(${x} ${y})&format=json&errorformat=json&callback=${callbackName}`;
+    document.body.appendChild(script);
 }
 
 /* --------------------------------------------------------------------------
@@ -161,10 +210,10 @@ let isSearchHistoryEnabled = true;
 
 function toggleSearchBox() {
     const box = document.getElementById('search-container');
-    if (box.style.display === 'flex') { 
-        box.style.display = 'none'; 
-    } else { 
-        box.style.display = 'flex'; 
+    if (box.style.display === 'flex') {
+        box.style.display = 'none';
+    } else {
+        box.style.display = 'flex';
         document.getElementById('search-input').focus();
     }
 }
@@ -179,12 +228,12 @@ document.addEventListener('mousedown', function (e) {
 
 function callVworldSearchApi(query, type, callback) {
     const callbackName = 'vworld_search_' + type + '_' + Math.floor(Math.random() * 100000);
-    window[callbackName] = function (data) { 
-        delete window[callbackName]; 
-        document.getElementById(callbackName)?.remove(); 
-        if (data.response.status === "OK" && data.response.result && data.response.result.items.length > 0) 
-            callback(data.response.result.items[0]); 
-        else 
+    window[callbackName] = function (data) {
+        delete window[callbackName];
+        document.getElementById(callbackName)?.remove();
+        if (data.response.status === "OK" && data.response.result && data.response.result.items.length > 0)
+            callback(data.response.result.items[0]);
+        else
             callback(null);
     };
     const script = document.createElement('script'); script.id = callbackName;
@@ -194,13 +243,13 @@ function callVworldSearchApi(query, type, callback) {
 
 function callVworldCoordApi(query, callback) {
     const callbackName = 'vworld_coord_' + Math.floor(Math.random() * 100000);
-    window[callbackName] = function (data) { 
-        delete window[callbackName]; 
-        document.getElementById(callbackName)?.remove(); 
-        if (data.response.status === "OK" && data.response.result) 
-            callback(data.response.result); 
-        else 
-            callback(null); 
+    window[callbackName] = function (data) {
+        delete window[callbackName];
+        document.getElementById(callbackName)?.remove();
+        if (data.response.status === "OK" && data.response.result)
+            callback(data.response.result);
+        else
+            callback(null);
     };
     const script = document.createElement('script'); script.id = callbackName;
     script.src = `https://api.vworld.kr/req/address?service=address&request=getCoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(query)}&refine=true&simple=false&format=json&type=PARCEL&key=${VWORLD_API_KEY}&callback=${callbackName}`;
@@ -216,19 +265,19 @@ function executeSearch(keyword) {
     document.getElementById('search-input').value = query;
 
     callVworldSearchApi(query, 'ADDRESS', function (addressResult) {
-        if (addressResult) { 
-            moveToSearchResult(addressResult); 
+        if (addressResult) {
+            moveToSearchResult(addressResult);
         } else {
             callVworldSearchApi(query, 'PLACE', function (placeResult) {
-                if (placeResult) { 
-                    moveToSearchResult(placeResult); 
+                if (placeResult) {
+                    moveToSearchResult(placeResult);
                 } else {
                     callVworldCoordApi(query, function (coordResult) {
-                        if (coordResult) { 
-                            const finalResult = { point: coordResult.point, title: query, address: { road: "", parcel: "지번/임야 주소 검색됨" } }; 
-                            moveToSearchResult(finalResult); 
-                        } else { 
-                            alert("검색 결과가 없습니다.\n정확한 주소(예: 화성시 장안면 장안리 산124)를 입력해보세요."); 
+                        if (coordResult) {
+                            const finalResult = { point: coordResult.point, title: query, address: { road: "", parcel: "지번/임야 주소 검색됨" } };
+                            moveToSearchResult(finalResult);
+                        } else {
+                            alert("검색 결과가 없습니다.\n정확한 주소(예: 화성시 장안면 장안리 산124)를 입력해보세요.");
                         }
                     });
                 }
@@ -238,68 +287,71 @@ function executeSearch(keyword) {
 }
 
 function moveToSearchResult(result) {
-    const point = result.point; 
+    const point = result.point;
     map.flyTo([point.y, point.x], 16, { duration: 1.5 });
     L.popup().setLatLng([point.y, point.x])
-             .setContent("<b>" + (result.title || "검색 위치") + "</b><br>" + (result.address ? (result.address.road || result.address.parcel || "") : ""))
-             .openOn(map);
+        .setContent("<b>" + (result.title || "검색 위치") + "</b><br>" + (result.address ? (result.address.road || result.address.parcel || "") : ""))
+        .openOn(map);
+
+    // 검색 위치의 지적 경계 강조
+    fetchAndHighlightBoundary(point.x, point.y);
 }
 
 function getHistory() { const json = localStorage.getItem(SEARCH_HISTORY_KEY); return json ? JSON.parse(json) : []; }
 function saveHistory(list) { localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(list)); }
 
-function addToHistory(keyword) { 
+function addToHistory(keyword) {
     let list = getHistory();
-    list = list.filter(function (item) { return item !== keyword; }); 
+    list = list.filter(function (item) { return item !== keyword; });
     list.unshift(keyword);
     if (list.length > 10) { list = list.slice(0, 10); }
-    saveHistory(list); 
+    saveHistory(list);
 }
 
-function toggleHistorySave(checked) { 
-    isSearchHistoryEnabled = checked; 
-    localStorage.setItem(SEARCH_SETTING_KEY, checked); 
-    if (!checked) { document.getElementById('history-panel').style.display = 'none'; } 
+function toggleHistorySave(checked) {
+    isSearchHistoryEnabled = checked;
+    localStorage.setItem(SEARCH_SETTING_KEY, checked);
+    if (!checked) { document.getElementById('history-panel').style.display = 'none'; }
 }
 
-function clearHistoryAll() { 
-    if (confirm("검색 기록을 모두 삭제하시겠습니까?")) { 
-        saveHistory([]); renderHistoryList(); 
-    } 
+function clearHistoryAll() {
+    if (confirm("검색 기록을 모두 삭제하시겠습니까?")) {
+        saveHistory([]); renderHistoryList();
+    }
 }
 
-function deleteHistoryItem(index) { 
-    const list = getHistory(); 
+function deleteHistoryItem(index) {
+    const list = getHistory();
     list.splice(index, 1);
-    saveHistory(list); 
-    renderHistoryList(); 
+    saveHistory(list);
+    renderHistoryList();
 }
 
 function renderHistoryList() {
-    const list = getHistory(); 
-    const ul = document.getElementById('history-list'); 
-    ul.innerHTML = ""; 
-    
-    if (list.length === 0) { 
-        ul.innerHTML = '<li style="padding:10px; color:#999; text-align:center;">최근 기록 없음</li>'; 
-        return; 
+    const list = getHistory();
+    const ul = document.getElementById('history-list');
+    ul.innerHTML = "";
+
+    if (list.length === 0) {
+        ul.innerHTML = '<li style="padding:10px; color:#999; text-align:center;">최근 기록 없음</li>';
+        return;
     }
-    
+
     list.forEach(function (text, index) {
         const li = document.createElement('li'); li.className = 'history-item';
-        
-        const spanText = document.createElement('span'); 
-        spanText.className = 'history-text'; 
-        spanText.innerText = text; 
+
+        const spanText = document.createElement('span');
+        spanText.className = 'history-text';
+        spanText.innerText = text;
         spanText.onclick = function () { executeSearch(text); };
-        
-        const btnDel = document.createElement('span'); 
-        btnDel.className = 'btn-del-history'; 
+
+        const btnDel = document.createElement('span');
+        btnDel.className = 'btn-del-history';
         btnDel.innerHTML = SVG_ICONS.close;
         btnDel.onclick = function (e) { e.stopPropagation(); deleteHistoryItem(index); };
-        
-        li.appendChild(spanText); 
-        li.appendChild(btnDel); 
+
+        li.appendChild(spanText);
+        li.appendChild(btnDel);
         ul.appendChild(li);
     });
 }
@@ -322,66 +374,66 @@ function toggleBaseLayer(isChecked) {
 
 function changeBaseMap(type) {
     if (!document.getElementById('chk-base-layer').checked) return;
-    if (type === 'satellite') { 
-        map.addLayer(vworldSatellite); map.removeLayer(vworldBase); 
-    } else { 
-        map.addLayer(vworldBase); map.removeLayer(vworldSatellite); 
+    if (type === 'satellite') {
+        map.addLayer(vworldSatellite); map.removeLayer(vworldBase);
+    } else {
+        map.addLayer(vworldBase); map.removeLayer(vworldSatellite);
     }
     if (map.hasLayer(vworldCadastral)) vworldCadastral.bringToFront();
     if (map.hasLayer(vworldHybrid)) vworldHybrid.bringToFront();
 }
 
 function toggleOverlay(type, isChecked) {
-    let layer; 
-    if (type === 'hybrid') layer = vworldHybrid; 
-    else if (type === 'cadastral') layer = vworldCadastral; 
+    let layer;
+    if (type === 'hybrid') layer = vworldHybrid;
+    else if (type === 'cadastral') layer = vworldCadastral;
     else if (type === 'nasGuk') layer = nasGukLayer;
-    
-    if (isChecked) { 
-        map.addLayer(layer); 
-        if (type !== 'nasGuk') layer.bringToFront(); 
-    } else { 
-        map.removeLayer(layer); 
+
+    if (isChecked) {
+        map.addLayer(layer);
+        if (type !== 'nasGuk') layer.bringToFront();
+    } else {
+        map.removeLayer(layer);
     }
 }
 
 /* --------------------------------------------------------------------------
    7. 좌표 및 주소 표시
 -------------------------------------------------------------------------- */
-function convertToDms(val, type) { 
-    const valAbs = Math.abs(val); 
-    const deg = Math.floor(valAbs); 
-    const minFloat = (valAbs - deg) * 60; 
-    const min = Math.floor(minFloat); 
-    const sec = ((minFloat - min) * 60).toFixed(2); 
-    return (val >= 0 ? (type === 'lat' ? "N" : "E") : (type === 'lat' ? "S" : "W")) + " " + deg + "° " + min + "' " + sec + "\""; 
+function convertToDms(val, type) {
+    const valAbs = Math.abs(val);
+    const deg = Math.floor(valAbs);
+    const minFloat = (valAbs - deg) * 60;
+    const min = Math.floor(minFloat);
+    const sec = ((minFloat - min) * 60).toFixed(2);
+    return (val >= 0 ? (type === 'lat' ? "N" : "E") : (type === 'lat' ? "S" : "W")) + " " + deg + "° " + min + "' " + sec + "\"";
 }
 
-function getTmCoords(lat, lng) { 
-    const xy = proj4("EPSG:4326", "EPSG:5186", [lng, lat]); 
-    return { x: Math.round(xy[0]), y: Math.round(xy[1]) }; 
+function getTmCoords(lat, lng) {
+    const xy = proj4("EPSG:4326", "EPSG:5186", [lng, lat]);
+    return { x: Math.round(xy[0]), y: Math.round(xy[1]) };
 }
 
-function updateCoordDisplay() { 
-    const center = map.getCenter(); 
-    const text = isTmMode ? "X: " + getTmCoords(center.lat, center.lng).x + " | Y: " + getTmCoords(center.lat, center.lng).y : convertToDms(center.lat, 'lat') + " | " + convertToDms(center.lng, 'lng'); 
-    document.getElementById('coord-display').innerText = text; 
+function updateCoordDisplay() {
+    const center = map.getCenter();
+    const text = isTmMode ? "X: " + getTmCoords(center.lat, center.lng).x + " | Y: " + getTmCoords(center.lat, center.lng).y : convertToDms(center.lat, 'lat') + " | " + convertToDms(center.lng, 'lng');
+    document.getElementById('coord-display').innerText = text;
 }
 function toggleCoordMode() { isTmMode = !isTmMode; updateCoordDisplay(); }
-map.on('move', updateCoordDisplay); 
+map.on('move', updateCoordDisplay);
 updateCoordDisplay();
 
-let lastAddressCall = 0; 
+let lastAddressCall = 0;
 function getAddressFromCoords(lat, lng) {
-    const now = Date.now(); 
-    if (now - lastAddressCall < 2000) return; 
+    const now = Date.now();
+    if (now - lastAddressCall < 2000) return;
     lastAddressCall = now;
-    
+
     const callbackName = 'vworld_callback_' + Math.floor(Math.random() * 100000);
-    window[callbackName] = function (data) { 
-        document.getElementById('address-display').innerText = (data.response.status === "OK") ? data.response.result[0].text : "주소 정보 없음"; 
-        delete window[callbackName]; 
-        document.getElementById(callbackName)?.remove(); 
+    window[callbackName] = function (data) {
+        document.getElementById('address-display').innerText = (data.response.status === "OK") ? data.response.result[0].text : "주소 정보 없음";
+        delete window[callbackName];
+        document.getElementById(callbackName)?.remove();
     };
     const script = document.createElement('script'); script.id = callbackName;
     script.src = `https://api.vworld.kr/req/address?service=address&request=getAddress&version=2.0&crs=epsg:4326&point=${lng},${lat}&format=jsonp&type=BOTH&zipcode=false&simple=false&key=${VWORLD_API_KEY}&callback=${callbackName}`;
@@ -392,46 +444,46 @@ function getAddressFromCoords(lat, lng) {
    8. 그리기 도구 (Drawing)
 -------------------------------------------------------------------------- */
 
-const drawnItems = new L.FeatureGroup(); 
+const drawnItems = new L.FeatureGroup();
 map.addLayer(drawnItems);
 
-function getRandomColor() { 
-    const letters = '0123456789ABCDEF'; 
-    let color = '#'; 
-    for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)]; 
-    return color; 
+function getRandomColor() {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
+    return color;
 }
 
-function getTimestampString() { 
-    const now = new Date(); 
-    return now.toISOString().slice(2, 10).replace(/-/g, "") + "_" + now.toTimeString().slice(0, 8).replace(/:/g, ""); 
+function getTimestampString() {
+    const now = new Date();
+    return now.toISOString().slice(2, 10).replace(/-/g, "") + "_" + now.toTimeString().slice(0, 8).replace(/:/g, "");
 }
 
 function createColoredMarkerIcon(color) {
     return L.divIcon({
-        className: '', 
+        className: '',
         html: `<svg viewBox="0 0 24 24" width="36" height="36" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" 
                       fill="${color}" stroke="white" stroke-width="1.5"/>
                </svg>`,
-        iconSize: [36, 36], 
-        iconAnchor: [18, 36], 
-        popupAnchor: [0, -36] 
+        iconSize: [36, 36],
+        iconAnchor: [18, 36],
+        popupAnchor: [0, -36]
     });
 }
 
 const defaultSurveyIcon = createColoredMarkerIcon('#0040ff');
 
-const drawControl = new L.Control.Draw({ 
-    edit: { featureGroup: drawnItems }, 
-    draw: { 
-        polygon: true, 
-        polyline: true, 
-        marker: { icon: defaultSurveyIcon }, 
-        circle: false, 
-        rectangle: false, 
-        circlemarker: false 
-    } 
+const drawControl = new L.Control.Draw({
+    edit: { featureGroup: drawnItems },
+    draw: {
+        polygon: true,
+        polyline: true,
+        marker: { icon: defaultSurveyIcon },
+        circle: false,
+        rectangle: false,
+        circlemarker: false
+    }
 });
 map.addControl(drawControl);
 
@@ -443,24 +495,24 @@ function highlightButton(btnId) { resetButtonStyles(); document.getElementById(b
 function startDraw(type) {
     if (currentDrawer) currentDrawer.disable();
     stopEditMode();
-    
+
     const options = { touchIcon: null, showLength: true, allowIntersection: true };
-    if (type === 'polygon') { 
-        currentDrawer = new L.Draw.Polygon(map, options); 
-        highlightButton('btn-poly'); 
-    } else if (type === 'polyline') { 
+    if (type === 'polygon') {
+        currentDrawer = new L.Draw.Polygon(map, options);
+        highlightButton('btn-poly');
+    } else if (type === 'polyline') {
         currentDrawer = new L.Draw.Polyline(map, options);
-        highlightButton('btn-line'); 
-    } else if (type === 'marker') { 
+        highlightButton('btn-line');
+    } else if (type === 'marker') {
         currentDrawer = new L.Draw.Marker(map, { icon: defaultSurveyIcon });
-        highlightButton('btn-point'); 
+        highlightButton('btn-point');
     }
-    
-    if (currentDrawer && (type === 'polygon' || type === 'polyline')) { 
-        currentDrawer._originalFinishShape = currentDrawer._finishShape; 
-        currentDrawer._finishShape = function () { 
-            if (isManualFinish) { this._originalFinishShape(); } 
-        }; 
+
+    if (currentDrawer && (type === 'polygon' || type === 'polyline')) {
+        currentDrawer._originalFinishShape = currentDrawer._finishShape;
+        currentDrawer._finishShape = function () {
+            if (isManualFinish) { this._originalFinishShape(); }
+        };
     }
     currentDrawer.enable();
     actionToolbar.style.display = 'flex';
@@ -468,28 +520,28 @@ function startDraw(type) {
 
 const editHandler = new L.EditToolbar.Edit(map, { featureGroup: drawnItems });
 
-function startEditMode() { 
-    if (currentDrawer) cancelDrawing(); 
-    editHandler.enable(); 
-    highlightButton('btn-edit'); 
-    alert("수정 모드: 도형을 드래그하거나 점을 움직이세요.\n완료하려면 지도를 터치하세요."); 
-    
-    map.once('click', function () { 
-        editHandler.save(); 
-        editHandler.disable(); 
-        resetButtonStyles(); 
-        alert("수정 완료"); 
-    }); 
+function startEditMode() {
+    if (currentDrawer) cancelDrawing();
+    editHandler.enable();
+    highlightButton('btn-edit');
+    alert("수정 모드: 도형을 드래그하거나 점을 움직이세요.\n완료하려면 지도를 터치하세요.");
+
+    map.once('click', function () {
+        editHandler.save();
+        editHandler.disable();
+        resetButtonStyles();
+        alert("수정 완료");
+    });
 }
-function stopEditMode() { 
-    if (editHandler.enabled()) { 
-        editHandler.disable(); 
-        resetButtonStyles(); 
-    } 
+function stopEditMode() {
+    if (editHandler.enabled()) {
+        editHandler.disable();
+        resetButtonStyles();
+    }
 }
 
 function addGpsVertex() {
-    if (!currentDrawer) return; 
+    if (!currentDrawer) return;
     if (!navigator.geolocation) { alert("GPS 미지원"); return; }
 
     navigator.geolocation.getCurrentPosition(function (pos) {
@@ -506,23 +558,23 @@ function addGpsVertex() {
             currentDrawer.addVertex(latlng);
         }
         map.panTo(latlng);
-    }, function () { 
-        alert("GPS 수신 실패"); 
+    }, function () {
+        alert("GPS 수신 실패");
     }, { enableHighAccuracy: true });
 }
 
 function deleteLastVertex() { if (currentDrawer && currentDrawer.deleteLastVertex) currentDrawer.deleteLastVertex(); }
 
-function completeDrawing() { 
-    if (currentDrawer) { 
-        isManualFinish = true; 
-        if (currentDrawer.completeShape) currentDrawer.completeShape(); 
-        else if (currentDrawer._finishShape) currentDrawer._finishShape(); 
-        else currentDrawer.disable(); 
-        isManualFinish = false; 
-    } 
-    actionToolbar.style.display = 'none'; 
-    resetButtonStyles(); 
+function completeDrawing() {
+    if (currentDrawer) {
+        isManualFinish = true;
+        if (currentDrawer.completeShape) currentDrawer.completeShape();
+        else if (currentDrawer._finishShape) currentDrawer._finishShape();
+        else currentDrawer.disable();
+        isManualFinish = false;
+    }
+    actionToolbar.style.display = 'none';
+    resetButtonStyles();
 }
 
 function cancelDrawing() {
@@ -535,50 +587,50 @@ function cancelDrawing() {
 }
 
 function updateLayerInfo(layer) {
-    let popupContent = ""; 
-    let infoText = ""; 
+    let popupContent = "";
+    let infoText = "";
     const memo = layer.feature.properties.memo || "";
 
-    if (layer instanceof L.Marker) { 
-        const pos = layer.getLatLng(); 
-        infoText = isTmMode ? "X:" + getTmCoords(pos.lat, pos.lng).x + ", Y:" + getTmCoords(pos.lat, pos.lng).y : convertToDms(pos.lat, 'lat') + "<br>" + convertToDms(pos.lng, 'lng'); 
-    } else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) { 
-        infoText = "<b>" + SVG_ICONS.ruler + " 거리:</b> " + (turf.length(layer.toGeoJSON(), { units: 'kilometers' }) * 1000).toFixed(2) + " m"; 
-    } else if (layer instanceof L.Polygon) { 
-        infoText = "<b>" + SVG_ICONS.polygon + " 면적:</b> " + turf.area(layer.toGeoJSON()).toFixed(2) + " ㎡"; 
+    if (layer instanceof L.Marker) {
+        const pos = layer.getLatLng();
+        infoText = isTmMode ? "X:" + getTmCoords(pos.lat, pos.lng).x + ", Y:" + getTmCoords(pos.lat, pos.lng).y : convertToDms(pos.lat, 'lat') + "<br>" + convertToDms(pos.lng, 'lng');
+    } else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+        infoText = "<b>" + SVG_ICONS.ruler + " 거리:</b> " + (turf.length(layer.toGeoJSON(), { units: 'kilometers' }) * 1000).toFixed(2) + " m";
+    } else if (layer instanceof L.Polygon) {
+        infoText = "<b>" + SVG_ICONS.polygon + " 면적:</b> " + turf.area(layer.toGeoJSON()).toFixed(2) + " ㎡";
     }
-    
-    popupContent = "<b>" + SVG_ICONS.memo + " 메모:</b> " + memo; 
+
+    popupContent = "<b>" + SVG_ICONS.memo + " 메모:</b> " + memo;
     if (infoText) popupContent += "<br>" + infoText;
-    
-    layer.bindPopup(popupContent); 
+
+    layer.bindPopup(popupContent);
     layer.feature.properties.popupContent = popupContent;
 }
 
 map.on(L.Draw.Event.CREATED, function (event) {
-    const layer = event.layer; 
-    let memo = prompt("메모 입력:", getTimestampString()); 
-    if (memo === null) return; 
+    const layer = event.layer;
+    let memo = prompt("메모 입력:", getTimestampString());
+    if (memo === null) return;
     if (!memo) memo = getTimestampString();
-    
-    const randomColor = getRandomColor(); 
+
+    const randomColor = getRandomColor();
     layer.feature = { type: "Feature", properties: { memo: memo, id: Date.now(), isHidden: false, customColor: randomColor } };
-    
-    if (event.layerType === 'marker') { 
-        layer.setIcon(createColoredMarkerIcon(randomColor)); 
-        layer.feature.properties.customColor = randomColor; 
-    } else { 
-        layer.setStyle({ color: randomColor, fillColor: randomColor }); 
+
+    if (event.layerType === 'marker') {
+        layer.setIcon(createColoredMarkerIcon(randomColor));
+        layer.feature.properties.customColor = randomColor;
+    } else {
+        layer.setStyle({ color: randomColor, fillColor: randomColor });
     }
-    
-    updateLayerInfo(layer); 
-    drawnItems.addLayer(layer); 
-    saveToStorage(); 
-    actionToolbar.style.display = 'none'; 
-    currentDrawer = null; 
-    resetButtonStyles(); 
-    layer.openPopup(); 
-    
+
+    updateLayerInfo(layer);
+    drawnItems.addLayer(layer);
+    saveToStorage();
+    actionToolbar.style.display = 'none';
+    currentDrawer = null;
+    resetButtonStyles();
+    layer.openPopup();
+
     // [UI] 저장 후에는 기록 탭으로 이동
     switchSidebarTab('record');
     renderSurveyList();
@@ -602,9 +654,9 @@ function renderSurveyList() {
     const allVisible = layers.length > 0 && layers.every(function (l) { return !l.feature.properties.isHidden; });
     document.getElementById('chk-select-all').checked = (layers.length > 0 && allVisible);
 
-    if (layers.length === 0) { 
-        listContainer.innerHTML = '<div style="padding:15px; text-align:center; color:#999; font-size:12px;">기록 없음</div>'; 
-        return; 
+    if (layers.length === 0) {
+        listContainer.innerHTML = '<div style="padding:15px; text-align:center; color:#999; font-size:12px;">기록 없음</div>';
+        return;
     }
 
     layers.slice().reverse().forEach(function (layer) {
@@ -613,7 +665,7 @@ function renderSurveyList() {
         const isHidden = props.isHidden === true;
         const typeIcon = (layer instanceof L.Marker) ? SVG_ICONS.marker : (layer instanceof L.Polygon ? SVG_ICONS.polygon : SVG_ICONS.ruler);
 
-        const div = document.createElement('div'); 
+        const div = document.createElement('div');
         div.className = 'survey-item';
         div.innerHTML = `
         <div class="survey-check-area">
@@ -631,38 +683,38 @@ function renderSurveyList() {
     });
 }
 
-window.zoomToLayer = function (id) { 
-    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id); 
-    if (!layer) return; 
-    closeSidebar(); 
-    if (layer instanceof L.Marker) { 
-        map.flyTo(layer.getLatLng(), 19); 
-        layer.openPopup(); 
-    } else { 
-        map.fitBounds(layer.getBounds(), { padding: [50, 50], maxZoom: 19 }); 
-        setTimeout(() => layer.openPopup(), 1500); 
-    } 
+window.zoomToLayer = function (id) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+    if (!layer) return;
+    closeSidebar();
+    if (layer instanceof L.Marker) {
+        map.flyTo(layer.getLatLng(), 19);
+        layer.openPopup();
+    } else {
+        map.fitBounds(layer.getBounds(), { padding: [50, 50], maxZoom: 19 });
+        setTimeout(() => layer.openPopup(), 1500);
+    }
 };
 
-window.editLayerMemo = function (id) { 
-    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id); 
-    if (!layer) return; 
-    const newMemo = prompt("수정할 메모:", layer.feature.properties.memo); 
-    if (newMemo) { 
-        layer.feature.properties.memo = newMemo; 
-        updateLayerInfo(layer); 
-        saveToStorage(); 
-        renderSurveyList(); 
-    } 
+window.editLayerMemo = function (id) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+    if (!layer) return;
+    const newMemo = prompt("수정할 메모:", layer.feature.properties.memo);
+    if (newMemo) {
+        layer.feature.properties.memo = newMemo;
+        updateLayerInfo(layer);
+        saveToStorage();
+        renderSurveyList();
+    }
 };
 
-window.updateLayerColor = function (id, newColor) { 
-    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id); 
-    if (!layer) return; 
-    if (layer instanceof L.Marker) layer.setIcon(createColoredMarkerIcon(newColor)); 
-    else layer.setStyle({ color: newColor, fillColor: newColor }); 
-    layer.feature.properties.customColor = newColor; 
-    saveToStorage(); 
+window.updateLayerColor = function (id, newColor) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+    if (!layer) return;
+    if (layer instanceof L.Marker) layer.setIcon(createColoredMarkerIcon(newColor));
+    else layer.setStyle({ color: newColor, fillColor: newColor });
+    layer.feature.properties.customColor = newColor;
+    saveToStorage();
 };
 
 window.toggleLayerVisibility = function (id) {
@@ -700,13 +752,13 @@ window.toggleAllLayers = function (isChecked) {
     renderSurveyList();
 };
 
-window.deleteLayerById = function (id) { 
-    if (confirm("해당 기록을 삭제합니다.")) { 
-        const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id); 
-        if (layer) drawnItems.removeLayer(layer); 
-        saveToStorage(); 
-        renderSurveyList(); 
-    } 
+window.deleteLayerById = function (id) {
+    if (confirm("해당 기록을 삭제합니다.")) {
+        const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+        if (layer) drawnItems.removeLayer(layer);
+        saveToStorage();
+        renderSurveyList();
+    }
 };
 
 /* [Android 호환성] 데이터 저장 및 공유 기능 */
@@ -737,37 +789,37 @@ function saveOrShareFile(content, fileName) {
             title: 'F-Field 기록',
             text: fileName + ' 파일을 공유합니다.'
         })
-        .then(() => {
-            console.log("공유 성공");
-        })
-        .catch((error) => {
-            console.warn("공유 실패/취소 -> 다운로드로 전환", error);
-            saveToDevice(content, fileName);
-        });
+            .then(() => {
+                console.log("공유 성공");
+            })
+            .catch((error) => {
+                console.warn("공유 실패/취소 -> 다운로드로 전환", error);
+                saveToDevice(content, fileName);
+            });
     } else {
         console.log("공유 불가 -> 다운로드로 전환");
         saveToDevice(content, fileName);
     }
 }
 
-window.exportSingleLayer = function (id) { 
-    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id); 
-    if (!layer) return; 
+window.exportSingleLayer = function (id) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+    if (!layer) return;
 
     let safeMemo = (layer.feature.properties.memo || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
     const fileName = safeMemo + ".geojson";
     const content = JSON.stringify(layer.toGeoJSON(), null, 2);
-    
+
     saveOrShareFile(content, fileName);
 };
 
 window.exportSelectedGeoJSON = function () {
     const allLayers = drawnItems.getLayers();
     const visibleLayers = allLayers.filter(function (layer) { return !layer.feature.properties.isHidden; });
-    
+
     if (visibleLayers.length === 0) { alert("저장할 항목이 선택되지 않았습니다."); return; }
     if (!confirm('선택한 기록이 한 개의 파일로 저장됩니다.')) { return; }
-    
+
     const featureCollection = L.layerGroup(visibleLayers).toGeoJSON();
     const fileName = "Project_" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + ".geojson";
     const content = JSON.stringify(featureCollection, null, 2);
@@ -778,54 +830,54 @@ window.exportSelectedGeoJSON = function () {
 
 function saveToStorage() { localStorage.setItem(STORAGE_KEY, JSON.stringify(drawnItems.toGeoJSON())); }
 
-function restoreFeatures(geoJsonData) { 
-    L.geoJSON(geoJsonData, { 
-        onEachFeature: function (feature, layer) { 
-            if (feature.properties && feature.properties.memo) { 
-                layer.feature = feature; 
-                updateLayerInfo(layer); 
-            } 
-            const savedColor = feature.properties.customColor; 
-            if (feature.geometry.type === 'Point' && layer instanceof L.Marker) 
-                layer.setIcon(createColoredMarkerIcon(savedColor || '#0040ff')); 
-            else if (savedColor) 
-                layer.setStyle({ color: savedColor, fillColor: savedColor }); 
-            drawnItems.addLayer(layer); 
-        } 
-    }); 
-    renderSurveyList(); 
+function restoreFeatures(geoJsonData) {
+    L.geoJSON(geoJsonData, {
+        onEachFeature: function (feature, layer) {
+            if (feature.properties && feature.properties.memo) {
+                layer.feature = feature;
+                updateLayerInfo(layer);
+            }
+            const savedColor = feature.properties.customColor;
+            if (feature.geometry.type === 'Point' && layer instanceof L.Marker)
+                layer.setIcon(createColoredMarkerIcon(savedColor || '#0040ff'));
+            else if (savedColor)
+                layer.setStyle({ color: savedColor, fillColor: savedColor });
+            drawnItems.addLayer(layer);
+        }
+    });
+    renderSurveyList();
 }
 
-function loadFromStorage() { 
-    try { 
-        const saved = localStorage.getItem(STORAGE_KEY); 
-        if (saved) restoreFeatures(JSON.parse(saved)); 
-    } catch (e) { } 
+function loadFromStorage() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) restoreFeatures(JSON.parse(saved));
+    } catch (e) { }
 }
 
-function clearAllData() { 
-    if (confirm("선택한 기록이 모두 삭제됩니다.")) { 
-        drawnItems.clearLayers(); 
-        saveToStorage(); 
-        renderSurveyList(); 
-    } 
+function clearAllData() {
+    if (confirm("선택한 기록이 모두 삭제됩니다.")) {
+        drawnItems.clearLayers();
+        saveToStorage();
+        renderSurveyList();
+    }
 }
 
 function triggerFileInput() { document.getElementById('geoJsonInput').click(); }
-function handleFileSelect(input) { 
-    const file = input.files[0]; 
-    if (!file) return; 
-    const r = new FileReader(); 
-    r.onload = function (e) { 
-        try { 
-            restoreFeatures(JSON.parse(e.target.result)); 
-            saveToStorage(); 
-            alert("완료"); 
-            closeSidebar(); 
-        } catch (err) { alert("오류"); } 
-        input.value = ''; 
-    }; 
-    r.readAsText(file); 
+function handleFileSelect(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = function (e) {
+        try {
+            restoreFeatures(JSON.parse(e.target.result));
+            saveToStorage();
+            alert("완료");
+            closeSidebar();
+        } catch (err) { alert("오류"); }
+        input.value = '';
+    };
+    r.readAsText(file);
 }
 
 /* --------------------------------------------------------------------------
@@ -835,36 +887,36 @@ function updateLocationMarker(pos) {
     if (pos.coords.accuracy === 0) return;
     const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
     if (typeof pos.coords.heading === 'number' && !isNaN(pos.coords.heading)) { lastHeading = pos.coords.heading; }
-    
-    if (!trackingCircle) 
-        trackingCircle = L.circle(latlng, { radius: pos.coords.accuracy, weight: 1, color: 'blue', opacity: 0.3, fillOpacity: 0.1 }).addTo(map); 
-    else 
+
+    if (!trackingCircle)
+        trackingCircle = L.circle(latlng, { radius: pos.coords.accuracy, weight: 1, color: 'blue', opacity: 0.3, fillOpacity: 0.1 }).addTo(map);
+    else
         trackingCircle.setLatLng(latlng).setRadius(pos.coords.accuracy);
-    
+
     const arrowSvg = `<div style="transform: rotate(${lastHeading}deg); transform-origin: center center; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;" class="gps-arrow-icon">
                         <svg viewBox="0 0 100 100" width="20" height="20" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));">
                             <path d="M50 0 L100 100 L50 80 L0 100 Z" fill="#007bff" stroke="white" stroke-width="10" />
                         </svg>
                     </div>`;
     const arrowIcon = L.divIcon({ className: '', html: arrowSvg, iconSize: [20, 20], iconAnchor: [10, 10] });
-    
-    if (!trackingMarker) 
-        trackingMarker = L.marker(latlng, { icon: arrowIcon, zIndexOffset: 1000 }).addTo(map); 
-    else 
+
+    if (!trackingMarker)
+        trackingMarker = L.marker(latlng, { icon: arrowIcon, zIndexOffset: 1000 }).addTo(map);
+    else
         trackingMarker.setLatLng(latlng).setIcon(arrowIcon);
-        
+
     getAddressFromCoords(pos.coords.latitude, pos.coords.longitude);
 }
 
-function onTrackSuccess(pos) { 
-    updateLocationMarker(pos); 
-    if (isFollowing) map.panTo([pos.coords.latitude, pos.coords.longitude]); 
+function onTrackSuccess(pos) {
+    updateLocationMarker(pos);
+    if (isFollowing) map.panTo([pos.coords.latitude, pos.coords.longitude]);
 }
 
 function toggleTracking() {
     const btn = document.getElementById('toggle-track-btn');
     if (!navigator.geolocation) { alert("GPS 미지원"); return; }
-    
+
     if (isFollowing) {
         isFollowing = false;
         btn.classList.remove('tracking-btn-on');
@@ -878,15 +930,15 @@ function toggleTracking() {
 }
 
 function onFirstLoadSuccess(pos) { map.setView([pos.coords.latitude, pos.coords.longitude], 19); }
-function findMe() { 
-    if (!navigator.geolocation) { alert("GPS 미지원"); return; } 
-    navigator.geolocation.getCurrentPosition(onFirstLoadSuccess, function () { alert("위치 실패"); }, { enableHighAccuracy: true }); 
+function findMe() {
+    if (!navigator.geolocation) { alert("GPS 미지원"); return; }
+    navigator.geolocation.getCurrentPosition(onFirstLoadSuccess, function () { alert("위치 실패"); }, { enableHighAccuracy: true });
 }
 
-loadFromStorage(); 
-if (navigator.geolocation) { 
-    navigator.geolocation.watchPosition(onTrackSuccess, null, { enableHighAccuracy: true }); 
-    navigator.geolocation.getCurrentPosition(onFirstLoadSuccess, null, { enableHighAccuracy: true }); 
+loadFromStorage();
+if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(onTrackSuccess, null, { enableHighAccuracy: true });
+    navigator.geolocation.getCurrentPosition(onFirstLoadSuccess, null, { enableHighAccuracy: true });
 }
 
 /* --------------------------------------------------------------------------
