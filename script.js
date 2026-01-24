@@ -2,7 +2,7 @@
    프로젝트: 국유림 현장조사 앱 (F-Field)
    버전: v1.2.0
    작성일: 2026-01-25
-   설명: 네비 기능 추가
+   설명: 네비 기능 추가, 비공개 레이어 암호 기능 추가
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -39,7 +39,9 @@ const SVG_ICONS = {
     memo: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
     memo: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
     close: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,
-    car: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>`
+    car: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>`,
+    lock: `<svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>`,
+    unlock: `<svg viewBox="0 0 24 24"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c.55 0 1 .45 1 1s-.45 1-1 1H7c-1.66 0-3 1.34-3 3v2H3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/></svg>`
 };
 
 /* [패치] Leaflet 라이브러리의 터치 오류 방지 */
@@ -76,7 +78,7 @@ const nasGukLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon/guk/{z
 map.addLayer(vworldSatellite);
 map.addLayer(vworldCadastral);
 map.addLayer(vworldHybrid);
-map.addLayer(nasGukLayer);
+
 
 /* --------------------------------------------------------------------------
    4. 지도 조작 및 UI 기능 
@@ -1145,6 +1147,39 @@ function switchSidebarTab(tabName) {
     document.getElementById('tab-btn-' + tabName).classList.add('active');
     document.getElementById('content-' + tabName).classList.add('active');
 }
+
+
+/* --------------------------------------------------------------------------
+   14. 비공개 레이어 잠금 기능
+-------------------------------------------------------------------------- */
+window.unlockHiddenLayers = function () {
+    const section = document.getElementById('hidden-layer-section');
+    const chkNasGuk = document.getElementById('chk-nas-guk');
+    const btnLock = document.getElementById('btn-lock');
+
+    // 이미 해제된 상태라면 동작 없음 (또는 다시 잠글 수도 있지만 요구사항은 아님)
+    if (section.style.display === 'block') {
+        alert("이미 잠금이 해제되었습니다.");
+        return;
+    }
+
+    const input = prompt("비공개 레이어 암호를 입력하세요:");
+    if (!input) return;
+
+    // Base64 인코딩 후 비교 (암호: 8906 -> ODkwNg==)
+    if (btoa(input) === 'ODkwNg==') {
+        section.style.display = 'block';
+        // chkNasGuk.checked = true; // 기본값 꺼짐 유지
+        // toggleOverlay('nasGuk', true);
+
+        // 아이콘 변경 (Unlock)
+        btnLock.innerHTML = SVG_ICONS.unlock;
+        btnLock.style.color = '#3B82F6'; // 파란색으로 활성화 표시
+        alert("잠금이 해제되었습니다.");
+    } else {
+        alert("암호가 올바르지 않습니다.");
+    }
+};
 
 /* --------------------------------------------------------------------------
    12. 초기 실행 및 딥링크 처리

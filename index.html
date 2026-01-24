@@ -1115,10 +1115,10 @@
 
                 <div id="content-map" class="tab-content active">
                     <div class="menu-section">
-                        <div class="menu-title">배경 지도</div>
+                        <div class="menu-title">기본 지도</div>
                         <div class="check-group">
                             <label class="option-row" style="font-weight:bold;">
-                                <span style="flex:1;">배경지도 켜기</span>
+                                <span style="flex:1;">배경지도</span>
                                 <input type="checkbox" id="chk-base-layer" checked
                                     onchange="toggleBaseLayer(this.checked)">
                             </label>
@@ -1134,17 +1134,17 @@
                                 <input type="checkbox" id="chk-hybrid" onchange="toggleOverlay('hybrid', this.checked)">
                             </label>
                             <label class="option-row">
-                                <span style="flex:1;">지적도(토지경계)</span>
+                                <span style="flex:1;">연속지적도</span>
                                 <input type="checkbox" id="chk-cadastral"
                                     onchange="toggleOverlay('cadastral', this.checked)">
                             </label>
                         </div>
                     </div>
 
-                    <div class="menu-section">
-                        <div class="menu-title">산림 주제도</div>
+                    <div id="hidden-layer-section" class="menu-section" style="display: none;">
+                        <div class="menu-title">비공개 레이어</div>
                         <label class="option-row">
-                            <span style="flex:1;">국유재산기본도(수원)</span>
+                            <span style="flex:1;">국유재산기본도(수원, 260122)</span>
                             <input type="checkbox" id="chk-nas-guk" onchange="toggleOverlay('nasGuk', this.checked)">
                         </label>
                         <div id="nas-guk-legend"
@@ -1206,6 +1206,14 @@
                 </div>
 
             </div>
+            <!-- 사이드바 하단 자물쇠 버튼 -->
+            <button id="btn-lock" onclick="unlockHiddenLayers()"
+                style="position: absolute; bottom: 20px; left: 20px; border: none; background: none; cursor: pointer; color: #aaa; z-index: 10;">
+                <svg id="icon-lock" viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;">
+                    <path
+                        d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+                </svg>
+            </button>
         </div>
     </div>
 
