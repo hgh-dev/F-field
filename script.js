@@ -2,7 +2,7 @@
    프로젝트: 국유림 현장조사 앱 (F-Field)
    버전: v1.1.0
    작성일: 2026-01-24
-   설명: 지적 경계 강조 기능, 주소 표시 UI 변경, 내 위치 공유 기능
+   설명: 지적 경계 강조 기능, 주소 표시 UI 변경, 내 위치 공유 기능 추가, 좌표 표시 기능 수정
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -14,7 +14,7 @@ const STORAGE_KEY = "my_survey_data_v4";
 const SEARCH_HISTORY_KEY = 'my_search_history';
 const SEARCH_SETTING_KEY = 'my_search_setting_enabled';
 
-let isTmMode = false;
+let coordMode = 0; // 0: DMS, 1: Decimal, 2: TM
 let isFollowing = false;
 let watchId = null;
 let isManualFinish = false;
@@ -99,8 +99,17 @@ function showInfoPopup(lat, lng) {
         currentSearchMarker = L.marker([lat, lng], { icon: createColoredMarkerIcon('#FF0000') }).addTo(map);
 
         // 점 측량과 동일한 스타일의 팝업 내용
-        let infoText = isTmMode ? "X:" + getTmCoords(lat, lng).x + ", Y:" + getTmCoords(lat, lng).y : convertToDms(lat, 'lat') + "<br>" + convertToDms(lng, 'lng');
-        const content = "<b style='color:#3B82F6;'>" + addrText + "</b>";
+        let infoText = "";
+        if (coordMode === 2) {
+            infoText = "X:" + getTmCoords(lat, lng).x + "<br>" + "Y:" + getTmCoords(lat, lng).y;
+        } else if (coordMode === 1) {
+            infoText = "N " + lat.toFixed(4) + "°" + "<br>" + "E " + lng.toFixed(4) + "°";
+        } else {
+            infoText = convertToDms(lat, 'lat') + "<br>" + convertToDms(lng, 'lng');
+        }
+        const content = "<b style='color:#3B82F6;'>" + addrText + "</b>"
+                    + "<hr style='margin: 5px 0; border: none; border-top: 1px solid #eee;'>" 
+                    + "<span style='font-size: 12px; color: #666;'>" + infoText + "</span>";
 
         currentSearchMarker.bindPopup(content).openPopup();
 
@@ -220,9 +229,19 @@ function shareMyLocation() {
     // 주의: hash router를 사용하는 경우 처리가 다를 수 있음. 여기서는 query parameter 사용.
     const shareUrl = `${window.location.origin}${window.location.pathname}?lat=${lat}&lng=${lng}`;
 
+    let coordText = "";
+    if (coordMode === 2) {
+        const tm = getTmCoords(lat, lng);
+        coordText = `X: ${tm.x}, Y: ${tm.y}`;
+    } else if (coordMode === 1) {
+        coordText = `N ${lat.toFixed(4)}° , E ${lng.toFixed(4)}°`;
+    } else {
+        coordText = `${convertToDms(lat, 'lat')}, ${convertToDms(lng, 'lng')}`;
+    }
+
     const shareData = {
-        title: 'F-Field 위치 공유',
-        text: `[F-Field] 위치 공유\n주소: ${address}\n좌표: ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+        title: '[F-Field] 내 위치 공유',
+        text: `\n링크를 클릭하면 공유된 위치로 이동합니다.\n주소: ${address}\n좌표: ${coordText}`,
         url: shareUrl
     };
 
@@ -466,10 +485,20 @@ function getTmCoords(lat, lng) {
 
 function updateCoordDisplay() {
     const center = map.getCenter();
-    const text = isTmMode ? "X: " + getTmCoords(center.lat, center.lng).x + " | Y: " + getTmCoords(center.lat, center.lng).y : convertToDms(center.lat, 'lat') + " | " + convertToDms(center.lng, 'lng');
+    let text = "";
+    if (coordMode === 2) {
+        text = "X: " + getTmCoords(center.lat, center.lng).x + " | Y: " + getTmCoords(center.lat, center.lng).y;
+    } else if (coordMode === 1) {
+        text = "N " + center.lat.toFixed(4) + "° | E " + center.lng.toFixed(4) + "°";
+    } else {
+        text = convertToDms(center.lat, 'lat') + " | " + convertToDms(center.lng, 'lng');
+    }
     document.getElementById('coord-display').innerText = text;
 }
-function toggleCoordMode() { isTmMode = !isTmMode; updateCoordDisplay(); }
+function toggleCoordMode() {
+    coordMode = (coordMode + 1) % 3;
+    updateCoordDisplay();
+}
 map.on('move', updateCoordDisplay);
 updateCoordDisplay();
 
@@ -643,7 +672,13 @@ function updateLayerInfo(layer) {
 
     if (layer instanceof L.Marker) {
         const pos = layer.getLatLng();
-        infoText = isTmMode ? "X:" + getTmCoords(pos.lat, pos.lng).x + ", Y:" + getTmCoords(pos.lat, pos.lng).y : convertToDms(pos.lat, 'lat') + "<br>" + convertToDms(pos.lng, 'lng');
+        if (coordMode === 2) {
+            infoText = "X:" + getTmCoords(pos.lat, pos.lng).x + ", Y:" + getTmCoords(pos.lat, pos.lng).y;
+        } else if (coordMode === 1) {
+            infoText = "N " + pos.lat.toFixed(4) + "° , E " + pos.lng.toFixed(4) + "°";
+        } else {
+            infoText = convertToDms(pos.lat, 'lat') + "<br>" + convertToDms(pos.lng, 'lng');
+        }
     } else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
         infoText = "<b>" + SVG_ICONS.ruler + " 거리:</b> " + (turf.length(layer.toGeoJSON(), { units: 'kilometers' }) * 1000).toFixed(2) + " m";
     } else if (layer instanceof L.Polygon) {
