@@ -341,38 +341,10 @@
             flex-shrink: 0;
         }
 
-        .login-container {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .login-notice {
-            font-size: 11px;
-            color: #ccc;
-            /* 연한 회색 */
-            margin-left: 5px;
-        }
-
-        .btn-login {
-            background-color: #3B82F6;
-            color: white;
-            border: none;
-            padding: 6px 14px;
-            border-radius: 20px;
-            /* 둥근 모서리 */
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-            transition: background 0.2s;
-        }
-
-        .btn-login:hover {
-            background-color: #2563EB;
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #1a1a1a;
         }
 
         .btn-close-sidebar {
@@ -1022,16 +994,7 @@
     <div id="sidebar-overlay" class="sidebar-overlay" onclick="if(event.target === this) closeSidebar()">
         <div class="sidebar-content">
             <div class="sidebar-header">
-                <div class="login-container">
-                    <button id="btn-login" class="btn-login" onclick="loginWithGoogle()">
-                        Log in
-                    </button>
-                    <div id="user-info" class="user-info" style="display:none;">
-                        <span id="user-email" class="user-email"></span>
-                        <button class="btn-logout" onclick="logout()">로그아웃</button>
-                    </div>
-                    <div class="login-notice">로그인하면 저장된 기록이 안전하게 보관됩니다.</div>
-                </div>
+                <div class="sidebar-title">F-Field</div>
                 <button class="btn-close-sidebar" onclick="closeSidebar()">
                     <svg class="svg-icon" viewBox="0 0 24 24">
                         <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
@@ -1222,18 +1185,6 @@
         }
     </script>
 
-    <!-- Firebase SDK (Modular) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-        // 전역 함수로 노출 (script.js에서 사용하기 위함)
-        window.firebaseModules = {
-            initializeApp, getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged,
-            getFirestore, doc, setDoc, getDoc, collection
-        };
-    </script>
     <script src="script.js"></script>
 
 </body>
