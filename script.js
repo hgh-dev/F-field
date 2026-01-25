@@ -2,7 +2,7 @@
    프로젝트: 국유림 현장조사 앱 (F-Field)
    버전: v1.2.0
    작성일: 2026-01-25
-   설명: 네비 기능 추가, 비공개 레이어 암호 기능 추가
+   설명: 네비 기능 추가, 비공개 레이어 암호 기능 추가, 검색 기능 보완
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -395,16 +395,16 @@ function callVworldSearchApi(query, type, callback) {
         delete window[callbackName];
         document.getElementById(callbackName)?.remove();
         if (data.response.status === "OK" && data.response.result && data.response.result.items.length > 0)
-            callback(data.response.result.items[0]);
+            callback(data.response.result.items);
         else
             callback(null);
     };
     const script = document.createElement('script'); script.id = callbackName;
-    script.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=1&page=1&query=${encodeURIComponent(query)}&type=${type}&format=json&errorformat=json&key=${VWORLD_API_KEY}&callback=${callbackName}`;
+    script.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=50&page=1&query=${encodeURIComponent(query)}&type=${type}&format=json&errorformat=json&key=${VWORLD_API_KEY}&callback=${callbackName}`;
     document.body.appendChild(script);
 }
 
-function callVworldCoordApi(query, callback) {
+function callVworldCoordApi(query, type, callback) {
     const callbackName = 'vworld_coord_' + Math.floor(Math.random() * 100000);
     window[callbackName] = function (data) {
         delete window[callbackName];
@@ -415,7 +415,7 @@ function callVworldCoordApi(query, callback) {
             callback(null);
     };
     const script = document.createElement('script'); script.id = callbackName;
-    script.src = `https://api.vworld.kr/req/address?service=address&request=getCoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(query)}&refine=true&simple=false&format=json&type=PARCEL&key=${VWORLD_API_KEY}&callback=${callbackName}`;
+    script.src = `https://api.vworld.kr/req/address?service=address&request=getCoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(query)}&refine=true&simple=false&format=json&type=${type || 'PARCEL'}&key=${VWORLD_API_KEY}&callback=${callbackName}`;
     document.body.appendChild(script);
 }
 
@@ -427,27 +427,29 @@ function executeSearch(keyword) {
     document.getElementById('history-panel').style.display = 'none';
     document.getElementById('search-input').value = query;
 
-    callVworldSearchApi(query, 'ADDRESS', function (addressResult) {
-        if (addressResult) {
-            moveToSearchResult(addressResult);
+    // 1. ADDRESS (주소 검색) - 최대 50건 조회
+    callVworldSearchApi(query, 'ADDRESS', function (addrResults) {
+        if (addrResults && addrResults.length > 0) {
+            handleSearchResults(addrResults);
         } else {
-            callVworldSearchApi(query, 'PLACE', function (placeResult) {
-                if (placeResult) {
-                    moveToSearchResult(placeResult);
+            // 2. PLACE (장소 검색) - 최대 50건 조회
+            callVworldSearchApi(query, 'PLACE', function (placeResults) {
+                if (placeResults && placeResults.length > 0) {
+                    handleSearchResults(placeResults);
                 } else {
-                    callVworldCoordApi(query, function (coordResult) {
-                        if (coordResult) {
-                            const finalResult = {
-                                point: coordResult.point,
-                                title: query,
-                                address: {
-                                    road: "",
-                                    parcel: (coordResult.refined && coordResult.refined.text) ? coordResult.refined.text : query
-                                }
-                            };
-                            moveToSearchResult(finalResult);
+                    // 3. ROAD (도로명 주소 지오코딩) - 1건만 조회됨
+                    callVworldCoordApi(query, 'ROAD', function (roadResult) {
+                        if (roadResult) {
+                            handleSingleResult(roadResult, query, 'ROAD');
                         } else {
-                            alert("검색 결과가 없습니다.\n정확한 주소(예: 화성시 장안면 장안리 산124)를 입력해보세요.");
+                            // 4. PARCEL (지번 주소 지오코딩) - 1건만 조회됨
+                            callVworldCoordApi(query, 'PARCEL', function (parcelResult) {
+                                if (parcelResult) {
+                                    handleSingleResult(parcelResult, query, 'PARCEL');
+                                } else {
+                                    alert("검색 결과가 없습니다.\n정확한 주소(예: 화성시 장안면 장안리 산124)를 입력해보세요.");
+                                }
+                            });
                         }
                     });
                 }
@@ -455,6 +457,68 @@ function executeSearch(keyword) {
         }
     });
 }
+
+function handleSingleResult(coordResult, query, type) {
+    // 지오코딩 결과는 1개만 오므로 바로 이동
+    // type: 'ROAD' or 'PARCEL'
+    const finalResult = {
+        point: coordResult.point,
+        title: query,
+        address: {
+            road: (type === 'ROAD' && coordResult.refined && coordResult.refined.text) ? coordResult.refined.text : "",
+            parcel: (type === 'PARCEL' && coordResult.refined && coordResult.refined.text) ? coordResult.refined.text : ""
+        }
+    };
+    moveToSearchResult(finalResult);
+}
+
+function handleSearchResults(items) {
+    if (items.length === 1) {
+        moveToSearchResult(items[0]);
+    } else {
+        renderSearchResultList(items);
+        document.getElementById('search-result-panel').style.display = 'block';
+    }
+}
+
+function renderSearchResultList(items) {
+    const listEl = document.getElementById('search-result-list');
+    listEl.innerHTML = "";
+
+    items.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'search-result-item';
+
+        let roadAddr = item.address.road || "";
+        let parcelAddr = item.address.parcel || "";
+
+        // 검색 결과 타입(장소 vs 주소)에 따라 title이 다를 수 있음
+        const title = item.title || roadAddr || parcelAddr;
+
+        let html = `<div class="search-result-title">${title}</div>`;
+
+        if (roadAddr) {
+            html += `<div class="search-result-addr"><span class="badge-road">도로명</span> ${roadAddr}</div>`;
+        }
+        if (parcelAddr) {
+            html += `<div class="search-result-addr"><span class="badge-parcel">지번</span> ${parcelAddr}</div>`;
+        }
+
+        li.innerHTML = html;
+        li.onclick = function () {
+            moveToSearchResult(item);
+            closeSearchResult();
+        };
+
+        listEl.appendChild(li);
+    });
+}
+
+function closeSearchResult() {
+    document.getElementById('search-result-panel').style.display = 'none';
+    document.getElementById('search-input').focus();
+}
+
 
 function moveToSearchResult(result) {
     const point = result.point;
