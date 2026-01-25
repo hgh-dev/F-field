@@ -803,6 +803,28 @@
             background: #fdfdfd;
         }
 
+        /* [UI] 팝업 버튼 스타일 */
+        .popup-btn {
+            padding: 5px 12px;
+            border: 1px solid #ddd;
+            background: #f8f9fa;
+            border-radius: 20px;
+            font-size: 11px;
+            cursor: pointer;
+            color: #333;
+            transition: all 0.2s;
+        }
+
+        .popup-btn.disabled {
+            color: #aaa;
+            background: #f0f0f0;
+            cursor: default;
+        }
+
+        .popup-btn:not(.disabled):hover {
+            opacity: 0.9;
+        }
+
         .search-result-list {
             list-style: none;
             margin: 0;

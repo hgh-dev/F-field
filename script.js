@@ -2,7 +2,7 @@
    프로젝트: 국유림 현장조사 앱 (F-Field)
    버전: v1.2.0
    작성일: 2026-01-25
-   설명: 네비 기능 추가, 비공개 레이어 암호 기능 추가, 검색 기능 보완
+   설명: 네비 기능 추가, 비공개 레이어 암호 기능 추가, 검색 기능 보완, 토지이음 연동 기능 추가
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -129,6 +129,9 @@ function showInfoPopup(lat, lng) {
                                     </svg>
                                 </button>
                             </div>
+                        </div>
+                        <div style="margin-top: 8px; text-align: center;">
+                            <button id="btn-landeum-popup" class="popup-btn disabled" disabled onclick="alert('지적 정보를 불러오는 중입니다.')">토지e음</button>
                         </div>`;
         currentSearchMarker.bindPopup(content).openPopup();
 
@@ -159,6 +162,23 @@ map.on('click', function (e) {
         currentSearchMarker = null;
     }
 });
+
+// [기능추가] 팝업 내 토지e음 버튼 업데이트
+function updatePopupLandEumButton(pnu) {
+    const btn = document.getElementById('btn-landeum-popup');
+    if (btn) {
+        btn.classList.remove('disabled');
+        btn.disabled = false;
+        btn.onclick = function () {
+            // [패치] 바로 열람이 되도록 파라미터 추가
+            window.open(`https://www.eum.go.kr/web/ar/lu/luLandDet.jsp?pnu=${pnu}&mode=search&isNoScr=script&add=land`, '_blank');
+        };
+        btn.innerText = "토지e음 바로가기";
+        btn.style.backgroundColor = "#007bff";
+        btn.style.color = "#fff";
+        btn.style.border = "none";
+    }
+}
 
 // [기능추가] 팝업 위치 공유 함수
 function shareLocationText(address, lat, lng) {
@@ -271,6 +291,11 @@ function fetchAndHighlightBoundary(x, y) {
                     fillOpacity: 0
                 }
             }).addTo(map);
+
+            // [기능추가] PNU 추출 및 팝업 버튼 업데이트
+            if (feature.properties && feature.properties.pnu) {
+                updatePopupLandEumButton(feature.properties.pnu);
+            }
         }
     };
 
