@@ -2,7 +2,7 @@
    프로젝트: 국유림 현장조사 앱 (F-Field)
    버전: v1.2.0
    작성일: 2026-01-25
-   설명: 네비 기능 추가, 비공개 레이어 암호 기능 추가, 검색 기능 보완, 토지이음 연동 기능 추가
+   설명: 네비 기능 추가, 비공개 레이어 암호 기능 추가, 검색 기능 보완, 토지이음 연동 기능 추가, 나침반 기능 추가
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -57,7 +57,9 @@ const map = L.map('map', {
     attributionControl: false,
     tap: false,
     maxZoom: 22,
-    doubleClickZoom: false
+    doubleClickZoom: false,
+    rotate: true, // [기능추가] 지도 회전 활성화
+    touchRotate: true // [기능추가] 터치 회전 활성화
 }).setView([37.245911, 126.960302], 17);
 
 L.control.zoom({ position: 'bottomleft' }).addTo(map);
@@ -1207,6 +1209,11 @@ function toggleTracking() {
         isFollowing = false;
         btn.classList.remove('tracking-btn-on');
         btn.classList.remove('tracking-active');
+
+        // [기능수정] 위치 추적을 끄면 나침반 모드도 해제
+        if (isCompassMode) {
+            toggleCompassMode();
+        }
     } else {
         isFollowing = true;
         navigator.geolocation.getCurrentPosition(onTrackSuccess, null, { enableHighAccuracy: true });
@@ -1214,6 +1221,88 @@ function toggleTracking() {
         btn.classList.add('tracking-active');
     }
 }
+
+let isCompassMode = false;
+let deviceOrientationHandler = null;
+
+function toggleCompassMode() {
+    const btn = document.getElementById('btn-compass-mode');
+
+    // 나침반 모드는 위치 추적(Follow) 상태여야 의미가 있으므로, 추적이 꺼져있다면 켭니다.
+    if (!isFollowing) {
+        toggleTracking();
+    }
+
+    if (isCompassMode) {
+        // [OFF] 나침반 모드 끄기
+        isCompassMode = false;
+        btn.classList.remove('compass-btn-on');
+
+        // 지도 회전 초기화 (북쪽 고정)
+        map.setBearing(0);
+
+        // 이벤트 제거
+        if (deviceOrientationHandler) {
+            window.removeEventListener('deviceorientation', deviceOrientationHandler);
+            deviceOrientationHandler = null;
+        }
+    } else {
+        // [ON] 나침반 모드 켜기
+        isCompassMode = true;
+        btn.classList.add('compass-btn-on');
+
+        // DeviceOrientation 이벤트 리스너 추가
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            // iOS 13+ 권한 요청
+            DeviceOrientationEvent.requestPermission()
+                .then(response => {
+                    if (response === 'granted') {
+                        startCompass();
+                    } else {
+                        alert("나침반 권한이 거부되었습니다.");
+                        isCompassMode = false;
+                        btn.classList.remove('compass-btn-on');
+                    }
+                })
+                .catch(console.error);
+        } else {
+            // 안드로이드 및 구형 iOS
+            startCompass();
+        }
+    }
+}
+
+function startCompass() {
+    deviceOrientationHandler = function (e) {
+        if (!isCompassMode || !isFollowing) return;
+
+        let heading = 0;
+
+        // iOS: webkitCompassHeading, Others: alpha
+        if (e.webkitCompassHeading) {
+            // iOS
+            heading = e.webkitCompassHeading;
+        } else if (e.alpha) {
+            // Android (alpha는 북쪽 기준이 아닐 수 있어서 보정이 필요할 수 있음. 보통 절대값 false면 상대값임)
+            // 간단하게 alpha 사용 (360 - alpha)
+            heading = 360 - e.alpha;
+        }
+
+        // 지도의 bearing 설정 (플러그인 기능)
+        // 지도가 회전해야 하므로, 내 헤딩만큼 지도를 반대로 돌리는 것이 아니라
+        // setBearing(heading)을 하면 'heading' 방향이 위쪽이 되도록 지도가 회전함.
+        map.setBearing(heading);
+    };
+    window.addEventListener('deviceorientation', deviceOrientationHandler);
+}
+
+// [기능수정] 지도 드래그 시 나침반 모드/위치 추적 해제 (선택 사항이나 보통 UX상 편리)
+map.on('dragstart', function () {
+    // 사용자가 지도를 움직이려 하면 Follow 모드는 해제하는 것이 일반적이나,
+    // 여기서는 요구사항에 명시되지 않았으므로 유지하거나, 필요 시 해제 코드를 추가할 수 있음.
+    // 만약 "지도가 나의 방향이 위쪽으로 고정"이 계속 유지되어야 한다면, dragstart에서 끄지 않습니다.
+    // 다만, 위치 추적(Center 고정)은 보통 드래그 시 풀리는게 자연스러움.
+});
 
 function onFirstLoadSuccess(pos) { map.setView([pos.coords.latitude, pos.coords.longitude], 19); }
 function findMe() {

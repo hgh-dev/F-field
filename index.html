@@ -17,6 +17,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.4.4/proj4.js"></script>
+    <!-- [기능추가] 지도 회전 플러그인 -->
+    <script src="https://unpkg.com/leaflet-rotate-map@0.1.1/dist/leaflet-rotate-map.js"></script>
 
     <style>
         html,
@@ -284,11 +286,24 @@
         .tracking-active #tracking-svg-icon {
             filter: none;
             opacity: 1;
+            filter: none;
+            opacity: 1;
         }
 
         .tracking-btn-on {
             background-color: #e8f0fe !important;
             border: 2px solid #aecbfa !important;
+        }
+
+        /* 나침반 모드 활성화 스타일 */
+        .compass-btn-on {
+            background-color: #e8f0fe !important;
+            border: 2px solid #aecbfa !important;
+        }
+
+        .compass-btn-on #compass-svg-icon {
+            fill: #007bff !important;
+            color: #007bff !important;
         }
 
         /* --- 사이드바 (Modern Card UI & Tabs) --- */
@@ -1215,6 +1230,16 @@
                     fill="#F44336" stroke="#B71C1C" stroke-width="2" />
                 <circle cx="50" cy="46" r="4" fill="white" />
             </svg>
+        </button>
+
+        <!-- [기능추가] 나침반 모드 버튼 -->
+        <button class="circle-btn" id="btn-compass-mode" onclick="toggleCompassMode()">
+            <div id="compass-svg-icon"
+                style="width: 28px; height: 28px; color: #999; display:flex; align-items:center; justify-content:center;">
+                <svg viewBox="0 0 24 24" style="fill:currentColor; width:100%; height:100%;">
+                    <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
+                </svg>
+            </div>
         </button>
     </div>
 
