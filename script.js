@@ -2,7 +2,7 @@
    프로젝트: 국유림 현장조사 앱 (F-Field)
    버전: v1.2.0
    작성일: 2026-01-25
-   설명: 네비 기능 추가, 비공개 레이어 암호 기능 추가, 검색 기능 보완, 토지이음 연동 기능 추가, 나침반 기능 추가
+   설명: 네비 기능 추가, 비공개 레이어 암호 기능 추가, 검색 기능 보완, 토지이음 연동 기능 추가
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -57,9 +57,7 @@ const map = L.map('map', {
     attributionControl: false,
     tap: false,
     maxZoom: 22,
-    doubleClickZoom: false,
-    rotate: true, // [기능추가] 지도 회전 활성화
-    touchRotate: true // [기능추가] 터치 회전 활성화
+    doubleClickZoom: false
 }).setView([37.245911, 126.960302], 17);
 
 L.control.zoom({ position: 'bottomleft' }).addTo(map);
@@ -1209,11 +1207,6 @@ function toggleTracking() {
         isFollowing = false;
         btn.classList.remove('tracking-btn-on');
         btn.classList.remove('tracking-active');
-
-        // [기능수정] 위치 추적을 끄면 나침반 모드도 해제
-        if (isCompassMode) {
-            toggleCompassMode();
-        }
     } else {
         isFollowing = true;
         navigator.geolocation.getCurrentPosition(onTrackSuccess, null, { enableHighAccuracy: true });
@@ -1221,95 +1214,6 @@ function toggleTracking() {
         btn.classList.add('tracking-active');
     }
 }
-
-let isCompassMode = false;
-let deviceOrientationHandler = null;
-
-function toggleCompassMode() {
-    const btn = document.getElementById('btn-compass-mode');
-
-    // 나침반 모드는 위치 추적(Follow) 상태여야 의미가 있으므로, 추적이 꺼져있다면 켭니다.
-    if (!isFollowing) {
-        toggleTracking();
-    }
-
-    if (isCompassMode) {
-        // [OFF] 나침반 모드 끄기
-        isCompassMode = false;
-        btn.classList.remove('compass-btn-on');
-
-        // 지도 회전 초기화 (북쪽 고정)
-        map.setBearing(0);
-
-        // 이벤트 제거
-        if (deviceOrientationHandler) {
-            window.removeEventListener('deviceorientation', deviceOrientationHandler);
-            deviceOrientationHandler = null;
-        }
-    } else {
-        // [ON] 나침반 모드 켜기
-        isCompassMode = true;
-        btn.classList.add('compass-btn-on');
-
-        // DeviceOrientation 이벤트 리스너 추가
-        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-            // iOS 13+ 권한 요청
-            DeviceOrientationEvent.requestPermission()
-                .then(response => {
-                    if (response === 'granted') {
-                        startCompass();
-                    } else {
-                        alert("나침반 권한이 거부되었습니다.");
-                        isCompassMode = false;
-                        btn.classList.remove('compass-btn-on');
-                    }
-                })
-                .catch(console.error);
-        } else {
-            // 안드로이드 및 구형 iOS
-            startCompass();
-        }
-    }
-}
-
-function startCompass() {
-    deviceOrientationHandler = function (e) {
-        if (!isCompassMode || !isFollowing) return;
-
-        let heading = 0;
-
-        // iOS: webkitCompassHeading, Others: alpha
-        if (e.webkitCompassHeading) {
-            // iOS
-            heading = e.webkitCompassHeading;
-        } else if (e.alpha) {
-            // Android (alpha는 북쪽 기준이 아닐 수 있어서 보정이 필요할 수 있음. 보통 절대값 false면 상대값임)
-            // 간단하게 alpha 사용 (360 - alpha)
-            heading = 360 - e.alpha;
-        }
-
-        // 지도의 bearing 설정 (플러그인 기능)
-        // 만약 setBearing이 없다면 CSS transform으로 대체 시도
-        if (typeof map.setBearing === 'function') {
-            map.setBearing(heading);
-        } else {
-            console.warn("Leaflet Rotate Map plugin not loaded or setBearing not found.");
-            // 플러그인 로드 실패 시 디버깅용 알림 (운영 배포 시 제거)
-            // alert("지도 회전 플러그인이 로드되지 않았습니다.");
-        }
-    };
-    window.addEventListener('deviceorientation', deviceOrientationHandler);
-}
-
-// [기능수정] 지도 드래그 시 나침반 모드 해제 (위치 추적은 유지)
-map.on('dragstart', function () {
-    if (isCompassMode) {
-        // 나침반 모드만 끄고, 위치 추적은 유지할 수도 있지만
-        // 보통 사용자가 지도를 돌려보고 싶어서 드래그하는 경우도 있음.
-        // 여기서는 나침반 모드가 켜진 상태에서 드래그하면 "지도 회전이 풀리는" UX가 자연스러움.
-        // toggleCompassMode(); // 이걸 호출하면 모드가 꺼짐.
-    }
-});
 
 function onFirstLoadSuccess(pos) { map.setView([pos.coords.latitude, pos.coords.longitude], 19); }
 function findMe() {

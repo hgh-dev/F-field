@@ -17,8 +17,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.4.4/proj4.js"></script>
-    <!-- [기능추가] 지도 회전 플러그인 -->
-    <script src="https://unpkg.com/leaflet-rotate-map@0.1.1/dist/leaflet-rotate-map.js"></script>
 
     <style>
         html,
@@ -286,24 +284,11 @@
         .tracking-active #tracking-svg-icon {
             filter: none;
             opacity: 1;
-            filter: none;
-            opacity: 1;
         }
 
         .tracking-btn-on {
             background-color: #e8f0fe !important;
             border: 2px solid #aecbfa !important;
-        }
-
-        /* 나침반 모드 활성화 스타일 */
-        .compass-btn-on {
-            background-color: #e8f0fe !important;
-            border: 2px solid #aecbfa !important;
-        }
-
-        .compass-btn-on #compass-svg-icon {
-            fill: #007bff !important;
-            color: #007bff !important;
         }
 
         /* --- 사이드바 (Modern Card UI & Tabs) --- */
@@ -792,11 +777,11 @@
         /* [UI] 검색 결과 패널 */
         .search-result-panel {
             position: absolute;
-            top: 50px;
+            top: 100%;
             left: 0;
             width: 100%;
             background: white;
-            border-radius: 0 0 10px 10px;
+            border-radius: 0 0 8px 8px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             z-index: 2100;
             display: none;
@@ -805,6 +790,7 @@
             border: 1px solid #ddd;
             border-top: none;
             box-sizing: border-box;
+            margin-top: 2px;
         }
 
         .search-result-header {
@@ -1186,19 +1172,22 @@
             <ul id="history-list" class="history-list">
             </ul>
         </div>
+
+        <!-- [UI] 검색 결과 목록 패널 -->
+        <div id="search-result-panel" class="search-result-panel">
+            <div class="search-result-header">
+                <span>검색 결과</span>
+                <button onclick="closeSearchResult()"
+                    style="background:none; border:none; font-size:20px; line-height:1; cursor:pointer; color:#999; padding:0 5px;">&times;</button>
+            </div>
+            <ul id="search-result-list" class="search-result-list">
+                <!-- 검색 결과 아이템이 동적으로 추가됨 -->
+            </ul>
+        </div>
     </div>
 
     <!-- [UI] 검색 결과 목록 패널 -->
-    <div id="search-result-panel" class="search-result-panel">
-        <div class="search-result-header">
-            <span>검색 결과</span>
-            <button onclick="closeSearchResult()"
-                style="background:none; border:none; font-size:20px; line-height:1; cursor:pointer; color:#999; padding:0 5px;">&times;</button>
-        </div>
-        <ul id="search-result-list" class="search-result-list">
-            <!-- 검색 결과 아이템이 동적으로 추가됨 -->
-        </ul>
-    </div>
+
 
     <div class="gps-btn-group">
         <button class="circle-btn" onclick="findMe()" title="내 위치로 이동">
@@ -1230,16 +1219,6 @@
                     fill="#F44336" stroke="#B71C1C" stroke-width="2" />
                 <circle cx="50" cy="46" r="4" fill="white" />
             </svg>
-        </button>
-
-        <!-- [기능추가] 나침반 모드 버튼 -->
-        <button class="circle-btn" id="btn-compass-mode" onclick="toggleCompassMode()">
-            <div id="compass-svg-icon"
-                style="width: 28px; height: 28px; color: #999; display:flex; align-items:center; justify-content:center;">
-                <svg viewBox="0 0 24 24" style="fill:currentColor; width:100%; height:100%;">
-                    <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
-                </svg>
-            </div>
         </button>
     </div>
 
