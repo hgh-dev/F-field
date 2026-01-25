@@ -673,15 +673,21 @@ function getTmCoords(lat, lng) {
     return { x: Math.round(xy[0]), y: Math.round(xy[1]) };
 }
 
+let lastGpsLat = 37.245911; // 초기값: 지도 초기 중심
+let lastGpsLng = 126.960302;
+
 function updateCoordDisplay() {
-    const center = map.getCenter();
+    // [기능수정] 지도가 아닌 GPS 위치(또는 고정된 위치) 기준으로 좌표 표시
+    let lat = lastGpsLat;
+    let lng = lastGpsLng;
+
     let text = "";
     if (coordMode === 2) {
-        text = "X: " + getTmCoords(center.lat, center.lng).x + " | Y: " + getTmCoords(center.lat, center.lng).y;
+        text = "X: " + getTmCoords(lat, lng).x + " | Y: " + getTmCoords(lat, lng).y;
     } else if (coordMode === 1) {
-        text = "N " + center.lat.toFixed(4) + "° | E " + center.lng.toFixed(4) + "°";
+        text = "N " + lat.toFixed(4) + "° | E " + lng.toFixed(4) + "°";
     } else {
-        text = convertToDms(center.lat, 'lat') + " | " + convertToDms(center.lng, 'lng');
+        text = convertToDms(lat, 'lat') + " | " + convertToDms(lng, 'lng');
     }
     document.getElementById('coord-display').innerText = text;
 }
@@ -689,7 +695,7 @@ function toggleCoordMode() {
     coordMode = (coordMode + 1) % 3;
     updateCoordDisplay();
 }
-map.on('move', updateCoordDisplay);
+// map.on('move', updateCoordDisplay); // [기능수정] 지도 움직임에 따라 좌표가 변하지 않도록 주석 처리
 updateCoordDisplay();
 
 let lastAddressCall = 0;
@@ -1181,6 +1187,11 @@ function updateLocationMarker(pos) {
         trackingMarker.setLatLng(latlng).setIcon(arrowIcon);
 
     getAddressFromCoords(pos.coords.latitude, pos.coords.longitude);
+
+    // [기능수정] GPS 좌표 저장 및 상단바 업데이트
+    lastGpsLat = pos.coords.latitude;
+    lastGpsLng = pos.coords.longitude;
+    updateCoordDisplay();
 }
 
 function onTrackSuccess(pos) {
