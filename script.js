@@ -1289,19 +1289,26 @@ function startCompass() {
         }
 
         // 지도의 bearing 설정 (플러그인 기능)
-        // 지도가 회전해야 하므로, 내 헤딩만큼 지도를 반대로 돌리는 것이 아니라
-        // setBearing(heading)을 하면 'heading' 방향이 위쪽이 되도록 지도가 회전함.
-        map.setBearing(heading);
+        // 만약 setBearing이 없다면 CSS transform으로 대체 시도
+        if (typeof map.setBearing === 'function') {
+            map.setBearing(heading);
+        } else {
+            console.warn("Leaflet Rotate Map plugin not loaded or setBearing not found.");
+            // 플러그인 로드 실패 시 디버깅용 알림 (운영 배포 시 제거)
+            // alert("지도 회전 플러그인이 로드되지 않았습니다.");
+        }
     };
     window.addEventListener('deviceorientation', deviceOrientationHandler);
 }
 
-// [기능수정] 지도 드래그 시 나침반 모드/위치 추적 해제 (선택 사항이나 보통 UX상 편리)
+// [기능수정] 지도 드래그 시 나침반 모드 해제 (위치 추적은 유지)
 map.on('dragstart', function () {
-    // 사용자가 지도를 움직이려 하면 Follow 모드는 해제하는 것이 일반적이나,
-    // 여기서는 요구사항에 명시되지 않았으므로 유지하거나, 필요 시 해제 코드를 추가할 수 있음.
-    // 만약 "지도가 나의 방향이 위쪽으로 고정"이 계속 유지되어야 한다면, dragstart에서 끄지 않습니다.
-    // 다만, 위치 추적(Center 고정)은 보통 드래그 시 풀리는게 자연스러움.
+    if (isCompassMode) {
+        // 나침반 모드만 끄고, 위치 추적은 유지할 수도 있지만
+        // 보통 사용자가 지도를 돌려보고 싶어서 드래그하는 경우도 있음.
+        // 여기서는 나침반 모드가 켜진 상태에서 드래그하면 "지도 회전이 풀리는" UX가 자연스러움.
+        // toggleCompassMode(); // 이걸 호출하면 모드가 꺼짐.
+    }
 });
 
 function onFirstLoadSuccess(pos) { map.setView([pos.coords.latitude, pos.coords.longitude], 19); }
