@@ -155,7 +155,7 @@ function showInfoPopup(lat, lng) {
                         </div>
                         <div style="margin-top: 8px; text-align: center; display:flex; gap:5px; justify-content:center;">
                              <button class="popup-btn" style="background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9;" onclick="saveCurrentBoundary('${parcelAddr}')">영역 기록</button>
-                            <button id="btn-landeum-popup" class="popup-btn disabled" disabled onclick="alert('지적 정보를 불러오는 중입니다.')">토지e음</button>
+                            <button id="btn-landeum-popup" class="popup-btn disabled" onclick="fetchAndHighlightBoundary(${lng}, ${lat})">토지e음</button>
                         </div>`;
         currentSearchMarker.bindPopup(content).openPopup();
 
@@ -310,7 +310,7 @@ function fetchAndHighlightBoundary(x, y) {
     if (btn) {
         btn.innerText = "로딩 중...";
         btn.classList.add('disabled');
-        btn.disabled = true;
+        // btn.disabled = true; // [수정] 클릭해서 재시도 가능하도록 비활성화 속성 제거
     }
 
     window[callbackName] = function (data) {
@@ -369,6 +369,27 @@ function saveCurrentBoundary(addressName) {
         return;
     }
 
+    // [기능수정] 주소명 단축 (마지막 단위 행정명 + 지번)
+    // 예: "경기도 화성시 장안면 장안리 산124" -> "장안리 산124"
+    let shortName = addressName;
+    if (addressName) {
+        const parts = addressName.split(' ');
+        let targetIdx = -1;
+        // 뒤에서부터 탐색하여 '동', '리', '가'로 끝나는 부분 찾기
+        for (let i = parts.length - 1; i >= 0; i--) {
+            if (parts[i].match(/(동|리|가)$/)) {
+                targetIdx = i;
+                break;
+            }
+        }
+        if (targetIdx !== -1) {
+            shortName = parts.slice(targetIdx).join(' ');
+        } else if (parts.length >= 2) {
+            // '동/리/가'가 없으면 뒤에서 두 단어만 사용 (예비책)
+            shortName = parts.slice(parts.length - 2).join(' ');
+        }
+    }
+
     currentBoundaryLayer.eachLayer(function (layer) {
         // GeoJSON 레이어에서 좌표 추출하여 새로운 Polygon 생성
         // layer.feature.geometry가 Polygon 혹은 MultiPolygon일 수 있음
@@ -390,7 +411,7 @@ function saveCurrentBoundary(addressName) {
             innerLayer.feature.type = "Feature";
             innerLayer.feature.properties = innerLayer.feature.properties || {};
             innerLayer.feature.properties.id = Date.now();
-            innerLayer.feature.properties.memo = addressName || "지적 영역";
+            innerLayer.feature.properties.memo = shortName || "지적 영역";
             innerLayer.feature.properties.customColor = '#FF0000';
             innerLayer.feature.properties.isHidden = false;
 
@@ -400,7 +421,7 @@ function saveCurrentBoundary(addressName) {
 
     saveToStorage();
     renderSurveyList();
-    alert(`영역이 기록되었습니다.\n기록명: ${addressName}`);
+    alert(`영역이 기록되었습니다.\n기록명: ${shortName}`);
     openSidebar(); // 기록 확인을 위해 사이드바 열기
     switchSidebarTab('record');
 }
