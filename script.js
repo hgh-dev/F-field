@@ -87,12 +87,23 @@ map.addLayer(vworldHybrid);
 function showInfoPopup(lat, lng) {
     const callbackName = 'vworld_popup_' + Math.floor(Math.random() * 100000);
     window[callbackName] = function (data) {
-        let addrText = "주소 검색 실패";
+        let parcelAddr = "주소 정보 없음";
+        let roadAddr = "";
+
         if (data.response.status === "OK") {
-            const result = data.response.result[0];
-            addrText = result.text;
-        } else {
-            addrText = "주소 정보 없음";
+            const results = data.response.result;
+            results.forEach(item => {
+                if (item.type === 'parcel') {
+                    parcelAddr = item.text;
+                } else if (item.type === 'road') {
+                    roadAddr = item.text;
+                }
+            });
+            // 만약 지번 주소가 없는데 도로명 주소만 있다면 도로명 주소를 메인으로 사용 (예외 처리)
+            if (parcelAddr === "주소 정보 없음" && roadAddr !== "") {
+                parcelAddr = roadAddr;
+                roadAddr = "";
+            }
         }
 
         if (currentSearchMarker) {
@@ -105,29 +116,41 @@ function showInfoPopup(lat, lng) {
         // 점 측량과 동일한 스타일의 팝업 내용
         let infoText = "";
         if (coordMode === 2) {
-            infoText = "X:" + getTmCoords(lat, lng).x + "<br>" + "Y:" + getTmCoords(lat, lng).y;
+            infoText = "X:" + getTmCoords(lat, lng).x + " | " + "Y:" + getTmCoords(lat, lng).y;
         } else if (coordMode === 1) {
-            infoText = "N " + lat.toFixed(4) + "°" + "<br>" + "E " + lng.toFixed(4) + "°";
+            infoText = "N " + lat.toFixed(4) + "°, " + "E " + lng.toFixed(4) + "°";
         } else {
-            infoText = convertToDms(lat, 'lat') + "<br>" + convertToDms(lng, 'lng');
+            infoText = convertToDms(lat, 'lat') + " " + convertToDms(lng, 'lng');
         }
-        const content = `<div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                            <div>
-                                <b style="color:#3B82F6;">${addrText}</b>
-                                <hr style="margin: 5px 0; border: none; border-top: 1px solid #eee;">
-                                <span style="font-size: 12px; color: #666;">${infoText}</span>
+
+        const content = `<div style="min-width: 210px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <b onclick="copyText(this.innerText)" style="color:#3B82F6; font-size: 14px; line-height: 1.2; margin-right: 10px; word-break: keep-all; cursor: pointer;">${parcelAddr}</b>
+                                <div style="display:flex; gap: 4px; flex-shrink: 0; margin-right: 12px;">
+                                    <button onclick="shareLocationText('${parcelAddr}', '${lat}', '${lng}')" style="background:none; border:none; cursor:pointer; padding:0; color:#666;" title="공유">
+                                        <svg viewBox="0 0 24 24" style="width:20px; height:20px; fill:currentColor;">
+                                            <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.66 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+                                        </svg>
+                                    </button>
+                                    <button onclick="openNavModal('${parcelAddr}', ${lat}, ${lng})" style="background:none; border:none; cursor:pointer; padding:0; color:#007bff;" title="길찾기">
+                                        <svg viewBox="0 0 24 24" style="width:22px; height:22px; fill:currentColor;">
+                                            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
-                            <div style="display:flex; align-items:center;">
-                                <button onclick="shareLocationText('${addrText}', '${lat}', '${lng}')" style="background:none; border:none; cursor:pointer; padding:5px; margin-left:5px; color:#666;" title="공유">
-                                    <svg viewBox="0 0 24 24" style="width:20px; height:20px; fill:currentColor;">
-                                        <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.66 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
-                                    </svg>
-                                </button>
-                                <button onclick="openNavModal('${addrText}', ${lat}, ${lng})" style="background:none; border:none; cursor:pointer; padding:5px; margin-left:2px; color:#007bff;" title="길찾기">
-                                    <svg viewBox="0 0 24 24" style="width:22px; height:22px; fill:currentColor;">
-                                        <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
-                                    </svg>
-                                </button>
+
+                            <hr style="margin: 6px 0; border: none; border-top: 1px solid #f0f0f0;">
+
+                            ${roadAddr ? `
+                            <div style="display:flex; align-items:baseline; font-size: 12px; color: #555; margin-bottom: 6px;">
+                                <span class="badge-road" style="flex-shrink:0;">도로명</span>
+                                <span onclick="copyText(this.innerText)" style="margin-left: 5px; line-height: 1.4; word-break: keep-all; cursor: pointer;">${roadAddr}</span>
+                            </div>` : ''}
+
+                            <div style="display:flex; align-items:baseline; font-size: 12px; color: #555;">
+                                <span class="badge-coord" style="flex-shrink:0;">좌표</span>
+                                <div onclick="copyText(this.innerText)" style="margin-left: 5px; line-height: 1.4; cursor: pointer;">${infoText}</div>
                             </div>
                         </div>
                         <div style="margin-top: 8px; text-align: center;">
@@ -173,10 +196,30 @@ function updatePopupLandEumButton(pnu) {
             // [패치] 바로 열람이 되도록 파라미터 추가
             window.open(`https://www.eum.go.kr/web/ar/lu/luLandDet.jsp?pnu=${pnu}&mode=search&isNoScr=script&add=land`, '_blank');
         };
-        btn.innerText = "토지e음 바로가기";
+        btn.innerText = "토지e음 조회하기";
         btn.style.backgroundColor = "#007bff";
         btn.style.color = "#fff";
         btn.style.border = "none";
+    }
+}
+
+// [기능추가] 텍스트 복사 함수
+function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert("주소가 복사되었습니다.");
+        }).catch(err => {
+            console.error("복사 실패:", err);
+            prompt("복사하세요:", text);
+        });
+    } else {
+        const tempInput = document.createElement("textarea");
+        document.body.appendChild(tempInput);
+        tempInput.value = text;
+        tempInput.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempInput);
+        alert("주소가 복사되었습니다.");
     }
 }
 
@@ -210,17 +253,7 @@ function shareLocationText(address, lat, lng) {
     } else {
         // PC 등 navigator.share 미지원 시 클립보드 복사 (URL + 텍스트)
         const clipText = `${shareData.text}\n${shareUrl}`;
-        navigator.clipboard.writeText(clipText).then(() => {
-            alert("위치 정보가 복사되었습니다.\n" + clipText);
-        }).catch(() => {
-            const tempInput = document.createElement("textarea");
-            document.body.appendChild(tempInput);
-            tempInput.value = clipText;
-            tempInput.select();
-            document.execCommand("copy");
-            document.body.removeChild(tempInput);
-            alert("위치 정보가 복사되었습니다.");
-        });
+        copyText(clipText);
     }
 }
 
