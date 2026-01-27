@@ -153,7 +153,8 @@ function showInfoPopup(lat, lng) {
                                 <div onclick="copyText(this.innerText)" style="margin-left: 5px; line-height: 1.4; cursor: pointer;">${infoText}</div>
                             </div>
                         </div>
-                        <div style="margin-top: 8px; text-align: center;">
+                        <div style="margin-top: 8px; text-align: center; display:flex; gap:5px; justify-content:center;">
+                             <button class="popup-btn" style="background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9;" onclick="saveCurrentBoundary('${parcelAddr}')">영역 기록</button>
                             <button id="btn-landeum-popup" class="popup-btn disabled" disabled onclick="alert('지적 정보를 불러오는 중입니다.')">토지e음</button>
                         </div>`;
         currentSearchMarker.bindPopup(content).openPopup();
@@ -303,6 +304,15 @@ function syncSidebarUI() {
 function fetchAndHighlightBoundary(x, y) {
     // x: longitude, y: latitude
     const callbackName = 'vworld_boundary_' + Math.floor(Math.random() * 100000);
+
+    // [기능추가] 로딩 중 표시 (재시도 시 유용)
+    const btn = document.getElementById('btn-landeum-popup');
+    if (btn) {
+        btn.innerText = "로딩 중...";
+        btn.classList.add('disabled');
+        btn.disabled = true;
+    }
+
     window[callbackName] = function (data) {
         delete window[callbackName];
         document.getElementById(callbackName)?.remove();
@@ -329,6 +339,19 @@ function fetchAndHighlightBoundary(x, y) {
             if (feature.properties && feature.properties.pnu) {
                 updatePopupLandEumButton(feature.properties.pnu);
             }
+        } else {
+            // [기능추가] 실패 시 재시도 활성화
+            const btn = document.getElementById('btn-landeum-popup');
+            if (btn) {
+                btn.innerText = "재시도";
+                btn.classList.remove('disabled');
+                btn.disabled = false;
+                btn.style.backgroundColor = "#999"; // 회색 배경 (실패/대기 상태 의미)
+                btn.style.color = "white";
+                btn.onclick = function () {
+                    fetchAndHighlightBoundary(x, y);
+                };
+            }
         }
     };
 
@@ -337,6 +360,49 @@ function fetchAndHighlightBoundary(x, y) {
     // VWorld Data API: LP_PA_CBND_BUBUN (연속지적도)
     script.src = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LP_PA_CBND_BUBUN&key=${VWORLD_API_KEY}&domain=${window.location.hostname}&geomFilter=POINT(${x} ${y})&format=json&errorformat=json&callback=${callbackName}`;
     document.body.appendChild(script);
+}
+
+// [기능추가] 현재 강조된 지적 경계를 폴리곤 기록으로 저장
+function saveCurrentBoundary(addressName) {
+    if (!currentBoundaryLayer) {
+        alert("선택된 영역이 없습니다. 지도를 더블클릭하여 영역을 선택해주세요.");
+        return;
+    }
+
+    currentBoundaryLayer.eachLayer(function (layer) {
+        // GeoJSON 레이어에서 좌표 추출하여 새로운 Polygon 생성
+        // layer.feature.geometry가 Polygon 혹은 MultiPolygon일 수 있음
+        const feature = layer.feature;
+        const newLayer = L.geoJSON(feature, {
+            style: {
+                color: '#FF0000',
+                weight: 4,
+                opacity: 0.8,
+                fillColor: '#FF0000',
+                fillOpacity: 0.2
+            }
+        });
+
+        // L.GeoJSON은 LayerGroup이므로 내부 레이어를 꺼내야 함 (보통 하나임)
+        newLayer.eachLayer(function (innerLayer) {
+            // 속성 설정
+            innerLayer.feature = innerLayer.feature || {};
+            innerLayer.feature.type = "Feature";
+            innerLayer.feature.properties = innerLayer.feature.properties || {};
+            innerLayer.feature.properties.id = Date.now();
+            innerLayer.feature.properties.memo = addressName || "지적 영역";
+            innerLayer.feature.properties.customColor = '#FF0000';
+            innerLayer.feature.properties.isHidden = false;
+
+            drawnItems.addLayer(innerLayer);
+        });
+    });
+
+    saveToStorage();
+    renderSurveyList();
+    alert(`영역이 기록되었습니다.\n기록명: ${addressName}`);
+    openSidebar(); // 기록 확인을 위해 사이드바 열기
+    switchSidebarTab('record');
 }
 
 // [기능추가] 내 위치 공유하기
