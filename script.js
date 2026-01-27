@@ -724,9 +724,33 @@ function updateCoordDisplay() {
     }
     document.getElementById('coord-display').innerText = text;
 }
-function toggleCoordMode() {
-    coordMode = (coordMode + 1) % 3;
+// [기능수정] 좌표 모드 토글 대신 모달 열기
+function openCoordModal() {
+    // 현재 선택된 모드 라디오 버튼 체크
+    const radios = document.getElementsByName('coord-mode-select');
+    radios.forEach(radio => {
+        if (parseInt(radio.value) === coordMode) {
+            radio.checked = true;
+        }
+    });
+
+    const overlay = document.getElementById('coord-modal-overlay');
+    overlay.style.display = 'flex';
+    setTimeout(() => { overlay.classList.add('visible'); }, 10);
+}
+
+function closeCoordModal() {
+    const overlay = document.getElementById('coord-modal-overlay');
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+}
+
+function setCoordMode(mode) {
+    coordMode = mode;
     updateCoordDisplay();
+
+    // 모달 닫을 때 약간의 딜레이를 주어 사용자가 선택되었음을 인지하게 함
+    setTimeout(closeCoordModal, 200);
 }
 // map.on('move', updateCoordDisplay); // [기능수정] 지도 움직임에 따라 좌표가 변하지 않도록 주석 처리
 updateCoordDisplay();

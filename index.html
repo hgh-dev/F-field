@@ -1150,16 +1150,10 @@
                 <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
             </svg>
         </button>
-        <div class="top-info-container" onclick="toggleCoordMode()">
+        <div class="top-info-container" onclick="openCoordModal()">
             <div id="address-display">주소 확인 중...</div>
             <div id="coord-display">좌표 수신중...</div>
         </div>
-        <button id="btn-share-location" class="top-icon-btn" onclick="shareMyLocation()">
-            <svg class="svg-icon" viewBox="0 0 24 24">
-                <path
-                    d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.66 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
-            </svg>
-        </button>
         <button id="btn-search-toggle" class="top-icon-btn" onclick="toggleSearchBox()">
             <svg class="svg-icon" viewBox="0 0 24 24">
                 <path
@@ -1457,6 +1451,43 @@
                 </div>
             </div>
             <button onclick="closeNavModal()"
+                style="width:100%; padding:14px; border:none; background:#f5f5f5; border-radius:12px; font-weight:bold; color:#666; font-size:15px;">취소</button>
+        </div>
+    </div>
+
+    <!-- [UI] 좌표 형식 선택 및 공유 모달 -->
+    <div id="coord-modal-overlay" class="nav-modal-overlay" onclick="closeCoordModal()">
+        <div class="nav-modal-content" onclick="event.stopPropagation()">
+            <div class="nav-modal-header">좌표 표시 형식</div>
+
+            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+                <label style="display:flex; align-items:center; padding:12px; background:#f8f9fa; border-radius:8px;">
+                    <input type="radio" name="coord-mode-select" value="0" onclick="setCoordMode(0)"
+                        style="width:20px; height:20px; margin-right:10px;">
+                    <span style="font-size:15px; color:#333;">도분초 (DMS)</span>
+                </label>
+                <label style="display:flex; align-items:center; padding:12px; background:#f8f9fa; border-radius:8px;">
+                    <input type="radio" name="coord-mode-select" value="1" onclick="setCoordMode(1)"
+                        style="width:20px; height:20px; margin-right:10px;">
+                    <span style="font-size:15px; color:#333;">소수점 (Decimal)</span>
+                </label>
+                <label style="display:flex; align-items:center; padding:12px; background:#f8f9fa; border-radius:8px;">
+                    <input type="radio" name="coord-mode-select" value="2" onclick="setCoordMode(2)"
+                        style="width:20px; height:20px; margin-right:10px;">
+                    <span style="font-size:15px; color:#333;">TM 좌표 (X, Y)</span>
+                </label>
+            </div>
+
+            <button onclick="shareMyLocation()"
+                style="width:100%; padding:14px; border:none; background:#3B82F6; border-radius:12px; font-weight:bold; color:white; font-size:15px; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px;">
+                <svg viewBox="0 0 24 24" style="width:20px; height:20px; fill:currentColor;">
+                    <path
+                        d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.66 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
+                </svg>
+                내 위치 공유하기
+            </button>
+
+            <button onclick="closeCoordModal()"
                 style="width:100%; padding:14px; border:none; background:#f5f5f5; border-radius:12px; font-weight:bold; color:#666; font-size:15px;">취소</button>
         </div>
     </div>
