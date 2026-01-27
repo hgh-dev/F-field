@@ -415,6 +415,7 @@ function saveCurrentBoundary(addressName) {
             innerLayer.feature.properties.customColor = '#FF0000';
             innerLayer.feature.properties.isHidden = false;
 
+            updateLayerInfo(innerLayer); // [버그수정] 팝업 바인딩 및 면적 계산 적용
             drawnItems.addLayer(innerLayer);
         });
     });
@@ -927,6 +928,9 @@ function startDraw(type) {
         highlightButton('btn-point');
     }
 
+    // [UI] 녹화 모드 표시
+    document.body.classList.add('recording-mode');
+
     if (currentDrawer && (type === 'polygon' || type === 'polyline')) {
         currentDrawer._originalFinishShape = currentDrawer._finishShape;
         currentDrawer._finishShape = function () {
@@ -992,6 +996,7 @@ function completeDrawing() {
         else currentDrawer.disable();
         isManualFinish = false;
     }
+    document.body.classList.remove('recording-mode');
     actionToolbar.style.display = 'none';
     resetButtonStyles();
 }
@@ -1001,6 +1006,7 @@ function cancelDrawing() {
         currentDrawer.disable();
         currentDrawer = null;
     }
+    document.body.classList.remove('recording-mode');
     actionToolbar.style.display = 'none';
     resetButtonStyles();
 }
@@ -1028,9 +1034,77 @@ function updateLayerInfo(layer) {
     popupContent = "<b>" + SVG_ICONS.memo + " 메모:</b> " + memo;
     if (infoText) popupContent += "<br>" + infoText;
 
+    // [UI] 수정/삭제 버튼 추가
+    const id = layer.feature.properties.id;
+    popupContent += `<div style="margin-top:8px; border-top:1px solid #eee; padding-top:8px; display:flex; gap:5px;">
+        <button class="popup-btn" style="flex:1; background:#f0f0f0; color:#333;" onclick="enableSingleLayerEdit(${id})">수정</button>
+        <button class="popup-btn" style="flex:1; background:#ffebee; color:#d32f2f;" onclick="deleteLayerById(${id})">삭제</button>
+    </div>`;
+
     layer.bindPopup(popupContent);
     layer.feature.properties.popupContent = popupContent;
 }
+
+// [기능추가] 개별 레이어 수정 모드
+window.enableSingleLayerEdit = function (id) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+    if (!layer) return;
+
+    if (layer instanceof L.Marker) {
+        // 마커는 드래그 가능하게 설정
+        layer.dragging.enable();
+    } else {
+        // 폴리곤/폴리라인은 편집 모드 활성화 (Leaflet.Draw)
+        // [버그수정] GeoJSON으로 생성된 레이어는 layer.editing이 초기화되지 않았을 수 있음
+        if (!layer.editing) {
+            if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
+                // Try to initialize editing handler
+                if (L.Edit && L.Edit.Poly) {
+                    layer.editing = new L.Edit.Poly(layer);
+                } else {
+                    alert("수정 모듈(L.Edit)을 로드하지 못했습니다.");
+                    return;
+                }
+            }
+        }
+
+        if (layer.editing) {
+            layer.editing.enable();
+        } else {
+            alert("이 도형은 수정할 수 없습니다. (MultiPolygon 등 지원되지 않는 형식일 수 있음)");
+            return;
+        }
+    }
+
+    layer.closePopup();
+    alert("수정 모드입니다.\n도형의 점을 드래그하여 수정하세요.\n완료하려면 지도 바탕을 터치하세요.");
+    document.body.classList.add('recording-mode'); // [UI] 수정 모드 표시
+
+    // 지도 클릭 시 수정 종료 이벤트 (1회성)
+    // 주의: 드래그 중 클릭 발생 방지를 위해 약간의 딜레이/조건 필요할 수 있음
+    // 여기서는 단순하게 map click event 사용
+
+    const finishHandler = function () {
+        if (layer instanceof L.Marker) {
+            layer.dragging.disable();
+        } else {
+            if (layer.editing) layer.editing.disable();
+        }
+
+        updateLayerInfo(layer);
+        saveToStorage();
+        renderSurveyList();
+
+        map.off('click', finishHandler); // 이벤트 리스너 제거
+        document.body.classList.remove('recording-mode'); // [UI] 수정 모드 해제
+        alert("수정 완료");
+    };
+
+    // setTimeout을 써서 "현재" 클릭 이벤트가 바로 트리거되지 않도록 함
+    setTimeout(() => {
+        map.once('click', finishHandler);
+    }, 100);
+};
 
 map.on(L.Draw.Event.CREATED, function (event) {
     const layer = event.layer;
