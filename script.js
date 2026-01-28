@@ -1,8 +1,8 @@
 /* ==========================================================================
    프로젝트: 국유림 현장조사 앱 (F-Field)
-   버전: v1.2.0
+   버전: v1.3.0
    작성일: 2026-01-25
-   설명: 네비 기능 추가, 비공개 레이어 암호 기능 추가, 검색 기능 보완, 토지이음 연동 기능 추가
+   설명: K-GeoP 연동 기능 추가, 지점 저장 기능 추가
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -126,36 +126,46 @@ function showInfoPopup(lat, lng) {
         const content = `<div style="min-width: 210px;">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <b onclick="copyText(this.innerText)" style="color:#3B82F6; font-size: 14px; line-height: 1.2; margin-right: 10px; word-break: keep-all; cursor: pointer;">${parcelAddr}</b>
-                                <div style="display:flex; gap: 4px; flex-shrink: 0; margin-right: 12px;">
-                                    <button onclick="shareLocationText('${parcelAddr}', '${lat}', '${lng}')" style="background:none; border:none; cursor:pointer; padding:0; color:#666;" title="공유">
-                                        <svg viewBox="0 0 24 24" style="width:20px; height:20px; fill:currentColor;">
-                                            <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.66 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
-                                        </svg>
-                                    </button>
-                                    <button onclick="openNavModal('${parcelAddr}', ${lat}, ${lng})" style="background:none; border:none; cursor:pointer; padding:0; color:#007bff;" title="길찾기">
-                                        <svg viewBox="0 0 24 24" style="width:22px; height:22px; fill:currentColor;">
-                                            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
-                                        </svg>
-                                    </button>
-                                </div>
                             </div>
 
-                            <hr style="margin: 6px 0; border: none; border-top: 1px solid #f0f0f0;">
+                            <hr style="margin: 10px 0; border: none; border-top: 1px solid #f0f0f0;">
 
                             ${roadAddr ? `
-                            <div style="display:flex; align-items:baseline; font-size: 12px; color: #555; margin-bottom: 6px;">
+                            <div style="display:flex; align-items:baseline; font-size: 12px; color: #555; margin-bottom: 5px;">
                                 <span class="badge-road" style="flex-shrink:0;">도로명</span>
-                                <span onclick="copyText(this.innerText)" style="margin-left: 5px; line-height: 1.4; word-break: keep-all; cursor: pointer;">${roadAddr}</span>
+                                <span onclick="copyText(this.innerText)" style="margin-left: 5px; line-height: 1.2; word-break: keep-all; cursor: pointer;">${roadAddr}</span>
                             </div>` : ''}
 
-                            <div style="display:flex; align-items:baseline; font-size: 12px; color: #555;">
+                            <div style="display:flex; align-items:baseline; font-size: 12px; color: #555; margin-bottom: 20px;">
                                 <span class="badge-coord" style="flex-shrink:0;">좌표</span>
-                                <div onclick="copyText(this.innerText)" style="margin-left: 5px; line-height: 1.4; cursor: pointer;">${infoText}</div>
+                                <div onclick="copyText(this.innerText)" style="margin-left: 5px; line-height: 1.2; cursor: pointer;">${infoText}</div>
                             </div>
                         </div>
-                        <div style="margin-top: 8px; text-align: center; display:flex; gap:5px; justify-content:center;">
-                             <button class="popup-btn" style="background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9;" onclick="saveCurrentBoundary('${parcelAddr}')">영역 기록</button>
-                            <button id="btn-landeum-popup" class="popup-btn disabled" onclick="fetchAndHighlightBoundary(${lng}, ${lat})">토지e음</button>
+                        <div style="margin-top: 10px; display:flex; flex-direction:column; gap:5px;">
+                            <div style="display:flex; gap:5px; justify-content:center;">
+                                <button class="popup-btn" style="flex:1; background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;" onclick="saveCurrentPoint(${lat}, ${lng}, '${parcelAddr}')">
+                                    <div style="width:16px; height:16px;">${SVG_ICONS.marker}</div>
+                                </button>
+                                <button class="popup-btn" style="flex:1; background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;" onclick="saveCurrentBoundary('${parcelAddr}')">
+                                    <div style="width:16px; height:16px;">${SVG_ICONS.polygon}</div>
+                                </button>
+                                <button class="popup-btn" style="flex:1; background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;" onclick="shareLocationText('${parcelAddr}', '${lat}', '${lng}')">
+                                    <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill:currentColor;"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.66 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+                                </button>
+                                <button class="popup-btn" style="flex:1; background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;" onclick="openNavModal('${parcelAddr}', ${lat}, ${lng})">
+                                    <div style="width:16px; height:16px;">${SVG_ICONS.car}</div>
+                                </button>
+                            </div>
+                            <div style="display:flex; gap:5px; justify-content:center;">
+                                <button id="btn-landeum-popup" class="popup-btn disabled" style="flex:1;" onclick="fetchAndHighlightBoundary(${lng}, ${lat})">토지e음 조회</button>
+                                <button class="popup-btn" style="flex:1; background:#007bff; color:#fff; border:1px solid #007bff;" onclick="
+                                    copyText('${parcelAddr}', true);
+                                    setTimeout(() => {
+                                        alert('주소가 복사되었습니다.\\nK-GeoP 검색창에 붙여넣기 하세요.');
+                                        window.open('https://kgeop.go.kr/info/infoMap.do?initMode=L', '_blank');
+                                    }, 500);
+                                ">K-GeoP 조회</button>
+                            </div>
                         </div>`;
         currentSearchMarker.bindPopup(content).openPopup();
 
@@ -197,18 +207,18 @@ function updatePopupLandEumButton(pnu) {
             // [패치] 바로 열람이 되도록 파라미터 추가
             window.open(`https://www.eum.go.kr/web/ar/lu/luLandDet.jsp?pnu=${pnu}&mode=search&isNoScr=script&add=land`, '_blank');
         };
-        btn.innerText = "토지e음 조회하기";
+        btn.innerText = "토지e음 조회";
         btn.style.backgroundColor = "#007bff";
         btn.style.color = "#fff";
-        btn.style.border = "none";
+        btn.style.border = "1px solid #007bff";
     }
 }
 
 // [기능추가] 텍스트 복사 함수
-function copyText(text) {
+function copyText(text, silent = false) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(() => {
-            alert("주소가 복사되었습니다.");
+            if (!silent) alert("주소가 복사되었습니다.");
         }).catch(err => {
             console.error("복사 실패:", err);
             prompt("복사하세요:", text);
@@ -220,7 +230,7 @@ function copyText(text) {
         tempInput.select();
         document.execCommand("copy");
         document.body.removeChild(tempInput);
-        alert("주소가 복사되었습니다.");
+        if (!silent) alert("주소가 복사되었습니다.");
     }
 }
 
@@ -362,6 +372,28 @@ function fetchAndHighlightBoundary(x, y) {
     document.body.appendChild(script);
 }
 
+// [기능추가] 주소명 단축 함수
+function getShortAddress(addressName) {
+    if (!addressName) return "";
+    let shortName = addressName;
+    const parts = addressName.split(' ');
+    let targetIdx = -1;
+    // 뒤에서부터 탐색하여 '동', '리', '가'로 끝나는 부분 찾기
+    for (let i = parts.length - 1; i >= 0; i--) {
+        if (parts[i].match(/(동|리|가)$/)) {
+            targetIdx = i;
+            break;
+        }
+    }
+    if (targetIdx !== -1) {
+        shortName = parts.slice(targetIdx).join(' ');
+    } else if (parts.length >= 2) {
+        // '동/리/가'가 없으면 뒤에서 두 단어만 사용 (예비책)
+        shortName = parts.slice(parts.length - 2).join(' ');
+    }
+    return shortName;
+}
+
 // [기능추가] 현재 강조된 지적 경계를 폴리곤 기록으로 저장
 function saveCurrentBoundary(addressName) {
     if (!currentBoundaryLayer) {
@@ -370,25 +402,7 @@ function saveCurrentBoundary(addressName) {
     }
 
     // [기능수정] 주소명 단축 (마지막 단위 행정명 + 지번)
-    // 예: "경기도 화성시 장안면 장안리 산124" -> "장안리 산124"
-    let shortName = addressName;
-    if (addressName) {
-        const parts = addressName.split(' ');
-        let targetIdx = -1;
-        // 뒤에서부터 탐색하여 '동', '리', '가'로 끝나는 부분 찾기
-        for (let i = parts.length - 1; i >= 0; i--) {
-            if (parts[i].match(/(동|리|가)$/)) {
-                targetIdx = i;
-                break;
-            }
-        }
-        if (targetIdx !== -1) {
-            shortName = parts.slice(targetIdx).join(' ');
-        } else if (parts.length >= 2) {
-            // '동/리/가'가 없으면 뒤에서 두 단어만 사용 (예비책)
-            shortName = parts.slice(parts.length - 2).join(' ');
-        }
-    }
+    let shortName = getShortAddress(addressName);
 
     currentBoundaryLayer.eachLayer(function (layer) {
         // GeoJSON 레이어에서 좌표 추출하여 새로운 Polygon 생성
@@ -426,6 +440,33 @@ function saveCurrentBoundary(addressName) {
     openSidebar(); // 기록 확인을 위해 사이드바 열기
     switchSidebarTab('record');
 }
+
+// [기능추가] 현재 선택된 위치를 점(Marker) 기록으로 저장
+function saveCurrentPoint(lat, lng, addressName) {
+    const shortName = getShortAddress(addressName);
+    const marker = L.marker([lat, lng], { icon: createColoredMarkerIcon('#FF0000') });
+
+    marker.feature = {
+        type: "Feature",
+        properties: {
+            id: Date.now(),
+            memo: shortName || "지점 기록",
+            customColor: '#FF0000',
+            isHidden: false
+        }
+    };
+
+    updateLayerInfo(marker);
+    drawnItems.addLayer(marker);
+
+    saveToStorage();
+    renderSurveyList();
+    alert(`지점이 기록되었습니다.\n기록명: ${shortName}`);
+    openSidebar();
+    switchSidebarTab('record');
+}
+
+// [기능추가] 내 위치 공유하기
 
 // [기능추가] 내 위치 공유하기
 function shareMyLocation() {
