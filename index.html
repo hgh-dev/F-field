@@ -1282,7 +1282,7 @@
                     <div class="menu-section">
                         <div class="menu-title">기본 지도</div>
                         <div class="check-group">
-                            <label class="option-row" style="font-weight:bold;">
+                            <label class="option-row">
                                 <span style="flex:1;">배경지도</span>
                                 <input type="checkbox" id="chk-base-layer" checked
                                     onchange="toggleBaseLayer(this.checked)">
@@ -1295,7 +1295,7 @@
                                         onchange="changeBaseMap('base')"></label>
                             </div>
                             <label class="option-row">
-                                <span style="flex:1;">하이브리드(지명)</span>
+                                <span style="flex:1;">하이브리드(도로/지명)</span>
                                 <input type="checkbox" id="chk-hybrid" onchange="toggleOverlay('hybrid', this.checked)">
                             </label>
                             <label class="option-row">
@@ -1304,6 +1304,14 @@
                                     onchange="toggleOverlay('cadastral', this.checked)">
                             </label>
                         </div>
+                    </div>
+
+                    <div class="menu-section">
+                        <div class="menu-title">산림 주제도</div>
+                        <label class="option-row">
+                            <span style="flex:1;">산림보호구역</span>
+                            <input type="checkbox" id="chk-forest" onchange="toggleOverlay('forest', this.checked)">
+                        </label>
                     </div>
 
                     <div id="hidden-layer-section" class="menu-section" style="display: none;">
@@ -1513,7 +1521,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=1.3.0"></script>
+    <script src="script.js?v=1.3.1"></script>
 
 </body>
 

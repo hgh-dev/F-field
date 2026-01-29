@@ -72,8 +72,13 @@ proj4.defs("EPSG:5186", "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=
 const vworldBase = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', { key: VWORLD_API_KEY, layer: 'Base', ext: 'png', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22 });
 const vworldSatellite = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', { key: VWORLD_API_KEY, layer: 'Satellite', ext: 'jpeg', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22 });
 const vworldHybrid = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', { key: VWORLD_API_KEY, layer: 'Hybrid', ext: 'png', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22 });
-const vworldCadastral = L.tileLayer.wms("https://api.vworld.kr/req/wms", { key: VWORLD_API_KEY, layers: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun', styles: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun', format: 'image/png', transparent: true, opacity: 0.6, version: '1.3.0', maxZoom: 22, maxNativeZoom: 19, detectRetina: true, tileSize: 512, zoomOffset: 0, className: 'cadastral-layer' });
+const vworldCadastral = L.tileLayer.wms("https://api.vworld.kr/req/wms", { key: VWORLD_API_KEY, layers: 'lt_c_landinfobasemap', styles: '', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', maxZoom: 22, maxNativeZoom: 19, detectRetina: true, tileSize: 512, zoomOffset: 0, className: 'cadastral-layer' });
 const nasGukLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon/guk/{z}/{x}/{y}.png', { minZoom: 1, maxZoom: 22, maxNativeZoom: 18, tms: false, pane: 'nasGukPane', opacity: 1, attribution: 'Suwon Guk' });
+
+// [기능추가] 산림보호구역 Data API 레이어
+let forestDataLayer = null;
+let isForestActive = false;
+let lastForestRequestId = 0;
 
 map.addLayer(vworldSatellite);
 map.addLayer(vworldCadastral);
@@ -125,22 +130,25 @@ function showInfoPopup(lat, lng) {
 
         const content = `<div style="min-width: 210px;">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <b onclick="copyText(this.innerText)" style="color:#3B82F6; font-size: 14px; line-height: 1.2; margin-right: 10px; word-break: keep-all; cursor: pointer;">${parcelAddr}</b>
+                                <div style="display:flex; align-items:center; gap:5px;">
+                                    <b onclick="copyText(this.innerText, false, '지번 주소')" style="color:#3B82F6; font-size: 14px; line-height: 1.2; word-break: keep-all; cursor: pointer;">${parcelAddr}</b>
+                                </div>
                             </div>
 
                             <hr style="margin: 10px 0; border: none; border-top: 1px solid #f0f0f0;">
 
                             ${roadAddr ? `
                             <div style="display:flex; align-items:baseline; font-size: 12px; color: #555; margin-bottom: 5px;">
-                                <span class="badge-road" style="flex-shrink:0;">도로명</span>
-                                <span onclick="copyText(this.innerText)" style="margin-left: 5px; line-height: 1.2; word-break: keep-all; cursor: pointer;">${roadAddr}</span>
+                                <span class="badge-road" style="flex-shrink:0; width:27px; display:inline-block; text-align:center;">도로명</span>
+                                <span onclick="copyText(this.innerText, false, '도로명 주소')" style="margin-left: 5px; line-height: 1.2; word-break: keep-all; cursor: pointer;">${roadAddr}</span>
                             </div>` : ''}
 
                             <div style="display:flex; align-items:baseline; font-size: 12px; color: #555; margin-bottom: 20px;">
-                                <span class="badge-coord" style="flex-shrink:0;">좌표</span>
-                                <div onclick="copyText(this.innerText)" style="margin-left: 5px; line-height: 1.2; cursor: pointer;">${infoText}</div>
+                                <span class="badge-coord" style="flex-shrink:0; width:27px; display:inline-block; text-align:center;">좌표</span>
+                                <div onclick="copyText(this.innerText, false, '좌표')" style="margin-left: 5px; line-height: 1.2; cursor: pointer;">${infoText}</div>
                             </div>
                         </div>
+
                         <div style="margin-top: 10px; display:flex; flex-direction:column; gap:5px;">
                             <div style="display:flex; gap:5px; justify-content:center;">
                                 <button class="popup-btn" style="flex:1; background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;" onclick="saveCurrentPoint(${lat}, ${lng}, '${parcelAddr}')">
@@ -215,10 +223,12 @@ function updatePopupLandEumButton(pnu) {
 }
 
 // [기능추가] 텍스트 복사 함수
-function copyText(text, silent = false) {
+function copyText(text, silent = false, itemLabel = "주소") {
+    const msg = `${itemLabel}가 복사되었습니다.`;
+
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(() => {
-            if (!silent) alert("주소가 복사되었습니다.");
+            if (!silent) alert(msg);
         }).catch(err => {
             console.error("복사 실패:", err);
             prompt("복사하세요:", text);
@@ -230,7 +240,7 @@ function copyText(text, silent = false) {
         tempInput.select();
         document.execCommand("copy");
         document.body.removeChild(tempInput);
-        if (!silent) alert("주소가 복사되었습니다.");
+        if (!silent) alert(msg);
     }
 }
 
@@ -809,6 +819,39 @@ function toggleOverlay(type, isChecked) {
     if (type === 'hybrid') layer = vworldHybrid;
     else if (type === 'cadastral') layer = vworldCadastral;
     else if (type === 'nasGuk') layer = nasGukLayer;
+    else if (type === 'forest') {
+        isForestActive = isChecked;
+        if (isChecked) {
+            if (!forestDataLayer) {
+                forestDataLayer = L.geoJSON(null, {
+                    style: {
+                        color: "#00FF00",
+                        weight: 2,
+                        opacity: 0.6,
+                        fillOpacity: 0.1,
+                        dashArray: '5, 5'
+                    },
+                    onEachFeature: function (feature, layer) {
+                        // 필요한 경우 팝업 추가
+                        if (feature.properties) {
+                            // 속성 이름 확인 필요 (보통 pnu 등)
+                            let popupContent = "산림보호구역";
+                            layer.bindPopup(popupContent);
+                        }
+                    }
+                }).addTo(map);
+            } else {
+                map.addLayer(forestDataLayer);
+            }
+            fetchForestData();
+        } else {
+            if (forestDataLayer) {
+                map.removeLayer(forestDataLayer);
+                forestDataLayer.clearLayers();
+            }
+        }
+        return; // 일반 레이어 처리와 다름
+    }
 
     if (isChecked) {
         map.addLayer(layer);
@@ -817,6 +860,61 @@ function toggleOverlay(type, isChecked) {
         map.removeLayer(layer);
     }
 }
+
+// [기능추가] 산림보호구역 데이터 가져오기 (Data API)
+function fetchForestData() {
+    if (!isForestActive || !forestDataLayer) return;
+
+    if (map.getZoom() < 13) {
+        // 줌 레벨이 낮으면 데이터 삭제 (성능 문제)
+        forestDataLayer.clearLayers();
+        return;
+    }
+
+    const bounds = map.getBounds();
+    const min = bounds.getSouthWest();
+    const max = bounds.getNorthEast();
+    const bbox = `${min.lng},${min.lat},${max.lng},${max.lat}`;
+
+    // 요청 ID 생성 (경쟁 상태 방지)
+    const requestId = ++lastForestRequestId;
+
+    // JSONP 콜백 동적 생성
+    const callbackName = 'vworld_forest_' + Date.now();
+    window[callbackName] = function (data) {
+        // 최신 요청이 아니면 무시
+        if (requestId !== lastForestRequestId) {
+            delete window[callbackName];
+            document.body.removeChild(script);
+            return;
+        }
+
+        if (data.response.status === "OK") {
+            forestDataLayer.clearLayers(); // 기존 데이터 삭제
+            const features = data.response.result.featureCollection.features;
+            forestDataLayer.addData(features);
+        } else {
+            // 데이터가 없거나 에러인 경우 레이어 유지 또는 삭제 선택 (여기선 유지)
+            // forestDataLayer.clearLayers(); 
+            // console.warn("산림보호구역 데이터 없음:", data.response.error);
+        }
+        delete window[callbackName];
+        document.body.removeChild(script);
+    };
+
+    const url = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LT_C_UF151&key=${VWORLD_API_KEY}&domain=${window.location.hostname}&geomFilter=BOX(${bbox})&format=json&errorFormat=json&size=1000&callback=${callbackName}`;
+
+    const script = document.createElement('script');
+    script.src = url;
+    document.body.appendChild(script);
+}
+
+// 지도 이동 종료 시 데이터 갱신
+map.on('moveend', function () {
+    if (isForestActive) {
+        fetchForestData();
+    }
+});
 
 /* --------------------------------------------------------------------------
    7. 좌표 및 주소 표시
@@ -1522,7 +1620,7 @@ window.unlockHiddenLayers = function () {
         return;
     }
 
-    const input = prompt("비공개 레이어 암호를 입력하세요:");
+    const input = prompt("암호를 입력하세요:");
     if (!input) return;
 
     // Base64 인코딩 후 비교 (암호: 8906 -> ODkwNg==)
@@ -1534,7 +1632,7 @@ window.unlockHiddenLayers = function () {
         // 아이콘 변경 (Unlock)
         btnLock.innerHTML = SVG_ICONS.unlock;
         btnLock.style.color = '#3B82F6'; // 파란색으로 활성화 표시
-        alert("잠금이 해제되었습니다.");
+        alert("잠금이 해제되었습니다. 비공개 정보가 유출되지 않도록 주의하세요.");
     } else {
         alert("암호가 올바르지 않습니다.");
     }
