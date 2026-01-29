@@ -625,7 +625,8 @@
             border-radius: 50%;
         }
 
-        #base-layer-options {
+        #base-layer-options,
+        #cadastral-layer-options {
             background: #F8F9FA;
             border-radius: 8px;
             padding: 5px 15px;
@@ -1299,10 +1300,18 @@
                                 <input type="checkbox" id="chk-hybrid" onchange="toggleOverlay('hybrid', this.checked)">
                             </label>
                             <label class="option-row">
-                                <span style="flex:1;">연속지적도</span>
+                                <span style="flex:1;">지적도</span>
                                 <input type="checkbox" id="chk-cadastral"
                                     onchange="toggleOverlay('cadastral', this.checked)">
                             </label>
+                            <div id="cadastral-layer-options" style="margin-left: 0; margin-top: 0px; display: none;">
+                                <label class="option-row"><span style="flex:1;">연속지적도</span><input type="radio"
+                                        name="cadastralMap" value="continuous" checked
+                                        onchange="changeCadastralMap('continuous')"></label>
+                                <label class="option-row" style="border:none;"><span style="flex:1;">LX맵
+                                    </span><input type="radio" name="cadastralMap" value="lx"
+                                        onchange="changeCadastralMap('lx')"></label>
+                            </div>
                         </div>
                     </div>
 

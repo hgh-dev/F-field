@@ -72,7 +72,8 @@ proj4.defs("EPSG:5186", "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=
 const vworldBase = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', { key: VWORLD_API_KEY, layer: 'Base', ext: 'png', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22 });
 const vworldSatellite = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', { key: VWORLD_API_KEY, layer: 'Satellite', ext: 'jpeg', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22 });
 const vworldHybrid = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', { key: VWORLD_API_KEY, layer: 'Hybrid', ext: 'png', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22 });
-const vworldCadastral = L.tileLayer.wms("https://api.vworld.kr/req/wms", { key: VWORLD_API_KEY, layers: 'lt_c_landinfobasemap', styles: '', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', maxZoom: 22, maxNativeZoom: 19, detectRetina: true, tileSize: 512, zoomOffset: 0, className: 'cadastral-layer' });
+const vworldLxLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", { key: VWORLD_API_KEY, layers: 'lt_c_landinfobasemap', styles: '', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', maxZoom: 22, maxNativeZoom: 19, detectRetina: true, tileSize: 512, zoomOffset: 0, className: 'cadastral-layer' });
+const vworldContinuousLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", { key: VWORLD_API_KEY, layers: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun', styles: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun', format: 'image/png', transparent: true, opacity: 0.6, version: '1.3.0', maxZoom: 22, maxNativeZoom: 19, detectRetina: true, tileSize: 512, zoomOffset: 0, className: 'cadastral-layer' });
 const nasGukLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon/guk/{z}/{x}/{y}.png', { minZoom: 1, maxZoom: 22, maxNativeZoom: 18, tms: false, pane: 'nasGukPane', opacity: 1, attribution: 'Suwon Guk' });
 
 // [기능추가] 산림보호구역 Data API 레이어
@@ -81,7 +82,8 @@ let isForestActive = false;
 let lastForestRequestId = 0;
 
 map.addLayer(vworldSatellite);
-map.addLayer(vworldCadastral);
+
+map.addLayer(vworldContinuousLayer); // 기본값: 연속지적도
 map.addLayer(vworldHybrid);
 
 
@@ -315,9 +317,19 @@ function syncSidebarUI() {
     }
     toggleBaseLayer(hasBase || hasSat);
     document.getElementById('chk-hybrid').checked = map.hasLayer(vworldHybrid);
-    document.getElementById('chk-cadastral').checked = map.hasLayer(vworldCadastral);
+
+    const hasContinuous = map.hasLayer(vworldContinuousLayer);
+    const hasLx = map.hasLayer(vworldLxLayer);
+    document.getElementById('chk-cadastral').checked = (hasContinuous || hasLx);
+    if (hasLx) {
+        document.querySelector('input[name="cadastralMap"][value="lx"]').checked = true;
+    } else {
+        // 기본값: continuous
+        document.querySelector('input[name="cadastralMap"][value="continuous"]').checked = true;
+    }
+    toggleOverlay('cadastral', (hasContinuous || hasLx));
     document.getElementById('chk-nas-guk').checked = map.hasLayer(nasGukLayer);
-    document.getElementById('chk-nas-guk').checked = map.hasLayer(nasGukLayer);
+
 }
 
 // [기능추가] 지적 경계 가져오기 및 강조 표시
@@ -810,14 +822,37 @@ function changeBaseMap(type) {
     } else {
         map.addLayer(vworldBase); map.removeLayer(vworldSatellite);
     }
-    if (map.hasLayer(vworldCadastral)) vworldCadastral.bringToFront();
+    if (map.hasLayer(vworldLxLayer)) vworldLxLayer.bringToFront();
+    if (map.hasLayer(vworldContinuousLayer)) vworldContinuousLayer.bringToFront();
     if (map.hasLayer(vworldHybrid)) vworldHybrid.bringToFront();
+}
+
+function changeCadastralMap(type) {
+    if (!document.getElementById('chk-cadastral').checked) return;
+    if (type === 'lx') {
+        map.addLayer(vworldLxLayer); map.removeLayer(vworldContinuousLayer);
+    } else {
+        // continuous (기본값)
+        map.addLayer(vworldContinuousLayer); map.removeLayer(vworldLxLayer);
+    }
 }
 
 function toggleOverlay(type, isChecked) {
     let layer;
     if (type === 'hybrid') layer = vworldHybrid;
-    else if (type === 'cadastral') layer = vworldCadastral;
+    else if (type === 'cadastral') {
+        const optionsDiv = document.getElementById('cadastral-layer-options');
+        if (isChecked) {
+            optionsDiv.style.display = 'block';
+            const selectedValue = document.querySelector('input[name="cadastralMap"]:checked').value;
+            changeCadastralMap(selectedValue);
+        } else {
+            optionsDiv.style.display = 'none';
+            map.removeLayer(vworldLxLayer);
+            map.removeLayer(vworldContinuousLayer);
+        }
+        return; // changeCadastralMap에서 레이어 추가/제거 하므로 여기서 리턴
+    }
     else if (type === 'nasGuk') layer = nasGukLayer;
     else if (type === 'forest') {
         isForestActive = isChecked;
