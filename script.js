@@ -139,12 +139,12 @@ function showInfoPopup(lat, lng) {
 
                             ${roadAddr ? `
                             <div style="display:flex; align-items:baseline; font-size: 12px; color: #555; margin-bottom: 5px;">
-                                <span class="badge-road" style="flex-shrink:0; width:27px; display:inline-block; text-align:center;">도로명</span>
+                                <span class="badge-road" style="flex-shrink:0; width:29px; display:inline-block; text-align:center;">도로명</span>
                                 <span onclick="copyText(this.innerText, false, '도로명 주소')" style="margin-left: 5px; line-height: 1.2; word-break: keep-all; cursor: pointer;">${roadAddr}</span>
                             </div>` : ''}
 
                             <div style="display:flex; align-items:baseline; font-size: 12px; color: #555; margin-bottom: 20px;">
-                                <span class="badge-coord" style="flex-shrink:0; width:27px; display:inline-block; text-align:center;">좌표</span>
+                                <span class="badge-coord" style="flex-shrink:0; width:29px; display:inline-block; text-align:center;">좌표</span>
                                 <div onclick="copyText(this.innerText, false, '좌표')" style="margin-left: 5px; line-height: 1.2; cursor: pointer;">${infoText}</div>
                             </div>
                         </div>
