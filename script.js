@@ -300,7 +300,7 @@ function toggleOverlay(type, isChecked) {
                 // 레이어가 없으면 새로 생성 (초록색 점선)
                 forestDataLayer = L.geoJSON(null, {
                     style: {
-                        color: "#00FF00", weight: 2, opacity: 0.6, fillOpacity: 0.1, dashArray: '5, 5'
+                        color: "#007f00ff", weight: 2, opacity: 0.6, fillOpacity: 0.1, dashArray: '5, 5'
                     },
                     onEachFeature: function (feature, layer) {
                         layer.bindPopup("산림보호구역");
