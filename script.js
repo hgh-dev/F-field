@@ -21,6 +21,8 @@ const STORAGE_KEY = "my_survey_data_v4";         // 측량 데이터 저장용
 const SEARCH_HISTORY_KEY = 'my_search_history';    // 검색 기록 저장용
 const SEARCH_SETTING_KEY = 'my_search_setting_enabled'; // 검색 기록 저장 설정용
 
+
+
 /* --------------------------------------------------------------------------
    2. 전역 상태 변수 (Global State)
    -------------------------------------------------------------------------- */
@@ -51,6 +53,8 @@ let forestDataLayer = null;   // 산림보호구역 레이어
 let isForestActive = false;   // 산림보호구역 보기 활성화 여부
 let lastForestRequestId = 0;  // 데이터 요청 순서 확인용
 
+
+
 /* --------------------------------------------------------------------------
    3. 리소스 (Resources)
    -------------------------------------------------------------------------- */
@@ -77,12 +81,16 @@ const SVG_ICONS = {
     // 잠금 아이콘
     lock: `<svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>`,
     // 잠금 해제 아이콘
-    unlock: `<svg viewBox="0 0 24 24"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c.55 0 1 .45 1 1s-.45 1-1 1H7c-1.66 0-3 1.34-3 3v2H3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/></svg>`
+    unlock: `<svg viewBox="0 0 24 24"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c.55 0 1 .45 1 1s-.45 1-1 1H7c-1.66 0-3 1.34-3 3v2H3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/></svg>`,
+    // 더보기(점 3개) 아이콘
+    more: `<svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`
 };
 
 /* [패치] Leaflet 라이브러리의 터치 오류 방지 */
 // 선 그리기 도구 사용 시 모바일에서 터치가 튀는 문제를 해결합니다.
 L.Draw.Polyline.prototype._onTouch = function (e) { return; };
+
+
 
 /* --------------------------------------------------------------------------
    4. 지도 초기화 (Map Initialization)
@@ -108,6 +116,8 @@ map.getPane('nasGukPane').style.pointerEvents = 'none'; // 지도가 클릭되�
 
 // TM 좌표계 설정 (EPSG:5186 - 한국 중부원점)
 proj4.defs("EPSG:5186", "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs");
+
+
 
 /* --------------------------------------------------------------------------
    5. 레이어 관리 (Layer Management)
@@ -148,24 +158,54 @@ const nasGukLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon/guk/{z
     minZoom: 1, maxZoom: 22, maxNativeZoom: 18, tms: false, pane: 'nasGukPane', opacity: 1, attribution: 'Suwon Guk'
 });
 
+// 7. 행정경계 레이어 (WMS)
+const adminLayers = {
+    // 광역시도
+    sido: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+        key: VWORLD_API_KEY, layers: 'lt_c_adsido', styles: 'lt_c_adsido', format: 'image/png',
+        transparent: true, opacity: 0.8, version: '1.3.0', maxZoom: 22, maxNativeZoom: 19,
+        className: 'admin-layer'
+    }),
+    // 시군구
+    sigg: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+        key: VWORLD_API_KEY, layers: 'lt_c_adsigg', styles: 'lt_c_adsigg', format: 'image/png',
+        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 11, maxZoom: 22, maxNativeZoom: 19,
+        className: 'admin-layer'
+    }),
+    // 읍면동
+    emd: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+        key: VWORLD_API_KEY, layers: 'lt_c_ademd', styles: 'lt_c_ademd', format: 'image/png',
+        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 13, maxZoom: 22, maxNativeZoom: 19,
+        className: 'admin-layer'
+    }),
+    // 리
+    ri: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+        key: VWORLD_API_KEY, layers: 'lt_c_adri', styles: 'lt_c_adri', format: 'image/png',
+        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 15, maxZoom: 22, maxNativeZoom: 19,
+        className: 'admin-layer'
+    })
+};
+
 
 // 초기 레이어 추가 (위성지도 + 연속지적도 + 하이브리드)
 map.addLayer(vworldSatellite);
 map.addLayer(vworldContinuousLayer);
 map.addLayer(vworldHybrid);
 
+// 초기 행정경계 레이어 설정
+if (document.getElementById('chk-admin-group').checked) {
+    toggleOverlay('admin', true);
+}
+
 
 /* --- 레이어 제어 함수들 --- */
 
 // 배경 지도 토글 (ON/OFF)
 function toggleBaseLayer(isChecked) {
-    const optionsDiv = document.getElementById('base-layer-options');
     if (isChecked) {
-        optionsDiv.style.display = 'block';
         const selectedValue = document.querySelector('input[name="baseMap"]:checked').value;
         changeBaseMap(selectedValue);
     } else {
-        optionsDiv.style.display = 'none';
         map.removeLayer(vworldSatellite);
         map.removeLayer(vworldBase);
     }
@@ -183,10 +223,20 @@ function changeBaseMap(type) {
         map.removeLayer(vworldSatellite);
     }
 
-    // 오버레이 레이어들을 맨 위로 올림
+    // 오버레이 레이어들을 순서대로 맨 위로 올림 (지적도 -> 하이브리드 -> 행정경계)
+    updateLayerOrder();
+}
+
+// 레이어 순서 재조정 함수 (지적도 < 하이브리드 < 행정경계)
+function updateLayerOrder() {
     if (map.hasLayer(vworldLxLayer)) vworldLxLayer.bringToFront();
     if (map.hasLayer(vworldContinuousLayer)) vworldContinuousLayer.bringToFront();
     if (map.hasLayer(vworldHybrid)) vworldHybrid.bringToFront();
+
+    // 행정경계가 가장 위에 오도록 (체크된 것들만)
+    Object.values(adminLayers).forEach(layer => {
+        if (map.hasLayer(layer)) layer.bringToFront();
+    });
 }
 
 // 지적도 종류 변경 (연속지적도 vs LX)
@@ -201,6 +251,7 @@ function changeCadastralMap(type) {
         map.addLayer(vworldContinuousLayer);
         map.removeLayer(vworldLxLayer);
     }
+    updateLayerOrder();
 }
 
 // 오버레이 레이어 켜고 끄기
@@ -211,19 +262,36 @@ function toggleOverlay(type, isChecked) {
         layer = vworldHybrid;
     } else if (type === 'cadastral') {
         // 지적도 메뉴 처리
-        const optionsDiv = document.getElementById('cadastral-layer-options');
         if (isChecked) {
-            optionsDiv.style.display = 'block';
             const selectedValue = document.querySelector('input[name="cadastralMap"]:checked').value;
             changeCadastralMap(selectedValue);
         } else {
-            optionsDiv.style.display = 'none';
             map.removeLayer(vworldLxLayer);
             map.removeLayer(vworldContinuousLayer);
         }
         return;
+    } else if (type === 'admin') {
+        // 행정경계 메뉴 처리
+        if (isChecked) {
+            // 체크된 하위 항목들 켜기
+            ['sido', 'sigg', 'emd', 'ri'].forEach(subType => {
+                const cb = document.getElementById('chk-admin-' + subType);
+                if (cb && cb.checked) {
+                    map.addLayer(adminLayers[subType]);
+                    adminLayers[subType].bringToFront();
+                }
+            });
+        } else {
+            // 모든 하위 항목 끄기
+            Object.values(adminLayers).forEach(l => map.removeLayer(l));
+        }
+        return;
     } else if (type === 'nasGuk') {
         layer = nasGukLayer;
+        // 범례 토글
+        const legend = document.getElementById('nas-guk-legend');
+        if (legend) legend.style.display = isChecked ? 'block' : 'none';
+
     } else if (type === 'forest') {
         // 산림보호구역 API 처리
         isForestActive = isChecked;
@@ -254,9 +322,23 @@ function toggleOverlay(type, isChecked) {
     // 일반 레이어 추가/제거
     if (isChecked) {
         map.addLayer(layer);
-        if (type !== 'nasGuk') layer.bringToFront();
+        if (type !== 'nasGuk') {
+            updateLayerOrder();
+        }
     } else {
         map.removeLayer(layer);
+    }
+}
+
+// 행정경계 하위 레이어 토글
+function toggleAdminSubLayer(subType, isChecked) {
+    if (!document.getElementById('chk-admin-group').checked) return; // 그룹이 꺼져있으면 무시
+
+    if (isChecked) {
+        map.addLayer(adminLayers[subType]);
+        adminLayers[subType].bringToFront();
+    } else {
+        map.removeLayer(adminLayers[subType]);
     }
 }
 
@@ -307,6 +389,9 @@ function fetchForestData() {
 map.on('moveend', function () {
     if (isForestActive) fetchForestData();
 });
+
+
+
 /* --------------------------------------------------------------------------
    6. UI 컨트롤러 (UI Controller)
    -------------------------------------------------------------------------- */
@@ -368,6 +453,12 @@ function switchSidebarTab(tabName) {
     // 선택된 탭 활성화
     document.getElementById('tab-btn-' + tabName).classList.add('active');
     document.getElementById('content-' + tabName).classList.add('active');
+
+    // 자물쇠 아이콘 제어 (지도 탭에서만 표시)
+    const btnLock = document.getElementById('btn-lock');
+    if (btnLock) {
+        btnLock.style.display = (tabName === 'map') ? 'block' : 'none';
+    }
 }
 
 // 비공개 레이어 잠금 해제 (암호 입력)
@@ -388,11 +479,13 @@ window.unlockHiddenLayers = function () {
         section.style.display = 'block';
         btnLock.innerHTML = SVG_ICONS.unlock; // 아이콘 변경
         btnLock.style.color = '#3B82F6';
-        alert("잠금이 해제되었습니다.");
+        alert("잠금이 해제되었습니다. 비공개 정보가 유출되지 않도록 주의하세요.");
     } else {
         alert("암호가 올바르지 않습니다.");
     }
 };
+
+
 
 /* --------------------------------------------------------------------------
    7. 기능: 검색 및 주소 (Feature: Search & Address)
@@ -635,6 +728,8 @@ function renderHistoryList() {
     });
 }
 
+
+
 /* --------------------------------------------------------------------------
    8. 기능: 정보 팝업 (Feature: Popup & Info)
    -------------------------------------------------------------------------- */
@@ -868,6 +963,8 @@ function updatePopupLandEumButton(pnu) {
     }
 }
 
+
+
 /* --------------------------------------------------------------------------
    9. 기능: 그리기 및 편집 (Feature: Drawing & Editing)
    -------------------------------------------------------------------------- */
@@ -1042,7 +1139,7 @@ window.enableSingleLayerEdit = function (id) {
 // 그리기 완료 이벤트 (도형 생성 시)
 map.on(L.Draw.Event.CREATED, function (event) {
     const layer = event.layer;
-    let memo = prompt("메모 입력:", getTimestampString());
+    let memo = prompt("기록명 입력:", getTimestampString());
     if (memo === null) return; // 취소 시 무시
     if (!memo) memo = getTimestampString();
 
@@ -1076,6 +1173,8 @@ map.on('draw:edited', function (e) {
     saveToStorage();
     renderSurveyList();
 });
+
+
 
 /* --------------------------------------------------------------------------
    10. 기능: 데이터 관리 (Feature: Data Persistence)
@@ -1111,12 +1210,11 @@ function renderSurveyList() {
             <input type="checkbox" class="survey-checkbox" ${!isHidden ? "checked" : ""} onchange="toggleLayerVisibility(${props.id})">
         </div>
         <div class="survey-info" onclick="zoomToLayer(${props.id})">
-            <div class="survey-name">${typeIcon} ${props.memo} <button class="btn-edit-memo-inline" onclick="event.stopPropagation(); editLayerMemo(${props.id})">${SVG_ICONS.edit}</button></div>
+            <div class="survey-name">${typeIcon} ${props.memo}</div>
         </div>
         <div class="survey-actions">
-            <input type="color" class="color-picker-input" value="${props.customColor || '#3388ff'}" onchange="updateLayerColor(${props.id}, this.value)">
-            <button class="action-icon-btn btn-del" onclick="deleteLayerById(${props.id})">${SVG_ICONS.trash}</button>
-            <button class="action-icon-btn btn-save-single" onclick="exportSingleLayer(${props.id})">${SVG_ICONS.save}</button>
+            <input type="color" class="color-picker-input" value="${props.customColor || '#3388ff'}" onchange="updateLayerColor(${props.id}, this.value)" style="margin-right:2px;">
+            <button class="btn-more" onclick="openContextMenu(event, ${props.id})">${SVG_ICONS.more}</button>
         </div>`;
         listContainer.appendChild(div);
     });
@@ -1142,11 +1240,13 @@ function updateLayerInfo(layer) {
         infoText = "<b>" + SVG_ICONS.polygon + " 면적:</b> " + turf.area(layer.toGeoJSON()).toFixed(2) + " ㎡";
     }
 
-    let popupContent = "<b>" + SVG_ICONS.memo + " 메모:</b> " + memo;
-    if (infoText) popupContent += "<br>" + infoText;
+    let popupContent = `<div style="font-size:14px; color:#3B82F6; font-weight:bold; margin-bottom:5px;">${memo}</div>`;
+    popupContent += `<hr style="margin: 5px 0; border: none; border-top: 1px solid #f0f0f0;">`;
+
+    if (infoText) popupContent += `<div style="font-size:12px; color:#666;">${infoText}</div>`;
 
     const id = layer.feature.properties.id;
-    popupContent += `<div style="margin-top:8px; border-top:1px solid #eee; padding-top:8px; display:flex; gap:5px;">
+    popupContent += `<div style="margin-top:8px; padding-top:8px; display:flex; gap:5px;">
         <button class="popup-btn" style="flex:1; background:#f0f0f0; color:#333;" onclick="enableSingleLayerEdit(${id})">수정</button>
         <button class="popup-btn" style="flex:1; background:#ffebee; color:#d32f2f;" onclick="deleteLayerById(${id})">삭제</button>
     </div>`;
@@ -1183,6 +1283,8 @@ function restoreFeatures(geoJsonData) {
     });
     renderSurveyList();
 }
+
+
 
 /* --------------------------------------------------------------------------
    11. 기능: 위치 추적 (Feature: Geolocation)
@@ -1248,6 +1350,8 @@ function findMe() {
     }, function () { alert("위치 실패"); }, { enableHighAccuracy: true });
 }
 
+
+
 /* --------------------------------------------------------------------------
    12. 기능: 길찾기 (Feature: Navigation)
    -------------------------------------------------------------------------- */
@@ -1277,6 +1381,8 @@ function executeNavigation(type) {
     window.location.href = url;
     setTimeout(closeNavModal, 500);
 }
+
+
 
 /* --------------------------------------------------------------------------
    13. 기타 유틸리티 (Utils)
@@ -1331,6 +1437,8 @@ function convertToDms(val, type) {
     const sec = ((minFloat - min) * 60).toFixed(2);
     return (val >= 0 ? (type === 'lat' ? "N" : "E") : (type === 'lat' ? "S" : "W")) + " " + deg + "° " + min + "' " + sec + "\"";
 }
+
+
 
 /* --------------------------------------------------------------------------
    14. 이벤트 리스너 및 초기화 (Events & Initialization)
@@ -1598,4 +1706,155 @@ window.updateLayerColor = function (id, newColor) {
     else layer.setStyle({ color: newColor, fillColor: newColor });
     layer.feature.properties.customColor = newColor;
     saveToStorage();
+};
+
+// --- 누락된 기능 복구 (Missing Functions Restored) ---
+
+window.toggleLayerVisibility = function (id) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+    if (!layer) return;
+
+    const isHidden = !layer.feature.properties.isHidden;
+    layer.feature.properties.isHidden = isHidden;
+
+    if (isHidden) {
+        if (layer instanceof L.Marker) layer.setOpacity(0);
+        else layer.setStyle({ opacity: 0, fillOpacity: 0, stroke: false });
+        layer.closePopup();
+        if (layer._path) layer._path.style.pointerEvents = 'none';
+    } else {
+        if (layer instanceof L.Marker) layer.setOpacity(1);
+        else layer.setStyle({ opacity: 1, fillOpacity: 0.2, stroke: true });
+        if (layer._path) layer._path.style.pointerEvents = 'auto';
+    }
+    saveToStorage();
+    renderSurveyList();
+};
+
+window.deleteLayerById = function (id) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+    if (!layer) return;
+
+    if (confirm("정말로 삭제하시겠습니까?")) {
+        drawnItems.removeLayer(layer);
+        saveToStorage();
+        renderSurveyList();
+    }
+};
+
+window.editLayerMemo = function (id) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+    if (!layer) return;
+
+    const newMemo = prompt("새로운 기록명을 입력하세요:", layer.feature.properties.memo);
+    if (newMemo !== null) {
+        layer.feature.properties.memo = newMemo;
+        updateLayerInfo(layer);
+        saveToStorage();
+        renderSurveyList();
+    }
+};
+
+/* --------------------------------------------------------------------------
+   15. 기능: 컨텍스트 메뉴 (Context Menu)
+   -------------------------------------------------------------------------- */
+let currentContextId = null;
+
+function initContextMenu() {
+    if (document.getElementById('global-context-menu')) return;
+
+    const menu = document.createElement('div');
+    menu.id = 'global-context-menu';
+    menu.className = 'more-context-menu';
+    // 메뉴 항목: 저장, 이름 수정, 삭제
+    menu.innerHTML = `
+        <div class="more-menu-item" onclick="handleMenuAction('save')">
+            ${SVG_ICONS.save} 저장
+        </div>
+        <div class="more-menu-item" onclick="handleMenuAction('edit')">
+            ${SVG_ICONS.edit} 기록명 수정
+        </div>
+        <div class="more-menu-item danger" onclick="handleMenuAction('delete')">
+            ${SVG_ICONS.trash} 삭제
+        </div>
+    `;
+    document.body.appendChild(menu);
+
+    // 외부 클릭 시 메뉴 닫기
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.btn-more') && !e.target.closest('.more-context-menu')) {
+            closeContextMenu();
+        }
+    }, true); // 캡처링 단계에서 잡아서 확실히 처리
+}
+
+window.openContextMenu = function (e, id) {
+    e.stopPropagation();
+    e.preventDefault();
+    initContextMenu(); // 메뉴가 없으면 생성
+
+    currentContextId = id;
+    const menu = document.getElementById('global-context-menu');
+    const rect = e.currentTarget.getBoundingClientRect();
+
+    // 위치 계산: 버튼의 오른쪽 아래를 기준으로 정렬하되 화면 밖으로 나가지 않게
+    let top = rect.bottom + 5;
+    let right = window.innerWidth - rect.right;
+
+    menu.style.top = top + 'px';
+    menu.style.right = right + 'px';
+    menu.style.left = 'auto';
+    menu.style.display = 'flex';
+
+    // 애니메이션 효과
+    requestAnimationFrame(() => menu.classList.add('visible'));
+};
+
+window.closeContextMenu = function () {
+    const menu = document.getElementById('global-context-menu');
+    if (menu) {
+        menu.classList.remove('visible');
+        setTimeout(() => {
+            if (!menu.classList.contains('visible')) menu.style.display = 'none';
+        }, 100);
+    }
+    currentContextId = null;
+};
+
+window.handleMenuAction = function (action) {
+    const id = currentContextId;
+    if (!id) return;
+
+    closeContextMenu();
+
+    // UI가 업데이트된 후 실행 (alert/prompt가 메뉴를 가리지 않도록)
+    setTimeout(() => {
+        if (action === 'save') {
+            exportSingleLayer(id);
+        } else if (action === 'edit') {
+            editLayerMemo(id);
+        } else if (action === 'delete') {
+            deleteLayerById(id);
+        }
+    }, 50);
+};
+
+window.toggleAccordion = function (contentId, headerElement) {
+    const content = document.getElementById(contentId);
+    if (!content) return;
+
+    // Computed Style을 확인하여 display 상태 체크 (class로 제어되므로)
+    // 하지만 style.display를 직접 토글하는 방식이 간단함.
+    // 초기에는 class에 의해 none임. style.display가 설정되지 않았을 수 있음.
+
+    // getComputedStyle 사용이 안전함
+    const isVisible = window.getComputedStyle(content).display === 'block';
+
+    if (isVisible) {
+        content.style.display = 'none';
+        headerElement.classList.remove('active');
+    } else {
+        content.style.display = 'block';
+        headerElement.classList.add('active');
+    }
 };
