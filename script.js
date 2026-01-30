@@ -169,19 +169,19 @@ const adminLayers = {
     // 시군구
     sigg: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
         key: VWORLD_API_KEY, layers: 'lt_c_adsigg', styles: 'lt_c_adsigg', format: 'image/png',
-        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 11, maxZoom: 22, maxNativeZoom: 19,
+        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 9, maxZoom: 22, maxNativeZoom: 19,
         className: 'admin-layer'
     }),
     // 읍면동
     emd: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
         key: VWORLD_API_KEY, layers: 'lt_c_ademd', styles: 'lt_c_ademd', format: 'image/png',
-        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 13, maxZoom: 22, maxNativeZoom: 19,
+        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 12, maxZoom: 22, maxNativeZoom: 19,
         className: 'admin-layer'
     }),
     // 리
     ri: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
         key: VWORLD_API_KEY, layers: 'lt_c_adri', styles: 'lt_c_adri', format: 'image/png',
-        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 15, maxZoom: 22, maxNativeZoom: 19,
+        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 14, maxZoom: 22, maxNativeZoom: 19,
         className: 'admin-layer'
     })
 };
