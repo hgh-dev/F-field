@@ -3,96 +3,648 @@
    버전: v1.3.0
    작성일: 2026-01-25
    설명: K-GeoP 연동 기능 추가, 지점 저장 기능 추가
+
+   [초보자 가이드]
+   이 파일은 앱의 모든 동작을 담당하는 자바스크립트 파일입니다.
+   지도를 띄우고, 버튼을 눌렀을 때 반응하고, 데이터를 저장하는 등의 코드가 들어있습니다.
+   코드는 기능별로 전역 변수 -> 아이콘 -> 지도 생성 -> 기능 구현 순으로 정렬되어 있습니다.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. 전역 변수 설정 (Global Variables)
--------------------------------------------------------------------------- */
-
+   1. 설정 및 상수 (Configuration & Constants)
+   -------------------------------------------------------------------------- */
+// VMWORLD API 키: 지도 데이터를 가져오기 위한 인증 키입니다.
 const VWORLD_API_KEY = "EE6276F5-3176-37ED-8478-85C820FB8529";
-const STORAGE_KEY = "my_survey_data_v4";
-const SEARCH_HISTORY_KEY = 'my_search_history';
-const SEARCH_SETTING_KEY = 'my_search_setting_enabled';
 
-let coordMode = 0; // 0: DMS, 1: Decimal, 2: TM
-let isFollowing = false;
-let watchId = null;
-let isManualFinish = false;
-let lastHeading = 0;
-
-let trackingMarker = null;
-let trackingCircle = null;
-let currentDrawer = null;
-let currentBoundaryLayer = null; // 지적 경계 레이어
-let currentSearchMarker = null; // 검색/더블클릭 마커
+// 로컬 스토리지 키: 브라우저에 데이터를 저장할 때 사용하는 이름표입니다.
+const STORAGE_KEY = "my_survey_data_v4";         // 측량 데이터 저장용
+const SEARCH_HISTORY_KEY = 'my_search_history';    // 검색 기록 저장용
+const SEARCH_SETTING_KEY = 'my_search_setting_enabled'; // 검색 기록 저장 설정용
 
 /* --------------------------------------------------------------------------
-   2. 아이콘 디자인 (SVG Images)
--------------------------------------------------------------------------- */
+   2. 전역 상태 변수 (Global State)
+   -------------------------------------------------------------------------- */
+// 앱의 현재 상태를 기억하는 변수들입니다.
+
+// 좌표 표시 모드 (0: 도분초 DMS, 1: 십진수 Decimal, 2: TM 좌표)
+let coordMode = 0;
+
+// 위치 추적 상태
+let isFollowing = false; // 내 위치 따라가기 모드인지 여부
+let watchId = null;      // 위치 추적 프로세스 ID
+let lastHeading = 0;     // 나침반 방향 (0~360도)
+let lastGpsLat = 37.245911; // 마지막 GPS 위도 (초기값: 지도 중심)
+let lastGpsLng = 126.960302; // 마지막 GPS 경도
+
+// 지도 위의 요소들
+let trackingMarker = null;    // 내 위치 표시 마커 (화살표)
+let trackingCircle = null;    // 내 위치 오차 범위 원
+let currentBoundaryLayer = null; // 선택된 지적 경계 (붉은 테두리)
+let currentSearchMarker = null;  // 검색 또는 클릭한 위치 마커
+
+// 그리기 도구 상태
+let currentDrawer = null;     // 현재 사용 중인 그리기 도구
+let isManualFinish = false;   // 그리기 수동 종료 여부 체크
+
+// 산림 데이터 상태
+let forestDataLayer = null;   // 산림보호구역 레이어
+let isForestActive = false;   // 산림보호구역 보기 활성화 여부
+let lastForestRequestId = 0;  // 데이터 요청 순서 확인용
+
+/* --------------------------------------------------------------------------
+   3. 리소스 (Resources)
+   -------------------------------------------------------------------------- */
+// 앱에서 사용하는 아이콘(그림)들을 SVG 코드로 정리한 객체입니다.
 const SVG_ICONS = {
+    // 핀 모양 아이콘
     marker: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`,
+    // 다각형(면적) 아이콘
     polygon: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M12 2L2 9L6 21H18L22 9L12 2Z" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`,
+    // 자(거리) 아이콘
     ruler: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M23 8c0 1.1-.9 2-2 2-.18 0-.35-.02-.51-.07l-3.56 3.55c.05.16.07.34.07.52 0 1.1-.9 2-2 2s-2-.9-2-2c0-.18.02-.36.07-.52l-2.55-2.55c-.16.05-.34.07-.52.07s-.36-.02-.52-.07l-4.55 4.56c.05.16.07.33.07.51 0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2c.18 0 .35.02.51.07l4.56-4.55C8.02 9.36 8 9.18 8 9c0-1.1.9-2 2-2s2 .9 2 2c0 .18-.02.36-.07.52l2.55 2.55c.16-.05.34-.07.52-.07s.36.02.52.07l3.55-3.56C19.02 8.35 19 8.18 19 8c0-1.1.9-2 2-2s2 .9 2 2z"/></svg>`,
+    // 수정(연필) 아이콘
     edit: `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
+    // 삭제(휴지통) 아이콘
     trash: `<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`,
+    // 저장(플로피디스크) 아이콘
     save: `<svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>`,
+    // 메모(노트) 아이콘
     memo: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
-    memo: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
+    // 닫기(X) 아이콘
     close: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,
+    // 자동차 아이콘
     car: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>`,
+    // 잠금 아이콘
     lock: `<svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>`,
+    // 잠금 해제 아이콘
     unlock: `<svg viewBox="0 0 24 24"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c.55 0 1 .45 1 1s-.45 1-1 1H7c-1.66 0-3 1.34-3 3v2H3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/></svg>`
 };
 
 /* [패치] Leaflet 라이브러리의 터치 오류 방지 */
+// 선 그리기 도구 사용 시 모바일에서 터치가 튀는 문제를 해결합니다.
 L.Draw.Polyline.prototype._onTouch = function (e) { return; };
 
-
 /* --------------------------------------------------------------------------
-   3. 지도 생성 및 레이어(Layer) 설정
--------------------------------------------------------------------------- */
+   4. 지도 초기화 (Map Initialization)
+   -------------------------------------------------------------------------- */
+// Leaflet(L)을 사용하여 지도를 생성하고 설정합니다.
 
 const map = L.map('map', {
-    zoomControl: false,
-    attributionControl: false,
-    tap: false,
-    maxZoom: 22,
-    doubleClickZoom: false
-}).setView([37.245911, 126.960302], 17);
+    zoomControl: false,        // 줌 버튼 숨김 (별도로 만듦)
+    attributionControl: false, // 로고 숨김
+    tap: false,                // 모바일 터치 딜레이 해제
+    maxZoom: 22,               // 최대 확대 레벨
+    doubleClickZoom: false     // 더블 클릭 확대 방지 (정보창 띄우기 기능으로 사용)
+}).setView([37.245911, 126.960302], 17); // 초기 위치 설정 (수원)
 
+// 줌 버튼과 축척바(Scale) 추가
 L.control.zoom({ position: 'bottomleft' }).addTo(map);
 L.control.scale({ imperial: false, metric: true }).addTo(map);
 
+// 'nasGukPane'이라는 별도의 레이어 층을 만듭니다. (다른 레이어보다 위에 표시하기 위함)
 map.createPane('nasGukPane');
 map.getPane('nasGukPane').style.zIndex = 350;
-map.getPane('nasGukPane').style.pointerEvents = 'none';
+map.getPane('nasGukPane').style.pointerEvents = 'none'; // 지도가 클릭되도록 설정
 
+// TM 좌표계 설정 (EPSG:5186 - 한국 중부원점)
 proj4.defs("EPSG:5186", "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs");
 
-const vworldBase = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', { key: VWORLD_API_KEY, layer: 'Base', ext: 'png', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22 });
-const vworldSatellite = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', { key: VWORLD_API_KEY, layer: 'Satellite', ext: 'jpeg', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22 });
-const vworldHybrid = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', { key: VWORLD_API_KEY, layer: 'Hybrid', ext: 'png', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22 });
-const vworldLxLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", { key: VWORLD_API_KEY, layers: 'lt_c_landinfobasemap', styles: '', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', maxZoom: 22, maxNativeZoom: 19, detectRetina: true, tileSize: 512, zoomOffset: 0, className: 'cadastral-layer' });
-const vworldContinuousLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", { key: VWORLD_API_KEY, layers: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun', styles: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun', format: 'image/png', transparent: true, opacity: 0.6, version: '1.3.0', maxZoom: 22, maxNativeZoom: 19, detectRetina: true, tileSize: 512, zoomOffset: 0, className: 'cadastral-layer' });
-const nasGukLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon/guk/{z}/{x}/{y}.png', { minZoom: 1, maxZoom: 22, maxNativeZoom: 18, tms: false, pane: 'nasGukPane', opacity: 1, attribution: 'Suwon Guk' });
+/* --------------------------------------------------------------------------
+   5. 레이어 관리 (Layer Management)
+   -------------------------------------------------------------------------- */
+// VWorld에서 제공하는 지도 타일들입니다.
 
-// [기능추가] 산림보호구역 Data API 레이어
-let forestDataLayer = null;
-let isForestActive = false;
-let lastForestRequestId = 0;
+// 1. 기본 배경 지도
+const vworldBase = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', {
+    key: VWORLD_API_KEY, layer: 'Base', ext: 'png', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22
+});
 
+// 2. 위성(영상) 지도
+const vworldSatellite = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', {
+    key: VWORLD_API_KEY, layer: 'Satellite', ext: 'jpeg', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22
+});
+
+// 3. 하이브리드(지명, 도로 등) 오버레이
+const vworldHybrid = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', {
+    key: VWORLD_API_KEY, layer: 'Hybrid', ext: 'png', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22
+});
+
+// 4. 지적도 (LX, 편집도)
+const vworldLxLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_landinfobasemap', styles: '', format: 'image/png',
+    transparent: true, opacity: 1, version: '1.3.0', maxZoom: 22, maxNativeZoom: 19,
+    detectRetina: true, tileSize: 512, zoomOffset: 0, className: 'cadastral-layer'
+});
+
+// 5. 연속 지적도
+const vworldContinuousLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun', styles: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun',
+    format: 'image/png', transparent: true, opacity: 0.6, version: '1.3.0',
+    maxZoom: 22, maxNativeZoom: 19, detectRetina: true, tileSize: 512, zoomOffset: 0, className: 'cadastral-layer'
+});
+
+// 6. 국유림 레이어 (사용자 정의 타일)
+const nasGukLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon/guk/{z}/{x}/{y}.png', {
+    minZoom: 1, maxZoom: 22, maxNativeZoom: 18, tms: false, pane: 'nasGukPane', opacity: 1, attribution: 'Suwon Guk'
+});
+
+
+// 초기 레이어 추가 (위성지도 + 연속지적도 + 하이브리드)
 map.addLayer(vworldSatellite);
-
-map.addLayer(vworldContinuousLayer); // 기본값: 연속지적도
+map.addLayer(vworldContinuousLayer);
 map.addLayer(vworldHybrid);
 
 
-/* --------------------------------------------------------------------------
-   4. 지도 조작 및 UI 기능 
--------------------------------------------------------------------------- */
+/* --- 레이어 제어 함수들 --- */
 
+// 배경 지도 토글 (ON/OFF)
+function toggleBaseLayer(isChecked) {
+    const optionsDiv = document.getElementById('base-layer-options');
+    if (isChecked) {
+        optionsDiv.style.display = 'block';
+        const selectedValue = document.querySelector('input[name="baseMap"]:checked').value;
+        changeBaseMap(selectedValue);
+    } else {
+        optionsDiv.style.display = 'none';
+        map.removeLayer(vworldSatellite);
+        map.removeLayer(vworldBase);
+    }
+}
+
+// 배경 지도 종류 변경 (위성 vs 일반)
+function changeBaseMap(type) {
+    if (!document.getElementById('chk-base-layer').checked) return;
+
+    if (type === 'satellite') {
+        map.addLayer(vworldSatellite);
+        map.removeLayer(vworldBase);
+    } else {
+        map.addLayer(vworldBase);
+        map.removeLayer(vworldSatellite);
+    }
+
+    // 오버레이 레이어들을 맨 위로 올림
+    if (map.hasLayer(vworldLxLayer)) vworldLxLayer.bringToFront();
+    if (map.hasLayer(vworldContinuousLayer)) vworldContinuousLayer.bringToFront();
+    if (map.hasLayer(vworldHybrid)) vworldHybrid.bringToFront();
+}
+
+// 지적도 종류 변경 (연속지적도 vs LX)
+function changeCadastralMap(type) {
+    if (!document.getElementById('chk-cadastral').checked) return;
+
+    if (type === 'lx') {
+        map.addLayer(vworldLxLayer);
+        map.removeLayer(vworldContinuousLayer);
+    } else {
+        // 기본값: 연속지적도
+        map.addLayer(vworldContinuousLayer);
+        map.removeLayer(vworldLxLayer);
+    }
+}
+
+// 오버레이 레이어 켜고 끄기
+function toggleOverlay(type, isChecked) {
+    let layer;
+
+    if (type === 'hybrid') {
+        layer = vworldHybrid;
+    } else if (type === 'cadastral') {
+        // 지적도 메뉴 처리
+        const optionsDiv = document.getElementById('cadastral-layer-options');
+        if (isChecked) {
+            optionsDiv.style.display = 'block';
+            const selectedValue = document.querySelector('input[name="cadastralMap"]:checked').value;
+            changeCadastralMap(selectedValue);
+        } else {
+            optionsDiv.style.display = 'none';
+            map.removeLayer(vworldLxLayer);
+            map.removeLayer(vworldContinuousLayer);
+        }
+        return;
+    } else if (type === 'nasGuk') {
+        layer = nasGukLayer;
+    } else if (type === 'forest') {
+        // 산림보호구역 API 처리
+        isForestActive = isChecked;
+        if (isChecked) {
+            if (!forestDataLayer) {
+                // 레이어가 없으면 새로 생성 (초록색 점선)
+                forestDataLayer = L.geoJSON(null, {
+                    style: {
+                        color: "#00FF00", weight: 2, opacity: 0.6, fillOpacity: 0.1, dashArray: '5, 5'
+                    },
+                    onEachFeature: function (feature, layer) {
+                        layer.bindPopup("산림보호구역");
+                    }
+                }).addTo(map);
+            } else {
+                map.addLayer(forestDataLayer);
+            }
+            fetchForestData(); // 데이터 불러오기
+        } else {
+            if (forestDataLayer) {
+                map.removeLayer(forestDataLayer);
+                forestDataLayer.clearLayers();
+            }
+        }
+        return;
+    }
+
+    // 일반 레이어 추가/제거
+    if (isChecked) {
+        map.addLayer(layer);
+        if (type !== 'nasGuk') layer.bringToFront();
+    } else {
+        map.removeLayer(layer);
+    }
+}
+
+// 산림보호구역 데이터 가져오기 (VWorld Data API)
+function fetchForestData() {
+    if (!isForestActive || !forestDataLayer) return;
+
+    // 성능을 위해 줌 레벨이 13 미만이면 데이터 표시 안 함
+    if (map.getZoom() < 13) {
+        forestDataLayer.clearLayers();
+        return;
+    }
+
+    // 현재 화면 영역(Bounds) 가져오기
+    const bounds = map.getBounds();
+    const min = bounds.getSouthWest();
+    const max = bounds.getNorthEast();
+    const bbox = `${min.lng},${min.lat},${max.lng},${max.lat}`;
+
+    const requestId = ++lastForestRequestId;
+    const callbackName = 'vworld_forest_' + Date.now();
+
+    // JSONP 방식으로 데이터 요청
+    window[callbackName] = function (data) {
+        if (requestId !== lastForestRequestId) {
+            delete window[callbackName];
+            return;
+        }
+
+        if (data.response.status === "OK") {
+            forestDataLayer.clearLayers();
+            const features = data.response.result.featureCollection.features;
+            forestDataLayer.addData(features);
+        }
+
+        delete window[callbackName];
+        document.getElementById(callbackName)?.remove();
+    };
+
+    const url = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LT_C_UF151&key=${VWORLD_API_KEY}&domain=${window.location.hostname}&geomFilter=BOX(${bbox})&format=json&errorFormat=json&size=1000&callback=${callbackName}`;
+    const script = document.createElement('script');
+    script.id = callbackName;
+    script.src = url;
+    document.body.appendChild(script);
+}
+
+// 지도 이동이 끝날 때마다 데이터를 다시 불러옴
+map.on('moveend', function () {
+    if (isForestActive) fetchForestData();
+});
+/* --------------------------------------------------------------------------
+   6. UI 컨트롤러 (UI Controller)
+   -------------------------------------------------------------------------- */
+// 사이드바, 모달창, 탭 등 화면의 UI를 제어하는 함수들입니다.
+
+// 사이드바 열기 애니메이션
+function openSidebar() {
+    syncSidebarUI(); // 현재 지도 상태와 버튼 동기화
+    renderSurveyList(); // 저장된 기록 목록 표시
+    const overlay = document.getElementById('sidebar-overlay');
+    overlay.style.display = 'block';
+    // 약간의 딜레이 후 클래스 추가 (부드러운 효과)
+    setTimeout(() => { overlay.classList.add('visible'); }, 10);
+}
+
+// 사이드바 닫기 애니메이션
+function closeSidebar() {
+    const overlay = document.getElementById('sidebar-overlay');
+    overlay.classList.remove('visible');
+    // 애니메이션이 끝난(0.3초) 후 숨김
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+}
+
+// 사이드바 UI 상태 동기화 (현재 켜진 레이어에 맞춰 체크박스 설정)
+function syncSidebarUI() {
+    const hasBase = map.hasLayer(vworldBase);
+    const hasSat = map.hasLayer(vworldSatellite);
+
+    // 배경 지도
+    document.getElementById('chk-base-layer').checked = (hasBase || hasSat);
+    if (hasSat) document.querySelector('input[name="baseMap"][value="satellite"]').checked = true;
+    else if (hasBase) document.querySelector('input[name="baseMap"][value="base"]').checked = true;
+    toggleBaseLayer(hasBase || hasSat);
+
+    // 하이브리드
+    document.getElementById('chk-hybrid').checked = map.hasLayer(vworldHybrid);
+
+    // 지적도
+    const hasContinuous = map.hasLayer(vworldContinuousLayer);
+    const hasLx = map.hasLayer(vworldLxLayer);
+    document.getElementById('chk-cadastral').checked = (hasContinuous || hasLx);
+    if (hasLx) document.querySelector('input[name="cadastralMap"][value="lx"]').checked = true;
+    else document.querySelector('input[name="cadastralMap"][value="continuous"]').checked = true;
+    toggleOverlay('cadastral', (hasContinuous || hasLx));
+
+    // 국유림
+    document.getElementById('chk-nas-guk').checked = map.hasLayer(nasGukLayer);
+}
+
+// 사이드바 탭 전환 (지도 설정 <-> 측량 기록)
+function switchSidebarTab(tabName) {
+    // 버튼 스타일 초기화
+    document.getElementById('tab-btn-map').classList.remove('active');
+    document.getElementById('tab-btn-record').classList.remove('active');
+    // 내용 숨기기
+    document.getElementById('content-map').classList.remove('active');
+    document.getElementById('content-record').classList.remove('active');
+
+    // 선택된 탭 활성화
+    document.getElementById('tab-btn-' + tabName).classList.add('active');
+    document.getElementById('content-' + tabName).classList.add('active');
+}
+
+// 비공개 레이어 잠금 해제 (암호 입력)
+window.unlockHiddenLayers = function () {
+    const section = document.getElementById('hidden-layer-section');
+    const btnLock = document.getElementById('btn-lock');
+
+    if (section.style.display === 'block') {
+        alert("이미 잠금이 해제되었습니다.");
+        return;
+    }
+
+    const input = prompt("암호를 입력하세요:");
+    if (!input) return;
+
+    // 간단한 Base64 인코딩 비교 (암호: 8906)
+    if (btoa(input) === 'ODkwNg==') {
+        section.style.display = 'block';
+        btnLock.innerHTML = SVG_ICONS.unlock; // 아이콘 변경
+        btnLock.style.color = '#3B82F6';
+        alert("잠금이 해제되었습니다.");
+    } else {
+        alert("암호가 올바르지 않습니다.");
+    }
+};
+
+/* --------------------------------------------------------------------------
+   7. 기능: 검색 및 주소 (Feature: Search & Address)
+   -------------------------------------------------------------------------- */
+// 주소 검색 및 좌표 변환 관련 기능입니다.
+
+let isSearchHistoryEnabled = true;
+
+// 초기화: 저장된 검색 설정 불러오기
+(function initSearchSettings() {
+    const setting = localStorage.getItem(SEARCH_SETTING_KEY);
+    if (setting !== null) { isSearchHistoryEnabled = (setting === 'true'); }
+    document.getElementById('chk-history-save').checked = isSearchHistoryEnabled;
+})();
+
+// 검색창 열고 닫기
+function toggleSearchBox() {
+    const box = document.getElementById('search-container');
+    if (box.style.display === 'flex') {
+        box.style.display = 'none';
+    } else {
+        box.style.display = 'flex';
+        document.getElementById('search-input').focus();
+    }
+}
+
+// 검색창 외부 클릭 시 닫기
+document.addEventListener('mousedown', function (e) {
+    const sc = document.getElementById('search-container');
+    const btn = document.getElementById('btn-search-toggle');
+    if (sc.style.display === 'flex' && !sc.contains(e.target) && !btn.contains(e.target)) {
+        sc.style.display = 'none';
+    }
+});
+
+// VWorld 검색 API 호출 함수 (JSONP)
+function callVworldSearchApi(query, type, callback) {
+    const callbackName = 'vworld_search_' + type + '_' + Math.floor(Math.random() * 100000);
+    window[callbackName] = function (data) {
+        delete window[callbackName];
+        document.getElementById(callbackName)?.remove();
+
+        if (data.response.status === "OK" && data.response.result && data.response.result.items.length > 0)
+            callback(data.response.result.items);
+        else
+            callback(null);
+    };
+
+    const script = document.createElement('script');
+    script.id = callbackName;
+    script.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=50&page=1&query=${encodeURIComponent(query)}&type=${type}&format=json&errorformat=json&key=${VWORLD_API_KEY}&callback=${callbackName}`;
+    document.body.appendChild(script);
+}
+
+// VWorld 좌표 변환 API 호출 함수
+function callVworldCoordApi(query, type, callback) {
+    const callbackName = 'vworld_coord_' + Math.floor(Math.random() * 100000);
+    window[callbackName] = function (data) {
+        delete window[callbackName];
+        document.getElementById(callbackName)?.remove();
+
+        if (data.response.status === "OK" && data.response.result)
+            callback(data.response.result);
+        else
+            callback(null);
+    };
+
+    const script = document.createElement('script');
+    script.id = callbackName;
+    script.src = `https://api.vworld.kr/req/address?service=address&request=getCoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(query)}&refine=true&simple=false&format=json&type=${type || 'PARCEL'}&key=${VWORLD_API_KEY}&callback=${callbackName}`;
+    document.body.appendChild(script);
+}
+
+// 검색 실행 메인 함수
+function executeSearch(keyword) {
+    const query = keyword || document.getElementById('search-input').value;
+    if (!query) return;
+
+    if (isSearchHistoryEnabled) { addToHistory(query); }
+    document.getElementById('history-panel').style.display = 'none';
+    document.getElementById('search-input').value = query;
+
+    // 단계별 검색: 주소(ADDRESS) -> 장소(PLACE) -> 도로명(ROAD) -> 지번(PARCEL)
+    callVworldSearchApi(query, 'ADDRESS', function (addrResults) {
+        if (addrResults && addrResults.length > 0) {
+            handleSearchResults(addrResults);
+        } else {
+            callVworldSearchApi(query, 'PLACE', function (placeResults) {
+                if (placeResults && placeResults.length > 0) {
+                    handleSearchResults(placeResults);
+                } else {
+                    callVworldCoordApi(query, 'ROAD', function (roadResult) {
+                        if (roadResult) {
+                            handleSingleResult(roadResult, query, 'ROAD');
+                        } else {
+                            callVworldCoordApi(query, 'PARCEL', function (parcelResult) {
+                                if (parcelResult) {
+                                    handleSingleResult(parcelResult, query, 'PARCEL');
+                                } else {
+                                    alert("검색 결과가 없습니다.\n정확한 주소(예: 화성시 장안면 장안리 산124)를 입력해보세요.");
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        }
+    });
+}
+
+// 단일 결과 처리 (바로 이동)
+function handleSingleResult(coordResult, query, type) {
+    const finalResult = {
+        point: coordResult.point,
+        title: query,
+        address: {
+            road: (type === 'ROAD' && coordResult.refined) ? coordResult.refined.text : "",
+            parcel: (type === 'PARCEL' && coordResult.refined) ? coordResult.refined.text : ""
+        }
+    };
+    moveToSearchResult(finalResult);
+}
+
+// 다중 결과 처리 (목록 표시)
+function handleSearchResults(items) {
+    if (items.length === 1) {
+        moveToSearchResult(items[0]);
+    } else {
+        renderSearchResultList(items);
+        document.getElementById('search-result-panel').style.display = 'block';
+    }
+}
+
+// 검색 결과 목록 그리기
+function renderSearchResultList(items) {
+    const listEl = document.getElementById('search-result-list');
+    listEl.innerHTML = "";
+
+    items.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'search-result-item';
+
+        const roadAddr = item.address.road || "";
+        const parcelAddr = item.address.parcel || "";
+        const title = item.title || roadAddr || parcelAddr;
+
+        let html = `<div class="search-result-title">${title}</div>`;
+
+        if (roadAddr) html += `<div class="search-result-addr"><span class="badge-road">도로명</span> ${roadAddr}</div>`;
+        if (parcelAddr) html += `<div class="search-result-addr"><span class="badge-parcel">지번</span> ${parcelAddr}</div>`;
+
+        li.innerHTML = html;
+        li.onclick = function () {
+            moveToSearchResult(item);
+            closeSearchResult();
+        };
+        listEl.appendChild(li);
+    });
+}
+
+function closeSearchResult() {
+    document.getElementById('search-result-panel').style.display = 'none';
+    document.getElementById('search-input').focus();
+}
+
+function moveToSearchResult(result) {
+    const point = result.point;
+    map.flyTo([point.y, point.x], 16, { duration: 1.5 });
+
+    // 검색된 위치 정보 표시
+    showInfoPopup(point.y, point.x);
+    // 지적 경계 강조
+    fetchAndHighlightBoundary(point.x, point.y);
+}
+
+// --- 검색 기록 관리 ---
+function getHistory() { const json = localStorage.getItem(SEARCH_HISTORY_KEY); return json ? JSON.parse(json) : []; }
+function saveHistory(list) { localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(list)); }
+
+function addToHistory(keyword) {
+    let list = getHistory();
+    list = list.filter(item => item !== keyword); // 중복 제거
+    list.unshift(keyword); // 맨 앞에 추가
+    if (list.length > 10) list = list.slice(0, 10); // 최대 10개
+    saveHistory(list);
+}
+
+function toggleHistorySave(checked) {
+    isSearchHistoryEnabled = checked;
+    localStorage.setItem(SEARCH_SETTING_KEY, checked);
+    if (!checked) document.getElementById('history-panel').style.display = 'none';
+}
+
+function clearHistoryAll() {
+    if (confirm("검색 기록을 모두 삭제하시겠습니까?")) {
+        saveHistory([]);
+        renderHistoryList();
+    }
+}
+
+function deleteHistoryItem(index) {
+    const list = getHistory();
+    list.splice(index, 1);
+    saveHistory(list);
+    renderHistoryList();
+}
+
+function showHistoryPanel() {
+    renderHistoryList();
+    document.getElementById('history-panel').style.display = 'block';
+}
+
+function renderHistoryList() {
+    const list = getHistory();
+    const ul = document.getElementById('history-list');
+    ul.innerHTML = "";
+
+    if (list.length === 0) {
+        ul.innerHTML = '<li style="padding:10px; color:#999; text-align:center;">최근 기록 없음</li>';
+        return;
+    }
+
+    list.forEach(function (text, index) {
+        const li = document.createElement('li');
+        li.className = 'history-item';
+
+        const spanText = document.createElement('span');
+        spanText.className = 'history-text';
+        spanText.innerText = text;
+        spanText.onclick = () => executeSearch(text);
+
+        const btnDel = document.createElement('span');
+        btnDel.className = 'btn-del-history';
+        btnDel.innerHTML = SVG_ICONS.close;
+        btnDel.onclick = (e) => { e.stopPropagation(); deleteHistoryItem(index); };
+
+        li.appendChild(spanText);
+        li.appendChild(btnDel);
+        ul.appendChild(li);
+    });
+}
+
+/* --------------------------------------------------------------------------
+   8. 기능: 정보 팝업 (Feature: Popup & Info)
+   -------------------------------------------------------------------------- */
+// 지도 클릭 시 주소와 좌표 정보를 보여주는 팝업 기능입니다.
+
+// 정보 팝업 표시
 function showInfoPopup(lat, lng) {
     const callbackName = 'vworld_popup_' + Math.floor(Math.random() * 100000);
+
+    // 주소 가져오기 콜백
     window[callbackName] = function (data) {
         let parcelAddr = "주소 정보 없음";
         let roadAddr = "";
@@ -100,27 +652,21 @@ function showInfoPopup(lat, lng) {
         if (data.response.status === "OK") {
             const results = data.response.result;
             results.forEach(item => {
-                if (item.type === 'parcel') {
-                    parcelAddr = item.text;
-                } else if (item.type === 'road') {
-                    roadAddr = item.text;
-                }
+                if (item.type === 'parcel') parcelAddr = item.text;
+                else if (item.type === 'road') roadAddr = item.text;
             });
-            // 만약 지번 주소가 없는데 도로명 주소만 있다면 도로명 주소를 메인으로 사용 (예외 처리)
+            // 지번 없고 도로명만 있으면 대치
             if (parcelAddr === "주소 정보 없음" && roadAddr !== "") {
                 parcelAddr = roadAddr;
                 roadAddr = "";
             }
         }
 
-        if (currentSearchMarker) {
-            map.removeLayer(currentSearchMarker);
-        }
-
-        // 점 측량과 동일한 스타일의 마커 생성 (빨간색)
+        // 기존 마커 제거 후 새 마커 생성
+        if (currentSearchMarker) map.removeLayer(currentSearchMarker);
         currentSearchMarker = L.marker([lat, lng], { icon: createColoredMarkerIcon('#FF0000') }).addTo(map);
 
-        // 점 측량과 동일한 스타일의 팝업 내용
+        // 좌표 텍스트 생성
         let infoText = "";
         if (coordMode === 2) {
             infoText = "X:" + getTmCoords(lat, lng).x + " | " + "Y:" + getTmCoords(lat, lng).y;
@@ -130,21 +676,19 @@ function showInfoPopup(lat, lng) {
             infoText = convertToDms(lat, 'lat') + " " + convertToDms(lng, 'lng');
         }
 
+        // 팝업 HTML 컨텐츠
         const content = `<div style="min-width: 210px;">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <div style="display:flex; align-items:center; gap:5px;">
                                     <b onclick="copyText(this.innerText, false, '지번 주소')" style="color:#3B82F6; font-size: 14px; line-height: 1.2; word-break: keep-all; cursor: pointer;">${parcelAddr}</b>
                                 </div>
                             </div>
-
                             <hr style="margin: 10px 0; border: none; border-top: 1px solid #f0f0f0;">
-
                             ${roadAddr ? `
                             <div style="display:flex; align-items:baseline; font-size: 12px; color: #555; margin-bottom: 5px;">
                                 <span class="badge-road" style="flex-shrink:0; width:29px; display:inline-block; text-align:center;">도로명</span>
                                 <span onclick="copyText(this.innerText, false, '도로명 주소')" style="margin-left: 5px; line-height: 1.2; word-break: keep-all; cursor: pointer;">${roadAddr}</span>
                             </div>` : ''}
-
                             <div style="display:flex; align-items:baseline; font-size: 12px; color: #555; margin-bottom: 20px;">
                                 <span class="badge-coord" style="flex-shrink:0; width:29px; display:inline-block; text-align:center;">좌표</span>
                                 <div onclick="copyText(this.innerText, false, '좌표')" style="margin-left: 5px; line-height: 1.2; cursor: pointer;">${infoText}</div>
@@ -177,11 +721,11 @@ function showInfoPopup(lat, lng) {
                                 ">K-GeoP 조회</button>
                             </div>
                         </div>`;
+
         currentSearchMarker.bindPopup(content).openPopup();
 
         delete window[callbackName];
-        const scriptTag = document.getElementById(callbackName);
-        if (scriptTag) scriptTag.remove();
+        document.getElementById(callbackName)?.remove();
     };
 
     const script = document.createElement('script');
@@ -190,12 +734,13 @@ function showInfoPopup(lat, lng) {
     document.body.appendChild(script);
 }
 
+// 지도 더블 클릭 시 이벤트
 map.on('dblclick', function (e) {
     showInfoPopup(e.latlng.lat, e.latlng.lng);
     fetchAndHighlightBoundary(e.latlng.lng, e.latlng.lat);
 });
 
-// [기능추가] 지도 클릭 시 지적 경계 및 마커 해제
+// 지도 클릭(바탕) 시 선택 해제
 map.on('click', function (e) {
     if (currentBoundaryLayer) {
         map.removeLayer(currentBoundaryLayer);
@@ -207,24 +752,7 @@ map.on('click', function (e) {
     }
 });
 
-// [기능추가] 팝업 내 토지e음 버튼 업데이트
-function updatePopupLandEumButton(pnu) {
-    const btn = document.getElementById('btn-landeum-popup');
-    if (btn) {
-        btn.classList.remove('disabled');
-        btn.disabled = false;
-        btn.onclick = function () {
-            // [패치] 바로 열람이 되도록 파라미터 추가
-            window.open(`https://www.eum.go.kr/web/ar/lu/luLandDet.jsp?pnu=${pnu}&mode=search&isNoScr=script&add=land`, '_blank');
-        };
-        btn.innerText = "토지e음 조회";
-        btn.style.backgroundColor = "#007bff";
-        btn.style.color = "#fff";
-        btn.style.border = "1px solid #007bff";
-    }
-}
-
-// [기능추가] 텍스트 복사 함수
+// 텍스트 복사 헬퍼 함수
 function copyText(text, silent = false, itemLabel = "주소") {
     const msg = `${itemLabel}가 복사되었습니다.`;
 
@@ -232,7 +760,7 @@ function copyText(text, silent = false, itemLabel = "주소") {
         navigator.clipboard.writeText(text).then(() => {
             if (!silent) alert(msg);
         }).catch(err => {
-            console.error("복사 실패:", err);
+            console.error(err);
             prompt("복사하세요:", text);
         });
     } else {
@@ -246,23 +774,19 @@ function copyText(text, silent = false, itemLabel = "주소") {
     }
 }
 
-// [기능추가] 팝업 위치 공유 함수
+// 팝업 위치 공유 (공유하기 버튼)
 function shareLocationText(address, lat, lng) {
     let coordText = `${lat}, ${lng}`;
-
-    // 현재 좌표 모드에 맞춰 공유 텍스트 형식 변환
-    if (coordMode === 2) { // TM
+    if (coordMode === 2) {
         const tm = getTmCoords(lat, lng);
         coordText = `X: ${tm.x}, Y: ${tm.y}`;
-    } else if (coordMode === 1) { // Decimal
+    } else if (coordMode === 1) {
         coordText = `N ${parseFloat(lat).toFixed(4)}° , E ${parseFloat(lng).toFixed(4)}°`;
-    } else { // DMS (기본)
+    } else {
         coordText = `${convertToDms(lat, 'lat')}, ${convertToDms(lng, 'lng')}`;
     }
 
-    // 내 위치 공유(shareMyLocation)와 동일한 포맷 사용
     const shareUrl = `${window.location.origin}${window.location.pathname}?lat=${lat}&lng=${lng}`;
-
     const shareData = {
         title: '[F-Field] 위치 공유',
         text: `\n주소: ${address}\n좌표: ${coordText}\n\n링크를 클릭하면 공유된 위치로 이동합니다.`,
@@ -270,281 +794,463 @@ function shareLocationText(address, lat, lng) {
     };
 
     if (navigator.share) {
-        navigator.share(shareData).catch(err => {
-            console.log('공유 취소 또는 실패', err);
-        });
+        navigator.share(shareData).catch(err => console.log('공유 취소'));
     } else {
-        // PC 등 navigator.share 미지원 시 클립보드 복사 (URL + 텍스트)
         const clipText = `${shareData.text}\n${shareUrl}`;
         copyText(clipText);
     }
 }
 
-document.getElementById('map').oncontextmenu = function (e) { e.preventDefault(); e.stopPropagation(); return false; };
-
-// [UI] 사이드바 열기 애니메이션
-function openSidebar() {
-    syncSidebarUI();
-    renderSurveyList();
-    const overlay = document.getElementById('sidebar-overlay');
-    overlay.style.display = 'block';
-
-    // 부드러운 애니메이션 효과를 위해 약간의 지연
-    setTimeout(() => {
-        overlay.classList.add('visible');
-    }, 10);
-}
-
-// [UI] 사이드바 닫기 애니메이션
-function closeSidebar() {
-    const overlay = document.getElementById('sidebar-overlay');
-    overlay.classList.remove('visible');
-
-    // CSS transition(0.3s)이 끝난 후 숨김 처리
-    setTimeout(() => {
-        overlay.style.display = 'none';
-    }, 300);
-}
-
-function syncSidebarUI() {
-    const hasBase = map.hasLayer(vworldBase);
-    const hasSat = map.hasLayer(vworldSatellite);
-    document.getElementById('chk-base-layer').checked = (hasBase || hasSat);
-    if (hasSat) {
-        document.querySelector('input[name="baseMap"][value="satellite"]').checked = true;
-    } else if (hasBase) {
-        document.querySelector('input[name="baseMap"][value="base"]').checked = true;
-    }
-    toggleBaseLayer(hasBase || hasSat);
-    document.getElementById('chk-hybrid').checked = map.hasLayer(vworldHybrid);
-
-    const hasContinuous = map.hasLayer(vworldContinuousLayer);
-    const hasLx = map.hasLayer(vworldLxLayer);
-    document.getElementById('chk-cadastral').checked = (hasContinuous || hasLx);
-    if (hasLx) {
-        document.querySelector('input[name="cadastralMap"][value="lx"]').checked = true;
-    } else {
-        // 기본값: continuous
-        document.querySelector('input[name="cadastralMap"][value="continuous"]').checked = true;
-    }
-    toggleOverlay('cadastral', (hasContinuous || hasLx));
-    document.getElementById('chk-nas-guk').checked = map.hasLayer(nasGukLayer);
-
-}
-
-// [기능추가] 지적 경계 가져오기 및 강조 표시
+// 지적 경계 가져오기 및 강조
 function fetchAndHighlightBoundary(x, y) {
-    // x: longitude, y: latitude
     const callbackName = 'vworld_boundary_' + Math.floor(Math.random() * 100000);
-
-    // [기능추가] 로딩 중 표시 (재시도 시 유용)
     const btn = document.getElementById('btn-landeum-popup');
+
+    // 로딩 표시
     if (btn) {
         btn.innerText = "로딩 중...";
         btn.classList.add('disabled');
-        // btn.disabled = true; // [수정] 클릭해서 재시도 가능하도록 비활성화 속성 제거
     }
 
     window[callbackName] = function (data) {
         delete window[callbackName];
         document.getElementById(callbackName)?.remove();
 
-        if (data.response.status === "OK" && data.response.result && data.response.result.featureCollection.features.length > 0) {
+        if (data.response.status === "OK" && data.response.result.featureCollection.features.length > 0) {
             const feature = data.response.result.featureCollection.features[0];
 
-            if (currentBoundaryLayer) {
-                map.removeLayer(currentBoundaryLayer);
-            }
+            if (currentBoundaryLayer) map.removeLayer(currentBoundaryLayer);
 
-            // 강조 스타일 적용 (빨간색 굵은 테두리, 채우기 없음)
+            // 강조 스타일 (빨간 테두리)
             currentBoundaryLayer = L.geoJSON(feature, {
                 style: {
-                    color: '#FF0000',
-                    weight: 4,
-                    opacity: 0.8,
-                    fillColor: '#FF0000',
-                    fillOpacity: 0
+                    color: '#FF0000', weight: 4, opacity: 0.8,
+                    fillColor: '#FF0000', fillOpacity: 0
                 }
             }).addTo(map);
 
-            // [기능추가] PNU 추출 및 팝업 버튼 업데이트
+            // PNU 기반 토지e음 버튼 활성화
             if (feature.properties && feature.properties.pnu) {
                 updatePopupLandEumButton(feature.properties.pnu);
             }
         } else {
-            // [기능추가] 실패 시 재시도 활성화
-            const btn = document.getElementById('btn-landeum-popup');
+            // 실패 시 재시도 버튼 활성화
             if (btn) {
                 btn.innerText = "재시도";
                 btn.classList.remove('disabled');
                 btn.disabled = false;
-                btn.style.backgroundColor = "#999"; // 회색 배경 (실패/대기 상태 의미)
+                btn.style.backgroundColor = "#999";
                 btn.style.color = "white";
-                btn.onclick = function () {
-                    fetchAndHighlightBoundary(x, y);
-                };
+                btn.onclick = () => fetchAndHighlightBoundary(x, y);
             }
         }
     };
 
     const script = document.createElement('script');
     script.id = callbackName;
-    // VWorld Data API: LP_PA_CBND_BUBUN (연속지적도)
     script.src = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LP_PA_CBND_BUBUN&key=${VWORLD_API_KEY}&domain=${window.location.hostname}&geomFilter=POINT(${x} ${y})&format=json&errorformat=json&callback=${callbackName}`;
     document.body.appendChild(script);
 }
 
-// [기능추가] 주소명 단축 함수
-function getShortAddress(addressName) {
-    if (!addressName) return "";
-    let shortName = addressName;
-    const parts = addressName.split(' ');
-    let targetIdx = -1;
-    // 뒤에서부터 탐색하여 '동', '리', '가'로 끝나는 부분 찾기
-    for (let i = parts.length - 1; i >= 0; i--) {
-        if (parts[i].match(/(동|리|가)$/)) {
-            targetIdx = i;
-            break;
-        }
+// 팝업 내 토지e음 버튼 업데이트
+function updatePopupLandEumButton(pnu) {
+    const btn = document.getElementById('btn-landeum-popup');
+    if (btn) {
+        btn.classList.remove('disabled');
+        btn.disabled = false;
+        btn.onclick = () => {
+            window.open(`https://www.eum.go.kr/web/ar/lu/luLandDet.jsp?pnu=${pnu}&mode=search&isNoScr=script&add=land`, '_blank');
+        };
+        btn.innerText = "토지e음 조회";
+        btn.style.backgroundColor = "#007bff";
+        btn.style.color = "#fff";
+        btn.style.border = "1px solid #007bff";
     }
-    if (targetIdx !== -1) {
-        shortName = parts.slice(targetIdx).join(' ');
-    } else if (parts.length >= 2) {
-        // '동/리/가'가 없으면 뒤에서 두 단어만 사용 (예비책)
-        shortName = parts.slice(parts.length - 2).join(' ');
-    }
-    return shortName;
 }
 
-// [기능추가] 현재 강조된 지적 경계를 폴리곤 기록으로 저장
-function saveCurrentBoundary(addressName) {
-    if (!currentBoundaryLayer) {
-        alert("선택된 영역이 없습니다. 지도를 더블클릭하여 영역을 선택해주세요.");
+/* --------------------------------------------------------------------------
+   9. 기능: 그리기 및 편집 (Feature: Drawing & Editing)
+   -------------------------------------------------------------------------- */
+// 지도 위에 점, 선, 면을 그리고 수정하는 기능입니다.
+
+const drawnItems = new L.FeatureGroup(); // 그려진 도형들을 담을 그룹
+map.addLayer(drawnItems);
+
+// 기본 아이콘 설정 (파란색)
+const defaultSurveyIcon = createColoredMarkerIcon('#0040ff');
+
+// 그리기 도구 설정 (Leaflet.Draw)
+const drawControl = new L.Control.Draw({
+    edit: { featureGroup: drawnItems },
+    draw: {
+        polygon: true,
+        polyline: true,
+        marker: { icon: defaultSurveyIcon },
+        circle: false,
+        rectangle: false,
+        circlemarker: false
+    }
+});
+map.addControl(drawControl);
+
+const actionToolbar = document.getElementById('action-toolbar');
+
+function startDraw(type) {
+    if (currentDrawer) currentDrawer.disable();
+    stopEditMode();
+
+    const options = { touchIcon: null, showLength: true, allowIntersection: true };
+
+    if (type === 'polygon') {
+        currentDrawer = new L.Draw.Polygon(map, options);
+        highlightButton('btn-poly');
+    } else if (type === 'polyline') {
+        currentDrawer = new L.Draw.Polyline(map, options);
+        highlightButton('btn-line');
+    } else if (type === 'marker') {
+        currentDrawer = new L.Draw.Marker(map, { icon: defaultSurveyIcon });
+        highlightButton('btn-point');
+    }
+
+    document.body.classList.add('recording-mode'); // UI 모드 변경
+
+    // 수동 종료 처리를 위한 후킹
+    if (currentDrawer && (type === 'polygon' || type === 'polyline')) {
+        currentDrawer._originalFinishShape = currentDrawer._finishShape;
+        currentDrawer._finishShape = function () {
+            if (isManualFinish) { this._originalFinishShape(); }
+        };
+    }
+    currentDrawer.enable();
+    actionToolbar.style.display = 'flex';
+}
+
+// 그리기 완료
+function completeDrawing() {
+    if (currentDrawer) {
+        isManualFinish = true;
+        if (currentDrawer.completeShape) currentDrawer.completeShape();
+        else if (currentDrawer._finishShape) currentDrawer._finishShape();
+        else currentDrawer.disable();
+        isManualFinish = false;
+    }
+    resetDrawingState();
+}
+
+// 그리기 취소
+function cancelDrawing() {
+    if (currentDrawer) {
+        currentDrawer.disable();
+        currentDrawer = null;
+    }
+    resetDrawingState();
+}
+
+function resetDrawingState() {
+    document.body.classList.remove('recording-mode');
+    actionToolbar.style.display = 'none';
+    resetButtonStyles();
+}
+
+// 편집 모드 시작
+const editHandler = new L.EditToolbar.Edit(map, { featureGroup: drawnItems });
+
+function startEditMode() {
+    if (currentDrawer) cancelDrawing();
+    editHandler.enable();
+    highlightButton('btn-edit');
+    alert("수정 모드: 도형을 드래그하거나 점을 움직이세요.\n완료하려면 지도를 터치하세요.");
+
+    map.once('click', function () {
+        editHandler.save();
+        editHandler.disable();
+        resetButtonStyles();
+        alert("수정 완료");
+    });
+}
+
+function stopEditMode() {
+    if (editHandler.enabled()) {
+        editHandler.disable();
+        resetButtonStyles();
+    }
+}
+
+// GPS 좌표로 점 추가 (그리기 도중)
+function addGpsVertex() {
+    if (!currentDrawer) return;
+    if (!navigator.geolocation) { alert("GPS 미지원"); return; }
+
+    navigator.geolocation.getCurrentPosition(function (pos) {
+        const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
+
+        if (currentDrawer instanceof L.Draw.Marker) {
+            const marker = L.marker(latlng, { icon: defaultSurveyIcon });
+            currentDrawer.disable();
+            currentDrawer = null;
+            map.fire(L.Draw.Event.CREATED, { layer: marker, layerType: 'marker' });
+            resetDrawingState();
+        } else {
+            currentDrawer.addVertex(latlng);
+        }
+        map.panTo(latlng);
+    }, function () {
+        alert("GPS 수신 실패");
+    }, { enableHighAccuracy: true });
+}
+
+function deleteLastVertex() {
+    if (currentDrawer && currentDrawer.deleteLastVertex) currentDrawer.deleteLastVertex();
+}
+
+// 개별 레이어 수정 (목록에서 "수정" 클릭 시)
+window.enableSingleLayerEdit = function (id) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+    if (!layer) return;
+
+    if (layer instanceof L.Marker) {
+        layer.dragging.enable();
+    } else {
+        if (!layer.editing) {
+            // Leaflet.Edit 모듈 초기화 확인
+            if (L.Edit && L.Edit.Poly) layer.editing = new L.Edit.Poly(layer);
+            else { alert("수정 모듈 오류"); return; }
+        }
+        if (layer.editing) layer.editing.enable();
+        else { alert("수정 불가 도형"); return; }
+    }
+
+    layer.closePopup();
+    alert("수정 모드입니다. 완료하려면 지도 바탕을 터치하세요.");
+    document.body.classList.add('recording-mode');
+
+    // 클릭으로 편집 종료
+    setTimeout(() => {
+        map.once('click', function () {
+            if (layer instanceof L.Marker) layer.dragging.disable();
+            else if (layer.editing) layer.editing.disable();
+
+            updateLayerInfo(layer);
+            saveToStorage();
+            renderSurveyList();
+            document.body.classList.remove('recording-mode');
+            alert("수정 완료");
+        });
+    }, 100);
+};
+
+// 그리기 완료 이벤트 (도형 생성 시)
+map.on(L.Draw.Event.CREATED, function (event) {
+    const layer = event.layer;
+    let memo = prompt("메모 입력:", getTimestampString());
+    if (memo === null) return; // 취소 시 무시
+    if (!memo) memo = getTimestampString();
+
+    const randomColor = getRandomColor();
+    layer.feature = {
+        type: "Feature",
+        properties: { memo: memo, id: Date.now(), isHidden: false, customColor: randomColor }
+    };
+
+    if (event.layerType === 'marker') {
+        layer.setIcon(createColoredMarkerIcon(randomColor));
+    } else {
+        layer.setStyle({ color: randomColor, fillColor: randomColor });
+    }
+
+    updateLayerInfo(layer);
+    drawnItems.addLayer(layer);
+    saveToStorage();
+
+    resetDrawingState();
+    currentDrawer = null;
+
+    layer.openPopup();
+    switchSidebarTab('record');
+    renderSurveyList();
+});
+
+// 편집 이벤트 핸들러
+map.on('draw:edited', function (e) {
+    e.layers.eachLayer(updateLayerInfo);
+    saveToStorage();
+    renderSurveyList();
+});
+
+/* --------------------------------------------------------------------------
+   10. 기능: 데이터 관리 (Feature: Data Persistence)
+   -------------------------------------------------------------------------- */
+// 그리기 데이터 목록 표시, 저장, 삭제 등
+
+function renderSurveyList() {
+    const listContainer = document.getElementById('survey-list-area');
+    const countSpan = document.getElementById('record-count');
+    listContainer.innerHTML = "";
+
+    const layers = drawnItems.getLayers();
+    countSpan.innerText = "(" + layers.length + "개)";
+
+    const allVisible = layers.length > 0 && layers.every(l => !l.feature.properties.isHidden);
+    document.getElementById('chk-select-all').checked = (layers.length > 0 && allVisible);
+
+    if (layers.length === 0) {
+        listContainer.innerHTML = '<div style="padding:15px; text-align:center; color:#999; font-size:12px;">기록 없음</div>';
         return;
     }
 
-    // [기능수정] 주소명 단축 (마지막 단위 행정명 + 지번)
-    let shortName = getShortAddress(addressName);
+    // 최신순 정렬
+    layers.slice().reverse().forEach(function (layer) {
+        const props = layer.feature.properties || {};
+        const isHidden = props.isHidden === true;
+        const typeIcon = (layer instanceof L.Marker) ? SVG_ICONS.marker : (layer instanceof L.Polygon ? SVG_ICONS.polygon : SVG_ICONS.ruler);
 
-    currentBoundaryLayer.eachLayer(function (layer) {
-        // GeoJSON 레이어에서 좌표 추출하여 새로운 Polygon 생성
-        // layer.feature.geometry가 Polygon 혹은 MultiPolygon일 수 있음
-        const feature = layer.feature;
-        const newLayer = L.geoJSON(feature, {
-            style: {
-                color: '#FF0000',
-                weight: 4,
-                opacity: 0.8,
-                fillColor: '#FF0000',
-                fillOpacity: 0.2
-            }
-        });
-
-        // L.GeoJSON은 LayerGroup이므로 내부 레이어를 꺼내야 함 (보통 하나임)
-        newLayer.eachLayer(function (innerLayer) {
-            // 속성 설정
-            innerLayer.feature = innerLayer.feature || {};
-            innerLayer.feature.type = "Feature";
-            innerLayer.feature.properties = innerLayer.feature.properties || {};
-            innerLayer.feature.properties.id = Date.now();
-            innerLayer.feature.properties.memo = shortName || "지적 영역";
-            innerLayer.feature.properties.customColor = '#FF0000';
-            innerLayer.feature.properties.isHidden = false;
-
-            updateLayerInfo(innerLayer); // [버그수정] 팝업 바인딩 및 면적 계산 적용
-            drawnItems.addLayer(innerLayer);
-        });
+        const div = document.createElement('div');
+        div.className = 'survey-item';
+        div.innerHTML = `
+        <div class="survey-check-area">
+            <input type="checkbox" class="survey-checkbox" ${!isHidden ? "checked" : ""} onchange="toggleLayerVisibility(${props.id})">
+        </div>
+        <div class="survey-info" onclick="zoomToLayer(${props.id})">
+            <div class="survey-name">${typeIcon} ${props.memo} <button class="btn-edit-memo-inline" onclick="event.stopPropagation(); editLayerMemo(${props.id})">${SVG_ICONS.edit}</button></div>
+        </div>
+        <div class="survey-actions">
+            <input type="color" class="color-picker-input" value="${props.customColor || '#3388ff'}" onchange="updateLayerColor(${props.id}, this.value)">
+            <button class="action-icon-btn btn-del" onclick="deleteLayerById(${props.id})">${SVG_ICONS.trash}</button>
+            <button class="action-icon-btn btn-save-single" onclick="exportSingleLayer(${props.id})">${SVG_ICONS.save}</button>
+        </div>`;
+        listContainer.appendChild(div);
     });
-
-    saveToStorage();
-    renderSurveyList();
-    alert(`영역이 기록되었습니다.\n기록명: ${shortName}`);
-    openSidebar(); // 기록 확인을 위해 사이드바 열기
-    switchSidebarTab('record');
 }
 
-// [기능추가] 현재 선택된 위치를 점(Marker) 기록으로 저장
-function saveCurrentPoint(lat, lng, addressName) {
-    const shortName = getShortAddress(addressName);
-    const marker = L.marker([lat, lng], { icon: createColoredMarkerIcon('#FF0000') });
+// 레이어 팝업 내용 업데이트(면적, 거리 계산 포함)
+function updateLayerInfo(layer) {
+    const memo = layer.feature.properties.memo || "";
+    let infoText = "";
 
-    marker.feature = {
-        type: "Feature",
-        properties: {
-            id: Date.now(),
-            memo: shortName || "지점 기록",
-            customColor: '#FF0000',
-            isHidden: false
+    if (layer instanceof L.Marker) {
+        const pos = layer.getLatLng();
+        if (coordMode === 2) {
+            infoText = "X:" + getTmCoords(pos.lat, pos.lng).x + ", Y:" + getTmCoords(pos.lat, pos.lng).y;
+        } else if (coordMode === 1) {
+            infoText = "N " + pos.lat.toFixed(4) + "° , E " + pos.lng.toFixed(4) + "°";
+        } else {
+            infoText = convertToDms(pos.lat, 'lat') + "<br>" + convertToDms(pos.lng, 'lng');
         }
-    };
+    } else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+        infoText = "<b>" + SVG_ICONS.ruler + " 거리:</b> " + (turf.length(layer.toGeoJSON(), { units: 'kilometers' }) * 1000).toFixed(2) + " m";
+    } else if (layer instanceof L.Polygon) {
+        infoText = "<b>" + SVG_ICONS.polygon + " 면적:</b> " + turf.area(layer.toGeoJSON()).toFixed(2) + " ㎡";
+    }
 
-    updateLayerInfo(marker);
-    drawnItems.addLayer(marker);
+    let popupContent = "<b>" + SVG_ICONS.memo + " 메모:</b> " + memo;
+    if (infoText) popupContent += "<br>" + infoText;
 
-    saveToStorage();
+    const id = layer.feature.properties.id;
+    popupContent += `<div style="margin-top:8px; border-top:1px solid #eee; padding-top:8px; display:flex; gap:5px;">
+        <button class="popup-btn" style="flex:1; background:#f0f0f0; color:#333;" onclick="enableSingleLayerEdit(${id})">수정</button>
+        <button class="popup-btn" style="flex:1; background:#ffebee; color:#d32f2f;" onclick="deleteLayerById(${id})">삭제</button>
+    </div>`;
+
+    layer.bindPopup(popupContent);
+}
+
+// --- 데이터 저장/로드 헬퍼 ---
+
+function saveToStorage() { localStorage.setItem(STORAGE_KEY, JSON.stringify(drawnItems.toGeoJSON())); }
+
+function loadFromStorage() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) restoreFeatures(JSON.parse(saved));
+    } catch (e) { }
+}
+
+function restoreFeatures(geoJsonData) {
+    L.geoJSON(geoJsonData, {
+        onEachFeature: function (feature, layer) {
+            if (feature.properties) {
+                layer.feature = feature;
+                updateLayerInfo(layer);
+            }
+            const savedColor = feature.properties.customColor;
+            if (feature.geometry.type === 'Point' && layer instanceof L.Marker)
+                layer.setIcon(createColoredMarkerIcon(savedColor || '#0040ff'));
+            else if (savedColor)
+                layer.setStyle({ color: savedColor, fillColor: savedColor });
+
+            drawnItems.addLayer(layer);
+        }
+    });
     renderSurveyList();
-    alert(`지점이 기록되었습니다.\n기록명: ${shortName}`);
-    openSidebar();
-    switchSidebarTab('record');
-}
-
-// [기능추가] 내 위치 공유하기
-
-// [기능추가] 내 위치 공유하기
-function shareMyLocation() {
-    const center = map.getCenter();
-    const lat = center.lat;
-    const lng = center.lng;
-    const address = document.getElementById('address-display').innerText;
-
-    // 현재 페이지 URL에 좌표 파라미터 추가
-    // 주의: hash router를 사용하는 경우 처리가 다를 수 있음. 여기서는 query parameter 사용.
-    const shareUrl = `${window.location.origin}${window.location.pathname}?lat=${lat}&lng=${lng}`;
-
-    let coordText = "";
-    if (coordMode === 2) {
-        const tm = getTmCoords(lat, lng);
-        coordText = `X: ${tm.x}, Y: ${tm.y}`;
-    } else if (coordMode === 1) {
-        coordText = `N ${lat.toFixed(4)}° , E ${lng.toFixed(4)}°`;
-    } else {
-        coordText = `${convertToDms(lat, 'lat')}, ${convertToDms(lng, 'lng')}`;
-    }
-
-    const shareData = {
-        title: '[F-Field] 내 위치 공유',
-        text: `\n주소: ${address}\n좌표: ${coordText}\n\n링크를 클릭하면 공유된 위치로 이동합니다.`,
-        url: shareUrl
-    };
-
-    if (navigator.share) {
-        navigator.share(shareData)
-            .then(() => console.log('공유 성공'))
-            .catch((error) => console.log('공유 실패/취소', error));
-    } else {
-        // PC 등 navigator.share 미지원 시 클립보드 복사
-        navigator.clipboard.writeText(shareUrl).then(() => {
-            alert("공유 링크가 클립보드에 복사되었습니다.\n" + shareUrl);
-        }).catch(err => {
-            prompt("URL을 복사하세요:", shareUrl);
-        });
-    }
 }
 
 /* --------------------------------------------------------------------------
-   5. 검색 기능
--------------------------------------------------------------------------- */
-let isSearchHistoryEnabled = true;
+   11. 기능: 위치 추적 (Feature: Geolocation)
+   -------------------------------------------------------------------------- */
+// GPS를 이용해 내 위치를 지도에 표시합니다.
 
-(function initSearchSettings() {
-    const setting = localStorage.getItem(SEARCH_SETTING_KEY);
-    if (setting !== null) { isSearchHistoryEnabled = (setting === 'true'); }
-    document.getElementById('chk-history-save').checked = isSearchHistoryEnabled;
-})();
+function onTrackSuccess(pos) {
+    updateLocationMarker(pos);
+    if (isFollowing) map.panTo([pos.coords.latitude, pos.coords.longitude]);
+}
+
+function updateLocationMarker(pos) {
+    if (pos.coords.accuracy === 0) return;
+    const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
+    if (typeof pos.coords.heading === 'number' && !isNaN(pos.coords.heading)) { lastHeading = pos.coords.heading; }
+
+    // 오차 범위 원
+    if (!trackingCircle)
+        trackingCircle = L.circle(latlng, { radius: pos.coords.accuracy, weight: 1, color: 'blue', opacity: 0.3, fillOpacity: 0.1 }).addTo(map);
+    else
+        trackingCircle.setLatLng(latlng).setRadius(pos.coords.accuracy);
+
+    // 화살표 마커 (방향 반영)
+    const arrowSvg = `<div style="transform: rotate(${lastHeading}deg); transform-origin: center center; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">
+                        <svg viewBox="0 0 100 100" width="20" height="20" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));">
+                            <path d="M50 0 L100 100 L50 80 L0 100 Z" fill="#007bff" stroke="white" stroke-width="10" />
+                        </svg>
+                    </div>`;
+    const arrowIcon = L.divIcon({ className: '', html: arrowSvg, iconSize: [20, 20], iconAnchor: [10, 10] });
+
+    if (!trackingMarker)
+        trackingMarker = L.marker(latlng, { icon: arrowIcon, zIndexOffset: 1000 }).addTo(map);
+    else
+        trackingMarker.setLatLng(latlng).setIcon(arrowIcon);
+
+    // 주소 및 좌표 상태 업데이트
+    getAddressFromCoords(pos.coords.latitude, pos.coords.longitude);
+    lastGpsLat = pos.coords.latitude;
+    lastGpsLng = pos.coords.longitude;
+    updateCoordDisplay();
+}
+
+function toggleTracking() {
+    const btn = document.getElementById('toggle-track-btn');
+    if (!navigator.geolocation) { alert("GPS 미지원"); return; }
+
+    if (isFollowing) {
+        isFollowing = false;
+        btn.classList.remove('tracking-btn-on');
+        btn.classList.remove('tracking-active');
+    } else {
+        isFollowing = true;
+        navigator.geolocation.getCurrentPosition(onTrackSuccess, null, { enableHighAccuracy: true });
+        btn.classList.add('tracking-btn-on');
+        btn.classList.add('tracking-active');
+    }
+}
+
+function findMe() {
+    if (!navigator.geolocation) { alert("GPS 미지원"); return; }
+    navigator.geolocation.getCurrentPosition(function (pos) {
+        map.setView([pos.coords.latitude, pos.coords.longitude], 19);
+    }, function () { alert("위치 실패"); }, { enableHighAccuracy: true });
+}
 
 /* --------------------------------------------------------------------------
-   13. 길찾기 기능 (Navigation)
--------------------------------------------------------------------------- */
+   12. 기능: 길찾기 (Feature: Navigation)
+   -------------------------------------------------------------------------- */
 let navTarget = { name: '', lat: 0, lng: 0 };
 
 function openNavModal(name, lat, lng) {
@@ -564,396 +1270,59 @@ function executeNavigation(type) {
     const { name, lat, lng } = navTarget;
     let url = "";
 
-    if (type === 'tmap') {
-        url = `tmap://route?goalname=${encodeURIComponent(name)}&goalx=${lng}&goaly=${lat}`;
-    } else if (type === 'naver') {
-        url = `nmap://navigation?dlat=${lat}&dlng=${lng}&dname=${encodeURIComponent(name)}&appname=F-Field`;
-    } else if (type === 'kakao') {
-        url = `kakaomap://route?ep=${lat},${lng}&by=CAR`;
-    }
+    if (type === 'tmap') url = `tmap://route?goalname=${encodeURIComponent(name)}&goalx=${lng}&goaly=${lat}`;
+    else if (type === 'naver') url = `nmap://navigation?dlat=${lat}&dlng=${lng}&dname=${encodeURIComponent(name)}&appname=F-Field`;
+    else if (type === 'kakao') url = `kakaomap://route?ep=${lat},${lng}&by=CAR`;
 
-    // 모바일이 아니거나 앱이 없을 경우를 대비해 처리할 수 있지만, 
-    // 기본적으로 URL Scheme 시도
     window.location.href = url;
-
-    // 약간의 딜레이 후 모달 닫기
     setTimeout(closeNavModal, 500);
 }
 
-function toggleSearchBox() {
-    const box = document.getElementById('search-container');
-    if (box.style.display === 'flex') {
-        box.style.display = 'none';
-    } else {
-        box.style.display = 'flex';
-        document.getElementById('search-input').focus();
-    }
-}
-
-document.addEventListener('mousedown', function (e) {
-    const sc = document.getElementById('search-container');
-    const btn = document.getElementById('btn-search-toggle');
-    if (sc.style.display === 'flex' && !sc.contains(e.target) && !btn.contains(e.target)) {
-        sc.style.display = 'none';
-    }
-});
-
-function callVworldSearchApi(query, type, callback) {
-    const callbackName = 'vworld_search_' + type + '_' + Math.floor(Math.random() * 100000);
-    window[callbackName] = function (data) {
-        delete window[callbackName];
-        document.getElementById(callbackName)?.remove();
-        if (data.response.status === "OK" && data.response.result && data.response.result.items.length > 0)
-            callback(data.response.result.items);
-        else
-            callback(null);
-    };
-    const script = document.createElement('script'); script.id = callbackName;
-    script.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=50&page=1&query=${encodeURIComponent(query)}&type=${type}&format=json&errorformat=json&key=${VWORLD_API_KEY}&callback=${callbackName}`;
-    document.body.appendChild(script);
-}
-
-function callVworldCoordApi(query, type, callback) {
-    const callbackName = 'vworld_coord_' + Math.floor(Math.random() * 100000);
-    window[callbackName] = function (data) {
-        delete window[callbackName];
-        document.getElementById(callbackName)?.remove();
-        if (data.response.status === "OK" && data.response.result)
-            callback(data.response.result);
-        else
-            callback(null);
-    };
-    const script = document.createElement('script'); script.id = callbackName;
-    script.src = `https://api.vworld.kr/req/address?service=address&request=getCoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(query)}&refine=true&simple=false&format=json&type=${type || 'PARCEL'}&key=${VWORLD_API_KEY}&callback=${callbackName}`;
-    document.body.appendChild(script);
-}
-
-function executeSearch(keyword) {
-    const query = keyword || document.getElementById('search-input').value;
-    if (!query) return;
-
-    if (isSearchHistoryEnabled) { addToHistory(query); }
-    document.getElementById('history-panel').style.display = 'none';
-    document.getElementById('search-input').value = query;
-
-    // 1. ADDRESS (주소 검색) - 최대 50건 조회
-    callVworldSearchApi(query, 'ADDRESS', function (addrResults) {
-        if (addrResults && addrResults.length > 0) {
-            handleSearchResults(addrResults);
-        } else {
-            // 2. PLACE (장소 검색) - 최대 50건 조회
-            callVworldSearchApi(query, 'PLACE', function (placeResults) {
-                if (placeResults && placeResults.length > 0) {
-                    handleSearchResults(placeResults);
-                } else {
-                    // 3. ROAD (도로명 주소 지오코딩) - 1건만 조회됨
-                    callVworldCoordApi(query, 'ROAD', function (roadResult) {
-                        if (roadResult) {
-                            handleSingleResult(roadResult, query, 'ROAD');
-                        } else {
-                            // 4. PARCEL (지번 주소 지오코딩) - 1건만 조회됨
-                            callVworldCoordApi(query, 'PARCEL', function (parcelResult) {
-                                if (parcelResult) {
-                                    handleSingleResult(parcelResult, query, 'PARCEL');
-                                } else {
-                                    alert("검색 결과가 없습니다.\n정확한 주소(예: 화성시 장안면 장안리 산124)를 입력해보세요.");
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-        }
-    });
-}
-
-function handleSingleResult(coordResult, query, type) {
-    // 지오코딩 결과는 1개만 오므로 바로 이동
-    // type: 'ROAD' or 'PARCEL'
-    const finalResult = {
-        point: coordResult.point,
-        title: query,
-        address: {
-            road: (type === 'ROAD' && coordResult.refined && coordResult.refined.text) ? coordResult.refined.text : "",
-            parcel: (type === 'PARCEL' && coordResult.refined && coordResult.refined.text) ? coordResult.refined.text : ""
-        }
-    };
-    moveToSearchResult(finalResult);
-}
-
-function handleSearchResults(items) {
-    if (items.length === 1) {
-        moveToSearchResult(items[0]);
-    } else {
-        renderSearchResultList(items);
-        document.getElementById('search-result-panel').style.display = 'block';
-    }
-}
-
-function renderSearchResultList(items) {
-    const listEl = document.getElementById('search-result-list');
-    listEl.innerHTML = "";
-
-    items.forEach(item => {
-        const li = document.createElement('li');
-        li.className = 'search-result-item';
-
-        let roadAddr = item.address.road || "";
-        let parcelAddr = item.address.parcel || "";
-
-        // 검색 결과 타입(장소 vs 주소)에 따라 title이 다를 수 있음
-        const title = item.title || roadAddr || parcelAddr;
-
-        let html = `<div class="search-result-title">${title}</div>`;
-
-        if (roadAddr) {
-            html += `<div class="search-result-addr"><span class="badge-road">도로명</span> ${roadAddr}</div>`;
-        }
-        if (parcelAddr) {
-            html += `<div class="search-result-addr"><span class="badge-parcel">지번</span> ${parcelAddr}</div>`;
-        }
-
-        li.innerHTML = html;
-        li.onclick = function () {
-            moveToSearchResult(item);
-            closeSearchResult();
-        };
-
-        listEl.appendChild(li);
-    });
-}
-
-function closeSearchResult() {
-    document.getElementById('search-result-panel').style.display = 'none';
-    document.getElementById('search-input').focus();
-}
-
-
-function moveToSearchResult(result) {
-    const point = result.point;
-    map.flyTo([point.y, point.x], 16, { duration: 1.5 });
-
-    // 검색 결과에서도 전체 주소를 표시하기 위해 showInfoPopup (반향 지리코딩) 사용
-    showInfoPopup(point.y, point.x);
-
-    // 검색 위치의 지적 경계 강조
-    fetchAndHighlightBoundary(point.x, point.y);
-}
-
-function getHistory() { const json = localStorage.getItem(SEARCH_HISTORY_KEY); return json ? JSON.parse(json) : []; }
-function saveHistory(list) { localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(list)); }
-
-function addToHistory(keyword) {
-    let list = getHistory();
-    list = list.filter(function (item) { return item !== keyword; });
-    list.unshift(keyword);
-    if (list.length > 10) { list = list.slice(0, 10); }
-    saveHistory(list);
-}
-
-function toggleHistorySave(checked) {
-    isSearchHistoryEnabled = checked;
-    localStorage.setItem(SEARCH_SETTING_KEY, checked);
-    if (!checked) { document.getElementById('history-panel').style.display = 'none'; }
-}
-
-function clearHistoryAll() {
-    if (confirm("검색 기록을 모두 삭제하시겠습니까?")) {
-        saveHistory([]); renderHistoryList();
-    }
-}
-
-function deleteHistoryItem(index) {
-    const list = getHistory();
-    list.splice(index, 1);
-    saveHistory(list);
-    renderHistoryList();
-}
-
-function renderHistoryList() {
-    const list = getHistory();
-    const ul = document.getElementById('history-list');
-    ul.innerHTML = "";
-
-    if (list.length === 0) {
-        ul.innerHTML = '<li style="padding:10px; color:#999; text-align:center;">최근 기록 없음</li>';
-        return;
-    }
-
-    list.forEach(function (text, index) {
-        const li = document.createElement('li'); li.className = 'history-item';
-
-        const spanText = document.createElement('span');
-        spanText.className = 'history-text';
-        spanText.innerText = text;
-        spanText.onclick = function () { executeSearch(text); };
-
-        const btnDel = document.createElement('span');
-        btnDel.className = 'btn-del-history';
-        btnDel.innerHTML = SVG_ICONS.close;
-        btnDel.onclick = function (e) { e.stopPropagation(); deleteHistoryItem(index); };
-
-        li.appendChild(spanText);
-        li.appendChild(btnDel);
-        ul.appendChild(li);
-    });
-}
-function showHistoryPanel() { renderHistoryList(); document.getElementById('history-panel').style.display = 'block'; }
-
 /* --------------------------------------------------------------------------
-   6. 레이어 제어
--------------------------------------------------------------------------- */
-function toggleBaseLayer(isChecked) {
-    const optionsDiv = document.getElementById('base-layer-options');
-    if (isChecked) {
-        optionsDiv.style.display = 'block';
-        const selectedValue = document.querySelector('input[name="baseMap"]:checked').value;
-        changeBaseMap(selectedValue);
-    } else {
-        optionsDiv.style.display = 'none';
-        map.removeLayer(vworldSatellite); map.removeLayer(vworldBase);
-    }
+   13. 기타 유틸리티 (Utils)
+   -------------------------------------------------------------------------- */
+
+function getTimestampString() {
+    const now = new Date();
+    return now.toISOString().slice(2, 10).replace(/-/g, "") + "_" + now.toTimeString().slice(0, 8).replace(/:/g, "");
 }
 
-function changeBaseMap(type) {
-    if (!document.getElementById('chk-base-layer').checked) return;
-    if (type === 'satellite') {
-        map.addLayer(vworldSatellite); map.removeLayer(vworldBase);
-    } else {
-        map.addLayer(vworldBase); map.removeLayer(vworldSatellite);
-    }
-    if (map.hasLayer(vworldLxLayer)) vworldLxLayer.bringToFront();
-    if (map.hasLayer(vworldContinuousLayer)) vworldContinuousLayer.bringToFront();
-    if (map.hasLayer(vworldHybrid)) vworldHybrid.bringToFront();
+function getRandomColor() {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
+    return color;
 }
 
-function changeCadastralMap(type) {
-    if (!document.getElementById('chk-cadastral').checked) return;
-    if (type === 'lx') {
-        map.addLayer(vworldLxLayer); map.removeLayer(vworldContinuousLayer);
-    } else {
-        // continuous (기본값)
-        map.addLayer(vworldContinuousLayer); map.removeLayer(vworldLxLayer);
-    }
+function createColoredMarkerIcon(color) {
+    return L.divIcon({
+        className: '',
+        html: `<svg viewBox="0 0 24 24" width="36" height="36" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" 
+                      fill="${color}" stroke="white" stroke-width="1.5"/>
+               </svg>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 36],
+        popupAnchor: [0, -36]
+    });
 }
 
-function toggleOverlay(type, isChecked) {
-    let layer;
-    if (type === 'hybrid') layer = vworldHybrid;
-    else if (type === 'cadastral') {
-        const optionsDiv = document.getElementById('cadastral-layer-options');
-        if (isChecked) {
-            optionsDiv.style.display = 'block';
-            const selectedValue = document.querySelector('input[name="cadastralMap"]:checked').value;
-            changeCadastralMap(selectedValue);
-        } else {
-            optionsDiv.style.display = 'none';
-            map.removeLayer(vworldLxLayer);
-            map.removeLayer(vworldContinuousLayer);
-        }
-        return; // changeCadastralMap에서 레이어 추가/제거 하므로 여기서 리턴
+function getShortAddress(addressName) {
+    if (!addressName) return "";
+    const parts = addressName.split(' ');
+    // 동, 리, 가 로 끝나는 부분 찾기
+    for (let i = parts.length - 1; i >= 0; i--) {
+        if (parts[i].match(/(동|리|가)$/)) return parts.slice(i).join(' ');
     }
-    else if (type === 'nasGuk') layer = nasGukLayer;
-    else if (type === 'forest') {
-        isForestActive = isChecked;
-        if (isChecked) {
-            if (!forestDataLayer) {
-                forestDataLayer = L.geoJSON(null, {
-                    style: {
-                        color: "#00FF00",
-                        weight: 2,
-                        opacity: 0.6,
-                        fillOpacity: 0.1,
-                        dashArray: '5, 5'
-                    },
-                    onEachFeature: function (feature, layer) {
-                        // 필요한 경우 팝업 추가
-                        if (feature.properties) {
-                            // 속성 이름 확인 필요 (보통 pnu 등)
-                            let popupContent = "산림보호구역";
-                            layer.bindPopup(popupContent);
-                        }
-                    }
-                }).addTo(map);
-            } else {
-                map.addLayer(forestDataLayer);
-            }
-            fetchForestData();
-        } else {
-            if (forestDataLayer) {
-                map.removeLayer(forestDataLayer);
-                forestDataLayer.clearLayers();
-            }
-        }
-        return; // 일반 레이어 처리와 다름
-    }
-
-    if (isChecked) {
-        map.addLayer(layer);
-        if (type !== 'nasGuk') layer.bringToFront();
-    } else {
-        map.removeLayer(layer);
-    }
+    return parts.length >= 2 ? parts.slice(parts.length - 2).join(' ') : addressName;
 }
 
-// [기능추가] 산림보호구역 데이터 가져오기 (Data API)
-function fetchForestData() {
-    if (!isForestActive || !forestDataLayer) return;
-
-    if (map.getZoom() < 13) {
-        // 줌 레벨이 낮으면 데이터 삭제 (성능 문제)
-        forestDataLayer.clearLayers();
-        return;
-    }
-
-    const bounds = map.getBounds();
-    const min = bounds.getSouthWest();
-    const max = bounds.getNorthEast();
-    const bbox = `${min.lng},${min.lat},${max.lng},${max.lat}`;
-
-    // 요청 ID 생성 (경쟁 상태 방지)
-    const requestId = ++lastForestRequestId;
-
-    // JSONP 콜백 동적 생성
-    const callbackName = 'vworld_forest_' + Date.now();
-    window[callbackName] = function (data) {
-        // 최신 요청이 아니면 무시
-        if (requestId !== lastForestRequestId) {
-            delete window[callbackName];
-            document.body.removeChild(script);
-            return;
-        }
-
-        if (data.response.status === "OK") {
-            forestDataLayer.clearLayers(); // 기존 데이터 삭제
-            const features = data.response.result.featureCollection.features;
-            forestDataLayer.addData(features);
-        } else {
-            // 데이터가 없거나 에러인 경우 레이어 유지 또는 삭제 선택 (여기선 유지)
-            // forestDataLayer.clearLayers(); 
-            // console.warn("산림보호구역 데이터 없음:", data.response.error);
-        }
-        delete window[callbackName];
-        document.body.removeChild(script);
-    };
-
-    const url = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LT_C_UF151&key=${VWORLD_API_KEY}&domain=${window.location.hostname}&geomFilter=BOX(${bbox})&format=json&errorFormat=json&size=1000&callback=${callbackName}`;
-
-    const script = document.createElement('script');
-    script.src = url;
-    document.body.appendChild(script);
+// 좌표 변환 (WGS84 -> TM)
+function getTmCoords(lat, lng) {
+    const xy = proj4("EPSG:4326", "EPSG:5186", [lng, lat]);
+    return { x: Math.round(xy[0]), y: Math.round(xy[1]) };
 }
 
-// 지도 이동 종료 시 데이터 갱신
-map.on('moveend', function () {
-    if (isForestActive) {
-        fetchForestData();
-    }
-});
-
-/* --------------------------------------------------------------------------
-   7. 좌표 및 주소 표시
--------------------------------------------------------------------------- */
 function convertToDms(val, type) {
     const valAbs = Math.abs(val);
     const deg = Math.floor(valAbs);
@@ -963,60 +1332,84 @@ function convertToDms(val, type) {
     return (val >= 0 ? (type === 'lat' ? "N" : "E") : (type === 'lat' ? "S" : "W")) + " " + deg + "° " + min + "' " + sec + "\"";
 }
 
-function getTmCoords(lat, lng) {
-    const xy = proj4("EPSG:4326", "EPSG:5186", [lng, lat]);
-    return { x: Math.round(xy[0]), y: Math.round(xy[1]) };
-}
+/* --------------------------------------------------------------------------
+   14. 이벤트 리스너 및 초기화 (Events & Initialization)
+   -------------------------------------------------------------------------- */
 
-let lastGpsLat = 37.245911; // 초기값: 지도 초기 중심
-let lastGpsLng = 126.960302;
+// 우클릭 방지
+document.getElementById('map').oncontextmenu = function (e) { e.preventDefault(); e.stopPropagation(); return false; };
 
-function updateCoordDisplay() {
-    // [기능수정] 지도가 아닌 GPS 위치(또는 고정된 위치) 기준으로 좌표 표시
-    let lat = lastGpsLat;
-    let lng = lastGpsLng;
+// 시작 시 데이터 로드 및 GPS 연결
+loadFromStorage();
 
-    let text = "";
-    if (coordMode === 2) {
-        text = "X: " + getTmCoords(lat, lng).x + " | Y: " + getTmCoords(lat, lng).y;
-    } else if (coordMode === 1) {
-        text = "N " + lat.toFixed(4) + "° | E " + lng.toFixed(4) + "°";
-    } else {
-        text = convertToDms(lat, 'lat') + " | " + convertToDms(lng, 'lng');
+if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(onTrackSuccess, null, { enableHighAccuracy: true });
+
+    // 딥링크(좌표 파라미터)가 없으면 내 위치로 이동
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('lat') || !params.has('lng')) {
+        navigator.geolocation.getCurrentPosition(function (pos) {
+            map.setView([pos.coords.latitude, pos.coords.longitude], 19);
+        }, null, { enableHighAccuracy: true });
     }
-    document.getElementById('coord-display').innerText = text;
 }
-// [기능수정] 좌표 모드 토글 대신 모달 열기
-function openCoordModal() {
-    // 현재 선택된 모드 라디오 버튼 체크
-    const radios = document.getElementsByName('coord-mode-select');
-    radios.forEach(radio => {
-        if (parseInt(radio.value) === coordMode) {
-            radio.checked = true;
-        }
+
+// 딥링크 처리 (URL 파라미터로 위치 받기)
+(function handleDeepLink() {
+    const params = new URLSearchParams(window.location.search);
+    const lat = parseFloat(params.get('lat'));
+    const lng = parseFloat(params.get('lng'));
+
+    if (!isNaN(lat) && !isNaN(lng)) {
+        map.setView([lat, lng], 19);
+        setTimeout(() => {
+            showInfoPopup(lat, lng);
+            fetchAndHighlightBoundary(lng, lat);
+        }, 500);
+    }
+})();
+
+// 일부 빠진 버튼 이벤트 핸들러들
+function resetButtonStyles() { document.querySelectorAll('.bottom-btn').forEach(btn => btn.classList.remove('active-btn')); }
+function highlightButton(btnId) { resetButtonStyles(); document.getElementById(btnId).classList.add('active-btn'); }
+
+function saveCurrentPoint(lat, lng, addressName) {
+    const shortName = getShortAddress(addressName);
+    const marker = L.marker([lat, lng], { icon: createColoredMarkerIcon('#FF0000') });
+    marker.feature = { type: "Feature", properties: { id: Date.now(), memo: shortName || "지점 기록", customColor: '#FF0000', isHidden: false } };
+    updateLayerInfo(marker);
+    drawnItems.addLayer(marker);
+    saveToStorage();
+    renderSurveyList();
+    alert(`지점이 기록되었습니다.\n(${shortName})`);
+    openSidebar();
+    switchSidebarTab('record');
+}
+
+function saveCurrentBoundary(addressName) {
+    if (!currentBoundaryLayer) { alert("영역이 선택되지 않았습니다."); return; }
+    let shortName = getShortAddress(addressName);
+
+    currentBoundaryLayer.eachLayer(function (layer) {
+        const feature = layer.feature;
+        const newLayer = L.geoJSON(feature, { style: { color: '#FF0000', weight: 4, opacity: 0.8, fillColor: '#FF0000', fillOpacity: 0.2 } });
+        newLayer.eachLayer(innerLayer => {
+            innerLayer.feature = innerLayer.feature || {};
+            innerLayer.feature.properties = { id: Date.now(), memo: shortName || "지적 영역", customColor: '#FF0000', isHidden: false };
+            updateLayerInfo(innerLayer);
+            drawnItems.addLayer(innerLayer);
+        });
     });
 
-    const overlay = document.getElementById('coord-modal-overlay');
-    overlay.style.display = 'flex';
-    setTimeout(() => { overlay.classList.add('visible'); }, 10);
+    saveToStorage();
+    renderSurveyList();
+    alert(`영역이 기록되었습니다.\n(${shortName})`);
+    openSidebar();
+    switchSidebarTab('record');
 }
 
-function closeCoordModal() {
-    const overlay = document.getElementById('coord-modal-overlay');
-    overlay.classList.remove('visible');
-    setTimeout(() => { overlay.style.display = 'none'; }, 300);
-}
-
-function setCoordMode(mode) {
-    coordMode = mode;
-    updateCoordDisplay();
-
-    // 모달 닫을 때 약간의 딜레이를 주어 사용자가 선택되었음을 인지하게 함
-    setTimeout(closeCoordModal, 200);
-}
-// map.on('move', updateCoordDisplay); // [기능수정] 지도 움직임에 따라 좌표가 변하지 않도록 주석 처리
-updateCoordDisplay();
-
+// 좌표 표시 업데이트, 모달 제어 등은 생략된 구현들을 포함해야 함...
+// (이전 코드에서 필요한 나머지 조각들: updateCoordDisplay, openCoordModal 등)
 let lastAddressCall = 0;
 function getAddressFromCoords(lat, lng) {
     const now = Date.now();
@@ -1034,338 +1427,46 @@ function getAddressFromCoords(lat, lng) {
     document.body.appendChild(script);
 }
 
-/* --------------------------------------------------------------------------
-   8. 그리기 도구 (Drawing)
--------------------------------------------------------------------------- */
-
-const drawnItems = new L.FeatureGroup();
-map.addLayer(drawnItems);
-
-function getRandomColor() {
-    const letters = '0123456789ABCDEF';
-    let color = '#';
-    for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
-    return color;
+function updateCoordDisplay() {
+    let lat = lastGpsLat;
+    let lng = lastGpsLng;
+    let text = "";
+    if (coordMode === 2) {
+        const tm = getTmCoords(lat, lng);
+        text = "X: " + tm.x + " | Y: " + tm.y;
+    } else if (coordMode === 1) text = "N " + lat.toFixed(4) + "° | E " + lng.toFixed(4) + "°";
+    else text = convertToDms(lat, 'lat') + " | " + convertToDms(lng, 'lng');
+    document.getElementById('coord-display').innerText = text;
 }
 
-function getTimestampString() {
-    const now = new Date();
-    return now.toISOString().slice(2, 10).replace(/-/g, "") + "_" + now.toTimeString().slice(0, 8).replace(/:/g, "");
+function openCoordModal() {
+    document.getElementsByName('coord-mode-select').forEach(r => { if (parseInt(r.value) === coordMode) r.checked = true; });
+    const overlay = document.getElementById('coord-modal-overlay');
+    overlay.style.display = 'flex';
+    setTimeout(() => { overlay.classList.add('visible'); }, 10);
 }
 
-function createColoredMarkerIcon(color) {
-    return L.divIcon({
-        className: '',
-        html: `<svg viewBox="0 0 24 24" width="36" height="36" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" 
-                      fill="${color}" stroke="white" stroke-width="1.5"/>
-               </svg>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 36],
-        popupAnchor: [0, -36]
-    });
+function closeCoordModal() {
+    const overlay = document.getElementById('coord-modal-overlay');
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
 }
 
-const defaultSurveyIcon = createColoredMarkerIcon('#0040ff');
-
-const drawControl = new L.Control.Draw({
-    edit: { featureGroup: drawnItems },
-    draw: {
-        polygon: true,
-        polyline: true,
-        marker: { icon: defaultSurveyIcon },
-        circle: false,
-        rectangle: false,
-        circlemarker: false
-    }
-});
-map.addControl(drawControl);
-
-const actionToolbar = document.getElementById('action-toolbar');
-
-function resetButtonStyles() { document.querySelectorAll('.bottom-btn').forEach(btn => btn.classList.remove('active-btn')); }
-function highlightButton(btnId) { resetButtonStyles(); document.getElementById(btnId).classList.add('active-btn'); }
-
-function startDraw(type) {
-    if (currentDrawer) currentDrawer.disable();
-    stopEditMode();
-
-    const options = { touchIcon: null, showLength: true, allowIntersection: true };
-    if (type === 'polygon') {
-        currentDrawer = new L.Draw.Polygon(map, options);
-        highlightButton('btn-poly');
-    } else if (type === 'polyline') {
-        currentDrawer = new L.Draw.Polyline(map, options);
-        highlightButton('btn-line');
-    } else if (type === 'marker') {
-        currentDrawer = new L.Draw.Marker(map, { icon: defaultSurveyIcon });
-        highlightButton('btn-point');
-    }
-
-    // [UI] 녹화 모드 표시
-    document.body.classList.add('recording-mode');
-
-    if (currentDrawer && (type === 'polygon' || type === 'polyline')) {
-        currentDrawer._originalFinishShape = currentDrawer._finishShape;
-        currentDrawer._finishShape = function () {
-            if (isManualFinish) { this._originalFinishShape(); }
-        };
-    }
-    currentDrawer.enable();
-    actionToolbar.style.display = 'flex';
+function setCoordMode(mode) {
+    coordMode = mode;
+    updateCoordDisplay();
+    setTimeout(closeCoordModal, 200);
 }
+// 초기 좌표 표시
+updateCoordDisplay();
 
-const editHandler = new L.EditToolbar.Edit(map, { featureGroup: drawnItems });
-
-function startEditMode() {
-    if (currentDrawer) cancelDrawing();
-    editHandler.enable();
-    highlightButton('btn-edit');
-    alert("수정 모드: 도형을 드래그하거나 점을 움직이세요.\n완료하려면 지도를 터치하세요.");
-
-    map.once('click', function () {
-        editHandler.save();
-        editHandler.disable();
-        resetButtonStyles();
-        alert("수정 완료");
-    });
-}
-function stopEditMode() {
-    if (editHandler.enabled()) {
-        editHandler.disable();
-        resetButtonStyles();
-    }
-}
-
-function addGpsVertex() {
-    if (!currentDrawer) return;
-    if (!navigator.geolocation) { alert("GPS 미지원"); return; }
-
-    navigator.geolocation.getCurrentPosition(function (pos) {
-        const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
-
-        if (currentDrawer instanceof L.Draw.Marker) {
-            const marker = L.marker(latlng, { icon: defaultSurveyIcon });
-            currentDrawer.disable();
-            currentDrawer = null;
-            map.fire(L.Draw.Event.CREATED, { layer: marker, layerType: 'marker' });
-            actionToolbar.style.display = 'none';
-            resetButtonStyles();
-        } else {
-            currentDrawer.addVertex(latlng);
-        }
-        map.panTo(latlng);
-    }, function () {
-        alert("GPS 수신 실패");
-    }, { enableHighAccuracy: true });
-}
-
-function deleteLastVertex() { if (currentDrawer && currentDrawer.deleteLastVertex) currentDrawer.deleteLastVertex(); }
-
-function completeDrawing() {
-    if (currentDrawer) {
-        isManualFinish = true;
-        if (currentDrawer.completeShape) currentDrawer.completeShape();
-        else if (currentDrawer._finishShape) currentDrawer._finishShape();
-        else currentDrawer.disable();
-        isManualFinish = false;
-    }
-    document.body.classList.remove('recording-mode');
-    actionToolbar.style.display = 'none';
-    resetButtonStyles();
-}
-
-function cancelDrawing() {
-    if (currentDrawer) {
-        currentDrawer.disable();
-        currentDrawer = null;
-    }
-    document.body.classList.remove('recording-mode');
-    actionToolbar.style.display = 'none';
-    resetButtonStyles();
-}
-
-function updateLayerInfo(layer) {
-    let popupContent = "";
-    let infoText = "";
-    const memo = layer.feature.properties.memo || "";
-
-    if (layer instanceof L.Marker) {
-        const pos = layer.getLatLng();
-        if (coordMode === 2) {
-            infoText = "X:" + getTmCoords(pos.lat, pos.lng).x + ", Y:" + getTmCoords(pos.lat, pos.lng).y;
-        } else if (coordMode === 1) {
-            infoText = "N " + pos.lat.toFixed(4) + "° , E " + pos.lng.toFixed(4) + "°";
-        } else {
-            infoText = convertToDms(pos.lat, 'lat') + "<br>" + convertToDms(pos.lng, 'lng');
-        }
-    } else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
-        infoText = "<b>" + SVG_ICONS.ruler + " 거리:</b> " + (turf.length(layer.toGeoJSON(), { units: 'kilometers' }) * 1000).toFixed(2) + " m";
-    } else if (layer instanceof L.Polygon) {
-        infoText = "<b>" + SVG_ICONS.polygon + " 면적:</b> " + turf.area(layer.toGeoJSON()).toFixed(2) + " ㎡";
-    }
-
-    popupContent = "<b>" + SVG_ICONS.memo + " 메모:</b> " + memo;
-    if (infoText) popupContent += "<br>" + infoText;
-
-    // [UI] 수정/삭제 버튼 추가
-    const id = layer.feature.properties.id;
-    popupContent += `<div style="margin-top:8px; border-top:1px solid #eee; padding-top:8px; display:flex; gap:5px;">
-        <button class="popup-btn" style="flex:1; background:#f0f0f0; color:#333;" onclick="enableSingleLayerEdit(${id})">수정</button>
-        <button class="popup-btn" style="flex:1; background:#ffebee; color:#d32f2f;" onclick="deleteLayerById(${id})">삭제</button>
-    </div>`;
-
-    layer.bindPopup(popupContent);
-    layer.feature.properties.popupContent = popupContent;
-}
-
-// [기능추가] 개별 레이어 수정 모드
-window.enableSingleLayerEdit = function (id) {
-    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
-    if (!layer) return;
-
-    if (layer instanceof L.Marker) {
-        // 마커는 드래그 가능하게 설정
-        layer.dragging.enable();
-    } else {
-        // 폴리곤/폴리라인은 편집 모드 활성화 (Leaflet.Draw)
-        // [버그수정] GeoJSON으로 생성된 레이어는 layer.editing이 초기화되지 않았을 수 있음
-        if (!layer.editing) {
-            if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
-                // Try to initialize editing handler
-                if (L.Edit && L.Edit.Poly) {
-                    layer.editing = new L.Edit.Poly(layer);
-                } else {
-                    alert("수정 모듈(L.Edit)을 로드하지 못했습니다.");
-                    return;
-                }
-            }
-        }
-
-        if (layer.editing) {
-            layer.editing.enable();
-        } else {
-            alert("이 도형은 수정할 수 없습니다. (MultiPolygon 등 지원되지 않는 형식일 수 있음)");
-            return;
-        }
-    }
-
-    layer.closePopup();
-    alert("수정 모드입니다.\n도형의 점을 드래그하여 수정하세요.\n완료하려면 지도 바탕을 터치하세요.");
-    document.body.classList.add('recording-mode'); // [UI] 수정 모드 표시
-
-    // 지도 클릭 시 수정 종료 이벤트 (1회성)
-    // 주의: 드래그 중 클릭 발생 방지를 위해 약간의 딜레이/조건 필요할 수 있음
-    // 여기서는 단순하게 map click event 사용
-
-    const finishHandler = function () {
-        if (layer instanceof L.Marker) {
-            layer.dragging.disable();
-        } else {
-            if (layer.editing) layer.editing.disable();
-        }
-
-        updateLayerInfo(layer);
+// 그 외 export/import 함수들
+window.deleteLayerById = function (id) {
+    if (confirm("해당 기록을 삭제합니다.")) {
+        const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+        if (layer) drawnItems.removeLayer(layer);
         saveToStorage();
         renderSurveyList();
-
-        map.off('click', finishHandler); // 이벤트 리스너 제거
-        document.body.classList.remove('recording-mode'); // [UI] 수정 모드 해제
-        alert("수정 완료");
-    };
-
-    // setTimeout을 써서 "현재" 클릭 이벤트가 바로 트리거되지 않도록 함
-    setTimeout(() => {
-        map.once('click', finishHandler);
-    }, 100);
-};
-
-map.on(L.Draw.Event.CREATED, function (event) {
-    const layer = event.layer;
-    let memo = prompt("메모 입력:", getTimestampString());
-    if (memo === null) return;
-    if (!memo) memo = getTimestampString();
-
-    const randomColor = getRandomColor();
-    layer.feature = { type: "Feature", properties: { memo: memo, id: Date.now(), isHidden: false, customColor: randomColor } };
-
-    if (event.layerType === 'marker') {
-        layer.setIcon(createColoredMarkerIcon(randomColor));
-        layer.feature.properties.customColor = randomColor;
-    } else {
-        layer.setStyle({ color: randomColor, fillColor: randomColor });
-    }
-
-    updateLayerInfo(layer);
-    drawnItems.addLayer(layer);
-    saveToStorage();
-    actionToolbar.style.display = 'none';
-    currentDrawer = null;
-    resetButtonStyles();
-    layer.openPopup();
-
-    // [UI] 저장 후에는 기록 탭으로 이동
-    switchSidebarTab('record');
-    renderSurveyList();
-});
-
-map.on('draw:edited', function (e) { e.layers.eachLayer(updateLayerInfo); saveToStorage(); renderSurveyList(); });
-map.on('draw:drawstop', function () { setTimeout(function () { if (!currentDrawer) actionToolbar.style.display = 'none'; }, 100); });
-
-/* --------------------------------------------------------------------------
-   9. 데이터 관리 (목록 표시, 저장, 삭제)
--------------------------------------------------------------------------- */
-
-function renderSurveyList() {
-    const listContainer = document.getElementById('survey-list-area');
-    const countSpan = document.getElementById('record-count');
-    listContainer.innerHTML = "";
-
-    const layers = drawnItems.getLayers();
-    countSpan.innerText = "(" + layers.length + "개)";
-
-    const allVisible = layers.length > 0 && layers.every(function (l) { return !l.feature.properties.isHidden; });
-    document.getElementById('chk-select-all').checked = (layers.length > 0 && allVisible);
-
-    if (layers.length === 0) {
-        listContainer.innerHTML = '<div style="padding:15px; text-align:center; color:#999; font-size:12px;">기록 없음</div>';
-        return;
-    }
-
-    layers.slice().reverse().forEach(function (layer) {
-        const props = layer.feature.properties || {};
-        const id = props.id;
-        const isHidden = props.isHidden === true;
-        const typeIcon = (layer instanceof L.Marker) ? SVG_ICONS.marker : (layer instanceof L.Polygon ? SVG_ICONS.polygon : SVG_ICONS.ruler);
-
-        const div = document.createElement('div');
-        div.className = 'survey-item';
-        div.innerHTML = `
-        <div class="survey-check-area">
-            <input type="checkbox" class="survey-checkbox" ${!isHidden ? "checked" : ""} onchange="toggleLayerVisibility(${id})">
-        </div>
-        <div class="survey-info" onclick="zoomToLayer(${id})">
-            <div class="survey-name">${typeIcon} ${props.memo} <button class="btn-edit-memo-inline" onclick="event.stopPropagation(); editLayerMemo(${id})">${SVG_ICONS.edit}</button></div>
-        </div>
-        <div class="survey-actions">
-            <input type="color" class="color-picker-input" value="${props.customColor || '#3388ff'}" onchange="updateLayerColor(${id}, this.value)">
-            <button class="action-icon-btn btn-del" onclick="deleteLayerById(${id})">${SVG_ICONS.trash}</button>
-            <button class="action-icon-btn btn-save-single" onclick="exportSingleLayer(${id})">${SVG_ICONS.save}</button>
-        </div>`;
-        listContainer.appendChild(div);
-    });
-}
-
-window.zoomToLayer = function (id) {
-    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
-    if (!layer) return;
-    closeSidebar();
-    if (layer instanceof L.Marker) {
-        map.flyTo(layer.getLatLng(), 19);
-        layer.openPopup();
-    } else {
-        map.fitBounds(layer.getBounds(), { padding: [50, 50], maxZoom: 19 });
-        setTimeout(() => layer.openPopup(), 1500);
     }
 };
 
@@ -1379,15 +1480,6 @@ window.editLayerMemo = function (id) {
         saveToStorage();
         renderSurveyList();
     }
-};
-
-window.updateLayerColor = function (id, newColor) {
-    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
-    if (!layer) return;
-    if (layer instanceof L.Marker) layer.setIcon(createColoredMarkerIcon(newColor));
-    else layer.setStyle({ color: newColor, fillColor: newColor });
-    layer.feature.properties.customColor = newColor;
-    saveToStorage();
 };
 
 window.toggleLayerVisibility = function (id) {
@@ -1409,9 +1501,9 @@ window.toggleLayerVisibility = function (id) {
 };
 
 window.toggleAllLayers = function (isChecked) {
-    const layers = drawnItems.getLayers();
-    layers.forEach(function (layer) {
+    drawnItems.getLayers().forEach(function (layer) {
         layer.feature.properties.isHidden = !isChecked;
+        // visibility setter logic repeated... (생략 말고 구현)
         if (!isChecked) {
             layer instanceof L.Marker ? layer.setOpacity(0) : layer.setStyle({ opacity: 0, fillOpacity: 0, stroke: false });
             layer.closePopup();
@@ -1425,16 +1517,32 @@ window.toggleAllLayers = function (isChecked) {
     renderSurveyList();
 };
 
-window.deleteLayerById = function (id) {
-    if (confirm("해당 기록을 삭제합니다.")) {
-        const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
-        if (layer) drawnItems.removeLayer(layer);
-        saveToStorage();
-        renderSurveyList();
-    }
+window.exportSingleLayer = function (id) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+    if (!layer) return;
+    let safeMemo = (layer.feature.properties.memo || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
+    saveOrShareFile(JSON.stringify(layer.toGeoJSON(), null, 2), safeMemo + ".geojson");
 };
 
-/* [Android 호환성] 데이터 저장 및 공유 기능 */
+window.exportSelectedGeoJSON = function () {
+    const visibleLayers = drawnItems.getLayers().filter(l => !l.feature.properties.isHidden);
+    if (visibleLayers.length === 0) { alert("저장할 항목이 없습니다."); return; }
+    if (!confirm('선택한 기록을 저장합니다.')) return;
+    const featureCollection = L.layerGroup(visibleLayers).toGeoJSON();
+    const fileName = "Project_" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + ".geojson";
+    saveOrShareFile(JSON.stringify(featureCollection, null, 2), fileName);
+};
+
+function saveOrShareFile(content, fileName) {
+    if (navigator.canShare && navigator.share) {
+        const file = new File([content], fileName, { type: "application/json" });
+        if (navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file], title: 'F-Field 기록' }).catch(err => saveToDevice(content, fileName));
+        } else saveToDevice(content, fileName);
+    } else {
+        saveToDevice(content, fileName);
+    }
+}
 
 function saveToDevice(content, fileName) {
     const blob = new Blob([content], { type: "application/geo+json" });
@@ -1444,97 +1552,20 @@ function saveToDevice(content, fileName) {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-    console.log("파일 다운로드 완료:", fileName);
 }
 
-function saveOrShareFile(content, fileName) {
-    if (!navigator.canShare) {
-        saveToDevice(content, fileName);
-        return;
-    }
-
-    const file = new File([content], fileName, { type: "application/json" });
-
-    if (navigator.canShare({ files: [file] })) {
-        navigator.share({
-            files: [file],
-            title: 'F-Field 기록',
-            text: fileName + ' 파일을 공유합니다.'
-        })
-            .then(() => {
-                console.log("공유 성공");
-            })
-            .catch((error) => {
-                console.warn("공유 실패/취소 -> 다운로드로 전환", error);
-                saveToDevice(content, fileName);
-            });
-    } else {
-        console.log("공유 불가 -> 다운로드로 전환");
-        saveToDevice(content, fileName);
-    }
-}
-
-window.exportSingleLayer = function (id) {
+window.zoomToLayer = function (id) {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (!layer) return;
-
-    let safeMemo = (layer.feature.properties.memo || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
-    const fileName = safeMemo + ".geojson";
-    const content = JSON.stringify(layer.toGeoJSON(), null, 2);
-
-    saveOrShareFile(content, fileName);
-};
-
-window.exportSelectedGeoJSON = function () {
-    const allLayers = drawnItems.getLayers();
-    const visibleLayers = allLayers.filter(function (layer) { return !layer.feature.properties.isHidden; });
-
-    if (visibleLayers.length === 0) { alert("저장할 항목이 선택되지 않았습니다."); return; }
-    if (!confirm('선택한 기록이 한 개의 파일로 저장됩니다.')) { return; }
-
-    const featureCollection = L.layerGroup(visibleLayers).toGeoJSON();
-    const fileName = "Project_" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + ".geojson";
-    const content = JSON.stringify(featureCollection, null, 2);
-
-    saveOrShareFile(content, fileName);
-};
-
-
-function saveToStorage() { localStorage.setItem(STORAGE_KEY, JSON.stringify(drawnItems.toGeoJSON())); }
-
-function restoreFeatures(geoJsonData) {
-    L.geoJSON(geoJsonData, {
-        onEachFeature: function (feature, layer) {
-            if (feature.properties && feature.properties.memo) {
-                layer.feature = feature;
-                updateLayerInfo(layer);
-            }
-            const savedColor = feature.properties.customColor;
-            if (feature.geometry.type === 'Point' && layer instanceof L.Marker)
-                layer.setIcon(createColoredMarkerIcon(savedColor || '#0040ff'));
-            else if (savedColor)
-                layer.setStyle({ color: savedColor, fillColor: savedColor });
-            drawnItems.addLayer(layer);
-        }
-    });
-    renderSurveyList();
-}
-
-function loadFromStorage() {
-    try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) restoreFeatures(JSON.parse(saved));
-    } catch (e) { }
-}
-
-function clearAllData() {
-    if (confirm("선택한 기록이 모두 삭제됩니다.")) {
-        drawnItems.clearLayers();
-        saveToStorage();
-        renderSurveyList();
+    closeSidebar();
+    if (layer instanceof L.Marker) {
+        map.flyTo(layer.getLatLng(), 19);
+        layer.openPopup();
+    } else {
+        map.fitBounds(layer.getBounds(), { padding: [50, 50], maxZoom: 19 });
+        setTimeout(() => layer.openPopup(), 1500);
     }
-}
+};
 
 function triggerFileInput() { document.getElementById('geoJsonInput').click(); }
 function handleFileSelect(input) {
@@ -1553,147 +1584,18 @@ function handleFileSelect(input) {
     r.readAsText(file);
 }
 
-/* --------------------------------------------------------------------------
-   10. GPS 위치 추적 (Geolocation)
--------------------------------------------------------------------------- */
-function updateLocationMarker(pos) {
-    if (pos.coords.accuracy === 0) return;
-    const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
-    if (typeof pos.coords.heading === 'number' && !isNaN(pos.coords.heading)) { lastHeading = pos.coords.heading; }
-
-    if (!trackingCircle)
-        trackingCircle = L.circle(latlng, { radius: pos.coords.accuracy, weight: 1, color: 'blue', opacity: 0.3, fillOpacity: 0.1 }).addTo(map);
-    else
-        trackingCircle.setLatLng(latlng).setRadius(pos.coords.accuracy);
-
-    const arrowSvg = `<div style="transform: rotate(${lastHeading}deg); transform-origin: center center; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;" class="gps-arrow-icon">
-                        <svg viewBox="0 0 100 100" width="20" height="20" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));">
-                            <path d="M50 0 L100 100 L50 80 L0 100 Z" fill="#007bff" stroke="white" stroke-width="10" />
-                        </svg>
-                    </div>`;
-    const arrowIcon = L.divIcon({ className: '', html: arrowSvg, iconSize: [20, 20], iconAnchor: [10, 10] });
-
-    if (!trackingMarker)
-        trackingMarker = L.marker(latlng, { icon: arrowIcon, zIndexOffset: 1000 }).addTo(map);
-    else
-        trackingMarker.setLatLng(latlng).setIcon(arrowIcon);
-
-    getAddressFromCoords(pos.coords.latitude, pos.coords.longitude);
-
-    // [기능수정] GPS 좌표 저장 및 상단바 업데이트
-    lastGpsLat = pos.coords.latitude;
-    lastGpsLng = pos.coords.longitude;
-    updateCoordDisplay();
-}
-
-function onTrackSuccess(pos) {
-    updateLocationMarker(pos);
-    if (isFollowing) map.panTo([pos.coords.latitude, pos.coords.longitude]);
-}
-
-function toggleTracking() {
-    const btn = document.getElementById('toggle-track-btn');
-    if (!navigator.geolocation) { alert("GPS 미지원"); return; }
-
-    if (isFollowing) {
-        isFollowing = false;
-        btn.classList.remove('tracking-btn-on');
-        btn.classList.remove('tracking-active');
-    } else {
-        isFollowing = true;
-        navigator.geolocation.getCurrentPosition(onTrackSuccess, null, { enableHighAccuracy: true });
-        btn.classList.add('tracking-btn-on');
-        btn.classList.add('tracking-active');
+function clearAllData() {
+    if (confirm("선택한 기록이 모두 삭제됩니다.")) {
+        drawnItems.clearLayers();
+        saveToStorage();
+        renderSurveyList();
     }
 }
-
-function onFirstLoadSuccess(pos) { map.setView([pos.coords.latitude, pos.coords.longitude], 19); }
-function findMe() {
-    if (!navigator.geolocation) { alert("GPS 미지원"); return; }
-    navigator.geolocation.getCurrentPosition(onFirstLoadSuccess, function () { alert("위치 실패"); }, { enableHighAccuracy: true });
-}
-
-loadFromStorage();
-if (navigator.geolocation) {
-    navigator.geolocation.watchPosition(onTrackSuccess, null, { enableHighAccuracy: true });
-    // [기능수정] 공유 링크(lat, lng)가 없을 때만 내 위치로 초기 이동
-    const params = new URLSearchParams(window.location.search);
-    if (!params.has('lat') || !params.has('lng')) {
-        navigator.geolocation.getCurrentPosition(onFirstLoadSuccess, null, { enableHighAccuracy: true });
-    }
-}
-
-/* --------------------------------------------------------------------------
-   11. UI 탭 전환 기능 (New)
--------------------------------------------------------------------------- */
-function switchSidebarTab(tabName) {
-    // 1. 탭 버튼 상태 초기화
-    document.getElementById('tab-btn-map').classList.remove('active');
-    document.getElementById('tab-btn-record').classList.remove('active');
-
-    // 2. 탭 내용 숨기기
-    document.getElementById('content-map').classList.remove('active');
-    document.getElementById('content-record').classList.remove('active');
-
-    // 3. 선택한 탭 활성화
-    document.getElementById('tab-btn-' + tabName).classList.add('active');
-    document.getElementById('content-' + tabName).classList.add('active');
-}
-
-
-/* --------------------------------------------------------------------------
-   14. 비공개 레이어 잠금 기능
--------------------------------------------------------------------------- */
-window.unlockHiddenLayers = function () {
-    const section = document.getElementById('hidden-layer-section');
-    const chkNasGuk = document.getElementById('chk-nas-guk');
-    const btnLock = document.getElementById('btn-lock');
-
-    // 이미 해제된 상태라면 동작 없음 (또는 다시 잠글 수도 있지만 요구사항은 아님)
-    if (section.style.display === 'block') {
-        alert("이미 잠금이 해제되었습니다.");
-        return;
-    }
-
-    const input = prompt("암호를 입력하세요:");
-    if (!input) return;
-
-    // Base64 인코딩 후 비교 (암호: 8906 -> ODkwNg==)
-    if (btoa(input) === 'ODkwNg==') {
-        section.style.display = 'block';
-        // chkNasGuk.checked = true; // 기본값 꺼짐 유지
-        // toggleOverlay('nasGuk', true);
-
-        // 아이콘 변경 (Unlock)
-        btnLock.innerHTML = SVG_ICONS.unlock;
-        btnLock.style.color = '#3B82F6'; // 파란색으로 활성화 표시
-        alert("잠금이 해제되었습니다. 비공개 정보가 유출되지 않도록 주의하세요.");
-    } else {
-        alert("암호가 올바르지 않습니다.");
-    }
+window.updateLayerColor = function (id, newColor) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+    if (!layer) return;
+    if (layer instanceof L.Marker) layer.setIcon(createColoredMarkerIcon(newColor));
+    else layer.setStyle({ color: newColor, fillColor: newColor });
+    layer.feature.properties.customColor = newColor;
+    saveToStorage();
 };
-
-/* --------------------------------------------------------------------------
-   12. 초기 실행 및 딥링크 처리
--------------------------------------------------------------------------- */
-(function handleDeepLink() {
-    const params = new URLSearchParams(window.location.search);
-    const latParam = params.get('lat');
-    const lngParam = params.get('lng');
-
-    if (latParam && lngParam) {
-        const lat = parseFloat(latParam);
-        const lng = parseFloat(lngParam);
-
-        if (!isNaN(lat) && !isNaN(lng)) {
-            // 지도 이동 및 정보 표시
-            map.setView([lat, lng], 19); // 줌 레벨을 높게 설정하여 정확한 위치 표시
-
-            // 약간의 지연 후 팝업 및 경계 표시 (지도 로딩 안정화)
-            setTimeout(() => {
-                showInfoPopup(lat, lng);
-                fetchAndHighlightBoundary(lng, lat);
-            }, 500);
-        }
-    }
-})();

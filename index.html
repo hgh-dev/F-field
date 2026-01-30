@@ -1,16 +1,32 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 
 <head>
-    <title>F-Field</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 
+    ==========================================================================
+    1. 헤더 및 메타데이터 (Head & Meta)
+    ==========================================================================
+    문서의 제목, 설정, 외부 라이브러리 등을 정의하는 곳입니다.
+    -->
+    <title>F-Field (국유림 현장조사)</title>
+
+    <!-- 모바일 기기에서 화면 배율을 설정합니다. (확대/축소 방지) -->
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta charset="utf-8" />
 
+    <!-- PWA (웹앱) 설정: 홈 화면에 추가할 때 앱처럼 보이게 합니다. -->
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icon.png">
 
+    <!-- 
+    외부 라이브러리 불러오기
+    Leaflet: 지도 라이브러리
+    Turf: 공간 분석 라이브러리
+    Proj4: 좌표 변환 라이브러리
+    -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
@@ -18,7 +34,14 @@
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.4.4/proj4.js"></script>
 
+    <!-- 
+    ==========================================================================
+    2. 스타일 (CSS Styles)
+    ==========================================================================
+    화면의 생김새와 배치를 담당하는 CSS 코드입니다.
+    -->
     <style>
+        /* --- 기본 레이아웃 설정 --- */
         html,
         body {
             height: 100%;
@@ -26,27 +49,34 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
+            /* 스크롤바 숨김 */
             font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+
+            /* 아이폰 노치 디자인 대응 (safe-area) */
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
             background-color: #f5f5f5;
         }
 
+        /* --- 지도 컨테이너 --- */
         #map {
             position: absolute;
             top: 50px;
+            /* 상단 툴바 높이만큼 띄움 */
             bottom: 60px;
+            /* 하단 툴바 높이만큼 띄움 */
             width: 100%;
-            margin: 0;
-            padding: 0;
             z-index: 1;
+            /* 가장 아래쪽 레이어 */
+
+            /* 터치 관련 최적화 */
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
         }
 
-        /* --- 상단 툴바 --- */
+        /* --- 상단 툴바 (주소 및 메뉴) --- */
         .top-toolbar {
             position: absolute;
             top: env(safe-area-inset-top);
@@ -60,9 +90,11 @@
             padding: 0 5px;
             box-sizing: border-box;
             z-index: 2000;
+            /* 지도보다 위에 표시 */
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
+        /* 상단 버튼 (햄버거 메뉴, 검색 등) */
         .top-icon-btn {
             background: none;
             border: none;
@@ -75,10 +107,21 @@
             color: #333;
         }
 
+        .top-icon-btn:active {
+            background-color: #f0f0f0;
+            border-radius: 50%;
+        }
+
+        /* 아이콘 공통 스타일 */
         .svg-icon {
             width: 24px;
             height: 24px;
             fill: currentColor;
+        }
+
+        .svg-icon-lg {
+            width: 30px;
+            height: 30px;
         }
 
         .svg-inline {
@@ -89,17 +132,7 @@
             margin-right: 4px;
         }
 
-        .svg-icon-lg {
-            width: 30px;
-            height: 30px;
-        }
-
-        .top-icon-btn:active {
-            background-color: #f0f0f0;
-            border-radius: 50%;
-        }
-
-        /* 중앙 정보창 */
+        /* 중앙 정보창 (주소 표시) */
         .top-info-container {
             flex: 1;
             display: flex;
@@ -127,21 +160,23 @@
             font-size: 11px;
             color: #666;
             font-family: monospace;
-            white-space: nowrap;
+            /* 고정폭 글꼴 */
         }
 
-        /* --- 검색창 --- */
+        /* --- 검색창 (평소엔 숨김) --- */
         #search-container {
             position: absolute;
             top: calc(55px + env(safe-area-inset-top));
             left: 50%;
             transform: translateX(-50%);
+            /* 가운데 정렬 */
             width: 90%;
             max-width: 400px;
             background: white;
             padding: 10px;
             border-radius: 8px;
             display: none;
+            /* 기본값: 안보임 */
             flex-direction: row;
             gap: 5px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
@@ -165,23 +200,31 @@
             cursor: pointer;
         }
 
-        /* 검색 기록 */
-        #history-panel {
-            display: none;
+        /* [검색 기록 & 결과 패널] */
+        #history-panel,
+        .search-result-panel {
             position: absolute;
             top: 100%;
             left: 0;
             width: 100%;
             background: white;
-            border: 1px solid #eee;
             border-radius: 0 0 8px 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-top: 2px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             z-index: 2001;
+            display: none;
+            margin-top: 2px;
             box-sizing: border-box;
+            border: 1px solid #eee;
         }
 
-        .history-header {
+        .search-result-panel {
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 2100;
+        }
+
+        .history-header,
+        .search-result-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -192,13 +235,8 @@
             color: #666;
         }
 
-        .btn-clear-history {
-            cursor: pointer;
-            color: #d32f2f;
-            font-weight: bold;
-        }
-
-        .history-list {
+        .history-list,
+        .search-result-list {
             list-style: none;
             margin: 0;
             padding: 0;
@@ -206,43 +244,41 @@
             overflow-y: auto;
         }
 
-        .history-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .history-item,
+        .search-result-item {
             padding: 10px 12px;
             border-bottom: 1px solid #f1f1f1;
             cursor: pointer;
             font-size: 13px;
+            display: flex;
+            align-items: center;
         }
 
-        .history-item:last-child {
-            border-bottom: none;
-        }
-
-        .history-item:hover {
+        .history-item:hover,
+        .search-result-item:hover {
             background-color: #fcfcfc;
         }
 
-        .history-text {
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+        .badge-road,
+        .badge-parcel {
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 10px;
+            margin-right: 4px;
+            display: inline-block;
         }
 
-        .btn-del-history {
-            margin-left: 10px;
-            color: #999;
-            cursor: pointer;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .badge-road {
+            background: #eef4ff;
+            color: #3b82f6;
         }
 
-        /* 우측 GPS 버튼 */
+        .badge-parcel {
+            background: #fff4e6;
+            color: #f97316;
+        }
+
+        /* --- 우측 플로팅 버튼 (GPS) --- */
         .gps-btn-group {
             position: absolute;
             top: calc(80px + env(safe-area-inset-top));
@@ -273,6 +309,7 @@
             background: #f8f8f8;
         }
 
+        /* 위치 추적 버튼 활성화 상태 스타일 */
         #tracking-svg-icon {
             width: 38px;
             height: 38px;
@@ -291,673 +328,7 @@
             border: 2px solid #aecbfa !important;
         }
 
-        /* --- 사이드바 (Modern Card UI & Tabs) --- */
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(3px);
-            z-index: 5000;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        /* [UI] 네비게이션 선택 모달 */
-        .nav-modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 6000;
-            opacity: 0;
-            transition: opacity 0.3s;
-            align-items: flex-end;
-            justify-content: center;
-        }
-
-        .nav-modal-overlay.visible {
-            opacity: 1;
-        }
-
-        .nav-modal-content {
-            width: 100%;
-            max-width: 500px;
-            background: white;
-            border-radius: 20px 20px 0 0;
-            padding: 24px;
-            box-sizing: border-box;
-            transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .nav-modal-overlay.visible .nav-modal-content {
-            transform: translateY(0);
-        }
-
-        .nav-modal-header {
-            font-size: 18px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .nav-app-list {
-            display: flex;
-            justify-content: space-around;
-            margin-bottom: 20px;
-        }
-
-        .nav-app-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            width: 80px;
-        }
-
-        .nav-app-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            margin-bottom: 8px;
-            background-size: cover;
-            background-position: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        /* 간단한 플레이스홀더 아이콘 (실제 이미지가 없을 때) */
-        .nav-icon-tmap {
-            background: linear-gradient(135deg, #FF0054 0%, #E6004C 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 12px;
-        }
-
-        .nav-icon-naver {
-            background: #07C860;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 16px;
-        }
-
-        .nav-icon-kakao {
-            background: #FEE500;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #191919;
-            font-weight: bold;
-            font-size: 16px;
-        }
-
-        .nav-app-name {
-            font-size: 13px;
-            color: #555;
-            text-align: center;
-        }
-
-        .sidebar-overlay.visible {
-            opacity: 1;
-        }
-
-        .sidebar-content {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 85%;
-            max-width: 450px;
-            height: 100%;
-            background: #F2F4F6;
-            box-shadow: 5px 0 25px rgba(0, 0, 0, 0.15);
-            display: flex;
-            flex-direction: column;
-            transform: translateX(-100%);
-            transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-            padding-top: env(safe-area-inset-top);
-        }
-
-        .sidebar-overlay.visible .sidebar-content {
-            transform: translateX(0);
-        }
-
-        /* 1. 사이드바 헤더 */
-        .sidebar-header {
-            height: 55px;
-            background: #ffffff;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 15px;
-            flex-shrink: 0;
-        }
-
-        .sidebar-title {
-            font-size: 18px;
-            font-weight: 800;
-            color: #1a1a1a;
-        }
-
-        .btn-close-sidebar {
-            border: none;
-            background: #f0f2f5;
-            border-radius: 50%;
-            cursor: pointer;
-            color: #555;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* 2. 탭 디자인 */
-        .sidebar-tabs {
-            display: flex;
-            background: #ffffff;
-            border-bottom: 1px solid #eee;
-            flex-shrink: 0;
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 14px 0;
-            background: none;
-            border: none;
-            font-size: 15px;
-            font-weight: 600;
-            color: #8898AA;
-            cursor: pointer;
-            position: relative;
-            transition: all 0.2s;
-        }
-
-        .tab-btn.active {
-            color: #3B82F6;
-            font-weight: 800;
-        }
-
-        .tab-btn.active::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: #3B82F6;
-            border-radius: 3px 3px 0 0;
-        }
-
-        /* 3. 사이드바 바디 (스크롤 영역) */
-        .sidebar-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            padding-bottom: 100px;
-        }
-
-        .tab-content {
-            display: none;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(5px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* 메뉴 그룹 (카드 UI) */
-        .menu-section {
-            background: #ffffff;
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        }
-
-        .menu-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #8898AA;
-            margin-bottom: 12px;
-            text-transform: uppercase;
-        }
-
-        /* 옵션 행 + 토글 스위치 */
-        .option-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 15px;
-            color: #333;
-            padding: 12px 0;
-            cursor: pointer;
-            border-bottom: 1px solid #f5f5f5;
-        }
-
-        .option-row:last-child {
-            border-bottom: none;
-        }
-
-        .option-row input[type="checkbox"] {
-            appearance: none;
-            -webkit-appearance: none;
-            width: 46px;
-            height: 26px;
-            background: #e0e0e0;
-            border-radius: 13px;
-            position: relative;
-            cursor: pointer;
-            outline: none;
-            transition: background 0.3s;
-            margin-right: 0;
-            flex-shrink: 0;
-        }
-
-        .option-row input[type="checkbox"]::after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 22px;
-            height: 22px;
-            background: white;
-            border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            transition: transform 0.3s;
-        }
-
-        .option-row input[type="checkbox"]:checked {
-            background: #3B82F6;
-        }
-
-        .option-row input[type="checkbox"]:checked::after {
-            transform: translateX(20px);
-        }
-
-        .option-row input[type="radio"] {
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #ccc;
-            border-radius: 50%;
-            margin-right: 10px;
-            position: relative;
-        }
-
-        .option-row input[type="radio"]:checked {
-            border-color: #3B82F6;
-        }
-
-        .option-row input[type="radio"]:checked::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 10px;
-            height: 10px;
-            background: #3B82F6;
-            border-radius: 50%;
-        }
-
-        #base-layer-options,
-        #cadastral-layer-options {
-            background: #F8F9FA;
-            border-radius: 8px;
-            padding: 5px 15px;
-            margin-top: 5px;
-            margin-bottom: 10px;
-        }
-
-        .menu-title-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 14px;
-            font-weight: 700;
-            color: #8898AA;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-        }
-
-        /* 기록 리스트 */
-        .survey-list-container {
-            border: 1px solid #eee;
-            border-radius: 12px;
-            background: #fdfdfd;
-            min-height: 100px;
-            max-height: 300px;
-            overflow-y: auto;
-            margin-bottom: 15px;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.03);
-        }
-
-        .survey-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px;
-            border-bottom: 1px solid #f0f0f0;
-            background: white;
-            transition: background 0.2s;
-        }
-
-        .survey-item:active {
-            background-color: #f7f9fc;
-        }
-
-        .survey-check-area {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 30px;
-        }
-
-        .survey-checkbox {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            accent-color: #3B82F6;
-            margin: 0;
-        }
-
-        .survey-info {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            cursor: pointer;
-            padding-left: 10px;
-        }
-
-        .survey-name {
-            font-size: 14px;
-            font-weight: 600;
-            color: #333;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: flex;
-            align-items: center;
-        }
-
-        .survey-actions {
-            display: flex;
-            gap: 3px;
-            align-items: center;
-        }
-
-        .action-icon-btn {
-            background: none;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 28px;
-            height: 28px;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 4px;
-        }
-
-        .action-icon-btn svg {
-            width: 16px;
-            height: 16px;
-            fill: currentColor;
-        }
-
-        .color-picker-input {
-            width: 24px;
-            height: 26px;
-            padding: 0;
-            border: none;
-            background: none;
-            cursor: pointer;
-        }
-
-        .btn-del {
-            color: #d32f2f;
-            background: #fff0f0;
-            border-color: #ffcdd2;
-        }
-
-        .btn-save-single {
-            color: #2e7d32;
-            background: #e8f5e9;
-            border-color: #c8e6c9;
-        }
-
-        .btn-edit-memo-inline {
-            border: none;
-            background: none;
-            margin-left: 5px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            color: #555;
-            padding: 0;
-        }
-
-        .btn-edit-memo-inline svg {
-            width: 14px;
-            height: 14px;
-            fill: currentColor;
-        }
-
-        /* --- 버튼 그룹 (가로 배치) --- */
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        /* [UI] 검색 결과 패널 */
-        .search-result-panel {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            width: 100%;
-            background: white;
-            border-radius: 0 0 8px 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            z-index: 2100;
-            display: none;
-            max-height: 250px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            border-top: none;
-            box-sizing: border-box;
-            margin-top: 2px;
-        }
-
-        .search-result-header {
-            padding: 10px 12px;
-            border-bottom: 1px solid #efefef;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 13px;
-            color: #777;
-            background: #fdfdfd;
-        }
-
-        /* [UI] 팝업 버튼 스타일 */
-        .popup-btn {
-            padding: 5px 12px;
-            border: 1px solid #ddd;
-            background: #f8f9fa;
-            border-radius: 20px;
-            font-size: 11px;
-            cursor: pointer;
-            color: #333;
-            transition: all 0.2s;
-        }
-
-        .popup-btn.disabled {
-            color: #aaa;
-            background: #f0f0f0;
-            cursor: default;
-        }
-
-        .popup-btn:not(.disabled):hover {
-            opacity: 0.9;
-        }
-
-        .search-result-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
-
-        .search-result-item {
-            padding: 12px 15px;
-            border-bottom: 1px solid #f0f0f0;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .search-result-item:last-child {
-            border-bottom: none;
-        }
-
-        .search-result-item:active {
-            background-color: #f5f5f5;
-        }
-
-        .search-result-title {
-            font-size: 14px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 3px;
-        }
-
-        .search-result-addr {
-            font-size: 12px;
-            color: #666;
-        }
-
-        .badge-road {
-            background: #eef4ff;
-            color: #3b82f6;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-size: 10px;
-            margin-right: 4px;
-            display: inline-block;
-            vertical-align: middle;
-        }
-
-        .badge-parcel {
-            background: #fff4e6;
-            color: #f97316;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-size: 10px;
-            margin-right: 4px;
-            display: inline-block;
-            vertical-align: middle;
-        }
-
-        .badge-coord {
-            background: #f1f3f5;
-            color: #495057;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-size: 10px;
-            margin-right: 4px;
-            display: inline-block;
-            vertical-align: middle;
-        }
-
-        /* 기록 리스트 (기존 스타일 상속) */
-        /* 기록 리스트 (기존 스타일 상속) */
-        .history-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .btn-group .half-btn {
-            flex: 1;
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 5px;
-            border: none;
-            transition: transform 0.1s, opacity 0.2s;
-        }
-
-        .btn-group .half-btn:active {
-            transform: scale(0.98);
-            opacity: 0.9;
-        }
-
-        .btn-import-card {
-            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
-            color: white;
-            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.25);
-        }
-
-        .btn-save-all {
-            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-            color: white;
-            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.25);
-            margin-top: 0;
-            /* 가로 배치 시 상단 여백 제거 */
-        }
-
-        .full-width-btn {
-            width: 100%;
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: 700;
-            cursor: pointer;
-            margin-top: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
-            transition: transform 0.1s;
-        }
-
-        .btn-reset-all {
-            background: white;
-            color: #EF4444;
-            border: 1px solid #EF4444;
-            margin-top: 15px;
-        }
-
-        /* 하단 툴바 */
+        /* --- 하단 툴바 (그리기 도구) --- */
         .bottom-toolbar {
             position: absolute;
             bottom: env(safe-area-inset-bottom);
@@ -967,6 +338,7 @@
             background: white;
             border-top: 1px solid #ddd;
             display: flex;
+            /* 가로 배치 */
             justify-content: space-around;
             align-items: center;
             z-index: 1000;
@@ -1012,7 +384,7 @@
             stroke: white;
         }
 
-        /* 액션 툴바 */
+        /* --- 그리기 진행 중 액션 바 (완료, 취소 등) --- */
         .action-toolbar {
             position: absolute;
             bottom: calc(70px + env(safe-area-inset-bottom));
@@ -1023,6 +395,7 @@
             background: rgba(255, 255, 255, 0.98);
             border-radius: 15px;
             display: none;
+            /* 그리기 모드일 때만 보임 */
             flex-wrap: wrap;
             justify-content: center;
             align-content: stretch;
@@ -1034,34 +407,18 @@
         .action-btn {
             border: none;
             background: none;
+            flex: 1 1 50%;
+            height: 45px;
             font-size: 13px;
             font-weight: bold;
             color: #333;
             cursor: pointer;
-            width: 50%;
-            height: 45px;
-            margin: 0;
-            padding: 0;
             border-bottom: 1px solid #eee;
             border-right: 1px solid #eee;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 6px;
-        }
-
-        .action-btn svg {
-            width: 16px;
-            height: 16px;
-            fill: currentColor;
-        }
-
-        .action-btn:nth-child(2n) {
-            border-right: none;
-        }
-
-        .action-btn:nth-last-child(-n+2) {
-            border-bottom: none;
         }
 
         .btn-gps {
@@ -1074,73 +431,300 @@
             background-color: #fafffa;
         }
 
+        /* --- 사이드바 (메뉴) --- */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(3px);
+            z-index: 5000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.visible {
+            opacity: 1;
+        }
+
+        .sidebar-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 85%;
+            max-width: 450px;
+            height: 100%;
+            background: #F2F4F6;
+            box-shadow: 5px 0 25px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            transform: translateX(-100%);
+            /* 화면 밖으로 숨김 */
+            transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            padding-top: env(safe-area-inset-top);
+        }
+
+        .sidebar-overlay.visible .sidebar-content {
+            transform: translateX(0);
+        }
+
+        /* 슬라이드 인 */
+
+        .sidebar-header {
+            height: 55px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #1a1a1a;
+        }
+
+        /* 사이드바 탭 */
+        .sidebar-tabs {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid #eee;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 14px 0;
+            background: none;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            color: #8898AA;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .tab-btn.active {
+            color: #3B82F6;
+            font-weight: 800;
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: #3B82F6;
+        }
+
+        .sidebar-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+
+        .tab-content {
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* 메뉴 섹션 (카드 스타일) */
+        .menu-section {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .menu-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #8898AA;
+            margin-bottom: 12px;
+        }
+
+        .option-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 15px;
+        }
+
+        .option-row input[type="checkbox"] {
+            width: 46px;
+            height: 26px;
+            appearance: none;
+            background: #e0e0e0;
+            border-radius: 13px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .option-row input[type="checkbox"]:checked {
+            background: #3B82F6;
+        }
+
+        .option-row input[type="checkbox"]::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .option-row input[type="checkbox"]:checked::after {
+            transform: translateX(20px);
+        }
+
+        /* --- 모달 (길찾기, 좌표설정 등) --- */
+        .nav-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 6000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .nav-modal-overlay.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .nav-modal-content {
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            border-radius: 20px 20px 0 0;
+            padding: 24px;
+            box-sizing: border-box;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .nav-modal-overlay.visible .nav-modal-content {
+            transform: translateY(0);
+        }
+
+        .nav-app-list {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+
+        .nav-app-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            width: 80px;
+        }
+
+        .nav-app-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .nav-icon-tmap {
+            background: linear-gradient(135deg, #FF0054 0%, #E6004C 100%);
+        }
+
+        .nav-icon-naver {
+            background: #07C860;
+        }
+
+        .nav-icon-kakao {
+            background: #FEE500;
+            color: #191919;
+        }
+
+        /* --- 기타 유틸리티 --- */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 줌 컨트롤, 축척바 위치 재정의 (모바일 최적화) */
         .leaflet-control-zoom {
             position: fixed !important;
             bottom: calc(90px + env(safe-area-inset-bottom)) !important;
             right: 20px !important;
-            top: auto !important;
             margin: 0 !important;
-            border: 2px solid rgba(0, 0, 0, 0.2) !important;
             z-index: 999 !important;
-        }
-
-        .leaflet-draw-toolbar {
-            display: none !important;
         }
 
         .leaflet-control-scale-line {
             position: fixed !important;
             bottom: calc(60px + env(safe-area-inset-bottom)) !important;
             right: 0px !important;
-            background: rgba(255, 255, 255, 0.8);
-            border: 1px solid #777;
-            font-size: 11px;
-            font-weight: bold;
-            color: #333;
             margin: 0 !important;
             z-index: 990 !important;
+            background: rgba(255, 255, 255, 0.8);
         }
 
-        .survey-point-dot {
-            width: 16px;
-            height: 16px;
-            border: 3px solid #ffffff;
-            border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+        .leaflet-draw-toolbar {
+            display: none !important;
         }
 
-        .gps-arrow-icon {
-            transition: transform 0.2s linear;
-        }
+        /* 기본 그리기 툴바 숨김 (커스텀 버튼 사용) */
 
-        .info-popup-content {
-            font-size: 13px;
-            line-height: 1.5;
-            color: #333;
-            min-width: 180px;
-        }
-
-        .info-popup-title {
-            font-weight: bold;
-            color: #007bff;
-            border-bottom: 0px solid #eee;
-            padding-bottom: 3px;
-            margin-bottom: 3px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .info-popup-title svg {
-            width: 16px;
-            height: 16px;
-            fill: currentColor;
-        }
-
+        /* 지적도 레이어 색상 반전 (dark mode effect) */
         .cadastral-layer {
             filter: invert(100%);
         }
 
+        /* 팝업 버튼 스타일 */
+        .popup-btn {
+            padding: 5px 12px;
+            border: 1px solid #ddd;
+            background: #f8f9fa;
+            border-radius: 20px;
+            font-size: 11px;
+            cursor: pointer;
+            color: #333;
+        }
+
+        /* 녹화 모드 테두리 효과 */
         @keyframes pulse-border {
             0% {
                 box-shadow: inset 0 0 0 5px rgba(59, 130, 246, 0.4);
@@ -1155,37 +739,39 @@
             }
         }
 
-        /* [UI] 녹화/수정 모드 표시 */
         body.recording-mode::after {
             content: "";
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            inset: 0;
             pointer-events: none;
-            /* 클릭 통과 */
             z-index: 10000;
-            /* Leaflet 컨트롤보다 높게 */
-            box-sizing: border-box;
             animation: pulse-border 3s infinite;
         }
     </style>
 </head>
 
 <body>
+    <!-- 
+    ==========================================================================
+    3. 바디 구조 (Main UI Structure)
+    ==========================================================================
+    -->
 
+    <!-- [상단] 툴바 (사이드바 메뉴 버튼, 주소 표시, 검색 버튼) -->
     <div class="top-toolbar">
-        <button class="top-icon-btn" onclick="openSidebar()">
+        <button class="top-icon-btn" onclick="openSidebar()" aria-label="메뉴 열기">
             <svg class="svg-icon" viewBox="0 0 24 24">
                 <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
             </svg>
         </button>
+
+        <!-- 중앙 주소 및 좌표 표시 (클릭 시 좌표 모달 열림) -->
         <div class="top-info-container" onclick="openCoordModal()">
             <div id="address-display">주소 확인 중...</div>
             <div id="coord-display">좌표 수신중...</div>
         </div>
-        <button id="btn-search-toggle" class="top-icon-btn" onclick="toggleSearchBox()">
+
+        <button id="btn-search-toggle" class="top-icon-btn" onclick="toggleSearchBox()" aria-label="검색창 열기">
             <svg class="svg-icon" viewBox="0 0 24 24">
                 <path
                     d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
@@ -1193,11 +779,13 @@
         </button>
     </div>
 
+    <!-- [검색] 검색창 및 결과 패널 -->
     <div id="search-container">
         <input type="text" id="search-input" placeholder="주소 또는 장소명 (예: 산124)"
             onkeypress="if(event.key==='Enter') executeSearch()" onfocus="showHistoryPanel()">
         <button id="search-go-btn" onclick="executeSearch()">이동</button>
 
+        <!-- 검색 기록 -->
         <div id="history-panel">
             <div class="history-header">
                 <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
@@ -1205,26 +793,21 @@
                 </label>
                 <span class="btn-clear-history" onclick="clearHistoryAll()">전체 삭제</span>
             </div>
-            <ul id="history-list" class="history-list">
-            </ul>
+            <ul id="history-list" class="history-list"></ul>
         </div>
 
-        <!-- [UI] 검색 결과 목록 패널 -->
+        <!-- 검색 결과 -->
         <div id="search-result-panel" class="search-result-panel">
             <div class="search-result-header">
                 <span>검색 결과</span>
                 <button onclick="closeSearchResult()"
                     style="background:none; border:none; font-size:20px; line-height:1; cursor:pointer; color:#999; padding:0 5px;">&times;</button>
             </div>
-            <ul id="search-result-list" class="search-result-list">
-                <!-- 검색 결과 아이템이 동적으로 추가됨 -->
-            </ul>
+            <ul id="search-result-list" class="search-result-list"></ul>
         </div>
     </div>
 
-    <!-- [UI] 검색 결과 목록 패널 -->
-
-
+    <!-- [우측] GPS 및 위치 추적 버튼 -->
     <div class="gps-btn-group">
         <button class="circle-btn" onclick="findMe()" title="내 위치로 이동">
             <svg class="svg-icon-lg" viewBox="0 0 100 100"
@@ -1240,17 +823,9 @@
 
         <button id="toggle-track-btn" class="circle-btn" onclick="toggleTracking()" title="위치 추적">
             <svg id="tracking-svg-icon" viewBox="0 0 100 100">
-                <path d="M20 35 L20 20 L35 20" fill="none" stroke="#2196F3" stroke-width="8" stroke-linecap="round"
-                    stroke-linejoin="round" />
-                <path d="M80 35 L80 20 L65 20" fill="none" stroke="#2196F3" stroke-width="8" stroke-linecap="round"
-                    stroke-linejoin="round" />
-                <path d="M20 65 L20 80 L35 80" fill="none" stroke="#2196F3" stroke-width="8" stroke-linecap="round"
-                    stroke-linejoin="round" />
-                <path d="M80 65 L80 80 L65 80" fill="none" stroke="#2196F3" stroke-width="8" stroke-linecap="round"
-                    stroke-linejoin="round" />
-
+                <path d="M20 35 L20 20 L35 20 M80 35 L80 20 L65 20 M20 65 L20 80 L35 80 M80 65 L80 80 L65 80"
+                    fill="none" stroke="#2196F3" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
                 <circle cx="50" cy="50" r="28" fill="none" stroke="#FFC107" stroke-width="6" />
-
                 <path d="M50 35 C42 35 38 42 38 48 C38 58 50 72 50 72 C50 72 62 58 62 48 C62 42 58 35 50 35 Z"
                     fill="#F44336" stroke="#B71C1C" stroke-width="2" />
                 <circle cx="50" cy="46" r="4" fill="white" />
@@ -1258,147 +833,35 @@
         </button>
     </div>
 
-    <input type="file" id="geoJsonInput" style="display:none" onchange="handleFileSelect(this)"
-        accept=".geojson, .json, application/geo+json, application/json" />
+    <!-- [맵] 지도 영역 (Leaflet이 렌더링되는 곳) -->
+    <div id="map"></div>
 
-    <div id="sidebar-overlay" class="sidebar-overlay" onclick="if(event.target === this) closeSidebar()">
-        <div class="sidebar-content">
-            <div class="sidebar-header">
-                <div class="sidebar-title">F-Field</div>
-                <button class="btn-close-sidebar" onclick="closeSidebar()">
-                    <svg class="svg-icon" viewBox="0 0 24 24">
-                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-                    </svg>
-                </button>
-            </div>
-
-            <div class="sidebar-tabs">
-                <button class="tab-btn active" onclick="switchSidebarTab('map')" id="tab-btn-map">지도 설정</button>
-                <button class="tab-btn" onclick="switchSidebarTab('record')" id="tab-btn-record">기록 관리</button>
-            </div>
-
-            <div class="sidebar-body">
-
-                <div id="content-map" class="tab-content active">
-                    <div class="menu-section">
-                        <div class="menu-title">기본 지도</div>
-                        <div class="check-group">
-                            <label class="option-row">
-                                <span style="flex:1;">배경지도</span>
-                                <input type="checkbox" id="chk-base-layer" checked
-                                    onchange="toggleBaseLayer(this.checked)">
-                            </label>
-                            <div id="base-layer-options" style="margin-left: 0; margin-top: 0px;">
-                                <label class="option-row"><span style="flex:1;">위성 지도</span><input type="radio"
-                                        name="baseMap" value="satellite" onchange="changeBaseMap('satellite')"></label>
-                                <label class="option-row" style="border:none;"><span style="flex:1;">일반 지도</span><input
-                                        type="radio" name="baseMap" value="base"
-                                        onchange="changeBaseMap('base')"></label>
-                            </div>
-                            <label class="option-row">
-                                <span style="flex:1;">하이브리드(도로/지명)</span>
-                                <input type="checkbox" id="chk-hybrid" onchange="toggleOverlay('hybrid', this.checked)">
-                            </label>
-                            <label class="option-row">
-                                <span style="flex:1;">지적도</span>
-                                <input type="checkbox" id="chk-cadastral"
-                                    onchange="toggleOverlay('cadastral', this.checked)">
-                            </label>
-                            <div id="cadastral-layer-options" style="margin-left: 0; margin-top: 0px; display: none;">
-                                <label class="option-row"><span style="flex:1;">연속지적도</span><input type="radio"
-                                        name="cadastralMap" value="continuous" checked
-                                        onchange="changeCadastralMap('continuous')"></label>
-                                <label class="option-row" style="border:none;"><span style="flex:1;">LX맵
-                                    </span><input type="radio" name="cadastralMap" value="lx"
-                                        onchange="changeCadastralMap('lx')"></label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="menu-section">
-                        <div class="menu-title">산림 주제도</div>
-                        <label class="option-row">
-                            <span style="flex:1;">산림보호구역</span>
-                            <input type="checkbox" id="chk-forest" onchange="toggleOverlay('forest', this.checked)">
-                        </label>
-                    </div>
-
-                    <div id="hidden-layer-section" class="menu-section" style="display: none;">
-                        <div class="menu-title">비공개 레이어</div>
-                        <label class="option-row">
-                            <span style="flex:1;">국유재산기본도(수원, 260122)</span>
-                            <input type="checkbox" id="chk-nas-guk" onchange="toggleOverlay('nasGuk', this.checked)">
-                        </label>
-                        <div id="nas-guk-legend"
-                            style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
-                            <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                                <span
-                                    style="width: 16px; height: 16px; background-color: #4CAF50; opacity: 0.6; border: 1px solid #999; margin-right: 8px; border-radius: 3px;"></span>
-                                <span style="font-size: 13px; color: #555;">보전국유림(행정재산)</span>
-                            </div>
-                            <div style="display: flex; align-items: center;">
-                                <span
-                                    style="width: 16px; height: 16px; background-color: #FFC107; opacity: 0.6; border: 1px solid #999; margin-right: 8px; border-radius: 3px;"></span>
-                                <span style="font-size: 13px; color: #555;">준보전국유림(일반재산)</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="content-record" class="tab-content">
-                    <div class="menu-section" style="min-height: 300px;">
-                        <div class="menu-title-header">
-                            <span>저장된 기록 <span id="record-count"
-                                    style="font-size: 13px; font-weight: normal; color: #888;">(0개)</span></span>
-                            <label
-                                style="font-size: 13px; font-weight: normal; display: flex; align-items: center; cursor: pointer; color:#333;">
-                                <input type="checkbox" id="chk-select-all" checked
-                                    onchange="toggleAllLayers(this.checked)" style="margin-right: 5px;"> 전체 선택
-                            </label>
-                        </div>
-
-                        <div id="survey-list-area" class="survey-list-container"></div>
-
-                        <div class="btn-group">
-                            <button class="half-btn btn-import-card" onclick="triggerFileInput()">
-                                <svg width="18" height="18" viewBox="0 0 24 24" style="fill:currentColor;">
-                                    <path
-                                        d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2zM19 18H5V8h14v10z" />
-                                    <path d="M8 13h3v4h2v-4h3l-4-4-4 4z" />
-                                </svg>
-                                불러오기
-                            </button>
-                            <button class="half-btn btn-save-all" onclick="exportSelectedGeoJSON()">
-                                <svg class="svg-inline" viewBox="0 0 24 24" style="fill:white;">
-                                    <path
-                                        d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
-                                </svg>
-                                저장하기
-                            </button>
-                        </div>
-
-                        <button class="full-width-btn btn-reset-all" onclick="clearAllData()">
-                            <svg width="18" height="18" viewBox="0 0 24 24" style="margin-right:5px; fill:#D32F2F;">
-                                <path
-                                    d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-                            </svg>
-                            초기화
-                        </button>
-                    </div>
-                </div>
-
-            </div>
-            <!-- 사이드바 하단 자물쇠 버튼 -->
-            <button id="btn-lock" onclick="unlockHiddenLayers()"
-                style="position: absolute; bottom: 20px; left: 20px; border: none; background: none; cursor: pointer; color: #aaa; z-index: 10;">
-                <svg id="icon-lock" viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;">
+    <!-- [하단] 그리기 도구 툴바 -->
+    <div class="bottom-toolbar">
+        <button id="btn-poly" class="bottom-btn" onclick="startDraw('polygon')">
+            <div class="icon-box"><svg class="svg-icon" viewBox="0 0 24 24">
+                    <path d="M12 2L2 9L6 21H18L22 9L12 2Z" fill="currentColor" fill-opacity="0.3" stroke="currentColor"
+                        stroke-width="2" stroke-linejoin="round" />
+                </svg></div>
+            <span>면</span>
+        </button>
+        <button id="btn-line" class="bottom-btn" onclick="startDraw('polyline')">
+            <div class="icon-box"><svg class="svg-icon" viewBox="0 0 24 24">
                     <path
-                        d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
-                </svg>
-            </button>
-        </div>
+                        d="M23 8c0 1.1-.9 2-2 2-.18 0-.35-.02-.51-.07l-3.56 3.55c.05.16.07.34.07.52 0 1.1-.9 2-2 2s-2-.9-2-2c0-.18.02-.36.07-.52l-2.55-2.55c-.16.05-.34.07-.52.07s-.36-.02-.52-.07l-4.55 4.56c.05.16.07.33.07.51 0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2c.18 0 .35.02.51.07l4.56-4.55C8.02 9.36 8 9.18 8 9c0-1.1.9-2 2-2s2 .9 2 2c0 .18-.02.36-.07.52l2.55 2.55c.16-.05.34-.07.52-.07s.36.02.52.07l3.55-3.56C19.02 8.35 19 8.18 19 8c0-1.1.9-2 2-2s2 .9 2 2z" />
+                </svg></div>
+            <span>선</span>
+        </button>
+        <button id="btn-point" class="bottom-btn" onclick="startDraw('marker')">
+            <div class="icon-box"><svg class="svg-icon" viewBox="0 0 24 24">
+                    <path
+                        d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                </svg></div>
+            <span>점</span>
+        </button>
     </div>
 
+    <!-- [중앙 하단] 그리기 액션바 (그리기 중에만 표시됨) -->
     <div id="action-toolbar" class="action-toolbar">
         <button class="action-btn btn-gps" onclick="addGpsVertex()">
             <svg viewBox="0 0 24 24">
@@ -1429,109 +892,183 @@
         </button>
     </div>
 
-    <div class="bottom-toolbar">
-        <button id="btn-poly" class="bottom-btn" onclick="startDraw('polygon')">
-            <div class="icon-box">
-                <svg class="svg-icon" viewBox="0 0 24 24">
-                    <path d="M12 2L2 9L6 21H18L22 9L12 2Z" fill="currentColor" fill-opacity="0.3" stroke="currentColor"
-                        stroke-width="2" stroke-linejoin="round" />
-                </svg>
+    <!-- 
+    ==========================================================================
+    4. 오버레이 및 모달 (Overlays & Modals)
+    ==========================================================================
+    -->
+
+    <!-- 사이드바 (메뉴 목록) -->
+    <div id="sidebar-overlay" class="sidebar-overlay" onclick="if(event.target === this) closeSidebar()">
+        <div class="sidebar-content">
+            <div class="sidebar-header">
+                <div class="sidebar-title">F-Field</div>
+                <button class="btn-close-sidebar" onclick="closeSidebar()">
+                    <svg class="svg-icon" viewBox="0 0 24 24">
+                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                    </svg>
+                </button>
             </div>
-            <span>면</span>
-        </button>
-        <button id="btn-line" class="bottom-btn" onclick="startDraw('polyline')">
-            <div class="icon-box">
-                <svg class="svg-icon" viewBox="0 0 24 24">
+            <div class="sidebar-tabs">
+                <button class="tab-btn active" onclick="switchSidebarTab('map')" id="tab-btn-map">지도 설정</button>
+                <button class="tab-btn" onclick="switchSidebarTab('record')" id="tab-btn-record">기록 관리</button>
+            </div>
+            <div class="sidebar-body">
+                <!-- 탭 1: 지도 설정 -->
+                <div id="content-map" class="tab-content active">
+                    <div class="menu-section">
+                        <div class="menu-title">기본 지도</div>
+                        <div class="check-group">
+                            <label class="option-row">
+                                <span style="flex:1;">배경지도</span>
+                                <input type="checkbox" id="chk-base-layer" checked
+                                    onchange="toggleBaseLayer(this.checked)">
+                            </label>
+                            <div id="base-layer-options"
+                                style="margin-top: 5px; padding: 5px 15px; background: #f8f9fa; border-radius: 8px;">
+                                <label class="option-row"><span style="flex:1;">위성 지도</span><input type="radio"
+                                        name="baseMap" value="satellite" onchange="changeBaseMap('satellite')"></label>
+                                <label class="option-row" style="border:none;"><span style="flex:1;">일반 지도</span><input
+                                        type="radio" name="baseMap" value="base"
+                                        onchange="changeBaseMap('base')"></label>
+                            </div>
+                            <label class="option-row">
+                                <span style="flex:1;">하이브리드(도로/지명)</span>
+                                <input type="checkbox" id="chk-hybrid" onchange="toggleOverlay('hybrid', this.checked)">
+                            </label>
+                            <label class="option-row">
+                                <span style="flex:1;">지적도</span>
+                                <input type="checkbox" id="chk-cadastral"
+                                    onchange="toggleOverlay('cadastral', this.checked)">
+                            </label>
+                            <div id="cadastral-layer-options"
+                                style="display: none; margin-top: 5px; padding: 5px 15px; background: #f8f9fa; border-radius: 8px;">
+                                <label class="option-row"><span style="flex:1;">연속지적도</span><input type="radio"
+                                        name="cadastralMap" value="continuous" checked
+                                        onchange="changeCadastralMap('continuous')"></label>
+                                <label class="option-row" style="border:none;"><span style="flex:1;">LX맵</span><input
+                                        type="radio" name="cadastralMap" value="lx"
+                                        onchange="changeCadastralMap('lx')"></label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="menu-section">
+                        <div class="menu-title">산림 주제도</div>
+                        <label class="option-row">
+                            <span style="flex:1;">산림보호구역</span>
+                            <input type="checkbox" id="chk-forest" onchange="toggleOverlay('forest', this.checked)">
+                        </label>
+                    </div>
+                    <!-- 비공개 레이어 (암호 입력 시 표시) -->
+                    <div id="hidden-layer-section" class="menu-section" style="display: none;">
+                        <div class="menu-title">비공개 레이어</div>
+                        <label class="option-row">
+                            <span style="flex:1;">국유재산기본도</span>
+                            <input type="checkbox" id="chk-nas-guk" onchange="toggleOverlay('nasGuk', this.checked)">
+                        </label>
+                        <div
+                            style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px; font-size:13px; color:#555;">
+                            <div><span
+                                    style="width:12px; height:12px; background:#4CAF50; display:inline-block; margin-right:5px;"></span>보전국유림
+                            </div>
+                            <div><span
+                                    style="width:12px; height:12px; background:#FFC107; display:inline-block; margin-right:5px;"></span>준보전국유림
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 탭 2: 기록 관리 -->
+                <div id="content-record" class="tab-content">
+                    <div class="menu-section" style="min-height: 300px;">
+                        <div
+                            style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:14px; color:#888;">
+                            <span>저장된 기록 <span id="record-count">(0개)</span></span>
+                            <label style="cursor:pointer; color:#333;"><input type="checkbox" id="chk-select-all"
+                                    checked onchange="toggleAllLayers(this.checked)"> 전체 선택</label>
+                        </div>
+                        <div id="survey-list-area" class="survey-list-container"></div>
+                        <div style="display:flex; gap:10px; margin-top:10px;">
+                            <button onclick="triggerFileInput()"
+                                style="flex:1; padding:12px; border:none; border-radius:12px; background:#3B82F6; color:white; font-weight:bold;">불러오기</button>
+                            <button onclick="exportSelectedGeoJSON()"
+                                style="flex:1; padding:12px; border:none; border-radius:12px; background:#10B981; color:white; font-weight:bold;">저장하기</button>
+                        </div>
+                        <button onclick="clearAllData()"
+                            style="width:100%; margin-top:15px; padding:14px; border:1px solid #EF4444; background:white; color:#EF4444; border-radius:12px; font-weight:bold;">초기화</button>
+                    </div>
+                </div>
+            </div>
+            <!-- 히든 레이어 잠금 버튼 -->
+            <button id="btn-lock" onclick="unlockHiddenLayers()"
+                style="position: absolute; bottom: 20px; left: 20px; border: none; background: none; color: #aaa;">
+                <svg id="icon-lock" viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;">
                     <path
-                        d="M23 8c0 1.1-.9 2-2 2-.18 0-.35-.02-.51-.07l-3.56 3.55c.05.16.07.34.07.52 0 1.1-.9 2-2 2s-2-.9-2-2c0-.18.02-.36.07-.52l-2.55-2.55c-.16.05-.34.07-.52.07s-.36-.02-.52-.07l-4.55 4.56c.05.16.07.33.07.51 0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2c.18 0 .35.02.51.07l4.56-4.55C8.02 9.36 8 9.18 8 9c0-1.1.9-2 2-2s2 .9 2 2c0 .18-.02.36-.07.52l2.55 2.55c.16-.05.34-.07.52-.07s.36.02.52.07l3.55-3.56C19.02 8.35 19 8.18 19 8c0-1.1.9-2 2-2s2 .9 2 2z" />
+                        d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
                 </svg>
-            </div>
-            <span>선</span>
-        </button>
-        <button id="btn-point" class="bottom-btn" onclick="startDraw('marker')">
-            <div class="icon-box">
-                <svg class="svg-icon" viewBox="0 0 24 24">
-                    <path
-                        d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                </svg>
-            </div>
-            <span>점</span>
-        </button>
+            </button>
+        </div>
     </div>
 
-    <div id="map"></div>
-
-    <script>
-        /* PWA(웹앱) 등록 */
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function () {
-                navigator.serviceWorker.register('./service-worker.js');
-            });
-        }
-    </script>
-
-    <!-- [UI] 네비게이션 선택 모달 -->
+    <!-- 네비게이션 앱 선택 모달 -->
     <div id="nav-modal-overlay" class="nav-modal-overlay" onclick="closeNavModal()">
         <div class="nav-modal-content" onclick="event.stopPropagation()">
-            <div class="nav-modal-header">길찾기 앱 선택</div>
+            <div class="nav-modal-header"
+                style="font-size:18px; font-weight:bold; margin-bottom:20px; text-align:center;">길찾기 앱 선택</div>
             <div class="nav-app-list">
                 <div class="nav-app-item" onclick="executeNavigation('tmap')">
-                    <div class="nav-app-icon nav-icon-tmap">T</div>
-                    <span class="nav-app-name">티맵</span>
+                    <div class="nav-app-icon nav-icon-tmap">T</div><span style="font-size:13px;">티맵</span>
                 </div>
                 <div class="nav-app-item" onclick="executeNavigation('naver')">
-                    <div class="nav-app-icon nav-icon-naver">N</div>
-                    <span class="nav-app-name">네이버</span>
+                    <div class="nav-app-icon nav-icon-naver">N</div><span style="font-size:13px;">네이버</span>
                 </div>
                 <div class="nav-app-item" onclick="executeNavigation('kakao')">
-                    <div class="nav-app-icon nav-icon-kakao">K</div>
-                    <span class="nav-app-name">카카오</span>
+                    <div class="nav-app-icon nav-icon-kakao">K</div><span style="font-size:13px;">카카오</span>
                 </div>
             </div>
             <button onclick="closeNavModal()"
-                style="width:100%; padding:14px; border:none; background:#f5f5f5; border-radius:12px; font-weight:bold; color:#666; font-size:15px;">취소</button>
+                style="width:100%; padding:14px; background:#f5f5f5; border:none; border-radius:12px; font-weight:bold; color:#666;">취소</button>
         </div>
     </div>
 
-    <!-- [UI] 좌표 형식 선택 및 공유 모달 -->
+    <!-- 좌표 설정 및 공유 모달 -->
     <div id="coord-modal-overlay" class="nav-modal-overlay" onclick="closeCoordModal()">
         <div class="nav-modal-content" onclick="event.stopPropagation()">
-            <div class="nav-modal-header">좌표 표시 형식</div>
-
+            <div class="nav-modal-header"
+                style="font-size:18px; font-weight:bold; margin-bottom:20px; text-align:center;">좌표 표시 형식</div>
             <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
-                <label style="display:flex; align-items:center; padding:12px; background:#f8f9fa; border-radius:8px;">
+                <label style="padding:12px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
                     <input type="radio" name="coord-mode-select" value="0" onclick="setCoordMode(0)"
-                        style="width:20px; height:20px; margin-right:10px;">
-                    <span style="font-size:15px; color:#333;">도분초 (DMS)</span>
+                        style="margin-right:10px;"> 도분초 (DMS)
                 </label>
-                <label style="display:flex; align-items:center; padding:12px; background:#f8f9fa; border-radius:8px;">
+                <label style="padding:12px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
                     <input type="radio" name="coord-mode-select" value="1" onclick="setCoordMode(1)"
-                        style="width:20px; height:20px; margin-right:10px;">
-                    <span style="font-size:15px; color:#333;">소수점 (Decimal)</span>
+                        style="margin-right:10px;"> 소수점 (Decimal)
                 </label>
-                <label style="display:flex; align-items:center; padding:12px; background:#f8f9fa; border-radius:8px;">
+                <label style="padding:12px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
                     <input type="radio" name="coord-mode-select" value="2" onclick="setCoordMode(2)"
-                        style="width:20px; height:20px; margin-right:10px;">
-                    <span style="font-size:15px; color:#333;">TM 좌표 (X, Y)</span>
+                        style="margin-right:10px;"> TM 좌표 (X, Y)
                 </label>
             </div>
-
             <button onclick="shareMyLocation()"
-                style="width:100%; padding:14px; border:none; background:#3B82F6; border-radius:12px; font-weight:bold; color:white; font-size:15px; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px;">
-                <svg viewBox="0 0 24 24" style="width:20px; height:20px; fill:currentColor;">
-                    <path
-                        d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.66 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
-                </svg>
-                내 위치 공유하기
-            </button>
-
+                style="width:100%; padding:14px; background:#3B82F6; color:white; border:none; border-radius:12px; font-weight:bold; margin-bottom:10px;">내
+                위치 공유하기</button>
             <button onclick="closeCoordModal()"
-                style="width:100%; padding:14px; border:none; background:#f5f5f5; border-radius:12px; font-weight:bold; color:#666; font-size:15px;">취소</button>
+                style="width:100%; padding:14px; background:#f5f5f5; border:none; border-radius:12px; font-weight:bold; color:#666;">취소</button>
         </div>
     </div>
 
-    <script src="script.js?v=1.3.1"></script>
+    <!-- 파일 입력 (숨김) -->
+    <input type="file" id="geoJsonInput" style="display:none" onchange="handleFileSelect(this)"
+        accept=".geojson, .json">
 
+    <!-- 메인 스크립트 연결 -->
+    <script src="script.js?v=1.3.1"></script>
+    <script>
+        // PWA 서비스 워커 등록
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js'));
+        }
+    </script>
 </body>
 
 </html>
