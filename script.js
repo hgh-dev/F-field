@@ -129,20 +129,27 @@ const vworldSatellite = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/
 
 // 3. 하이브리드(지명, 도로 등) 오버레이
 const vworldHybrid = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', {
-    key: VWORLD_API_KEY, layer: 'Hybrid', ext: 'png', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22
+    key: VWORLD_API_KEY, layer: 'Hybrid', ext: 'png', opacity: 1, attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22
+});
+
+// 8. Esri 위성지도 (World Imagery)
+const esriSatelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Esri World Imagery',
+    maxNativeZoom: 19,
+    maxZoom: 22
 });
 
 // 4. 지적도 (LX, 편집도)
 const vworldLxLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_landinfobasemap', styles: '', format: 'image/png',
-    transparent: true, opacity: 1, version: '1.3.0', maxZoom: 22, maxNativeZoom: 19,
+    transparent: true, opacity: 0.6, version: '1.3.0', maxZoom: 22, maxNativeZoom: 19,
     detectRetina: true, tileSize: 512, zoomOffset: 0, className: 'cadastral-layer'
 });
 
 // 5. 연속 지적도
 const vworldContinuousLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun', styles: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun',
-    format: 'image/png', transparent: true, opacity: 0.6, version: '1.3.0',
+    format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0',
     maxZoom: 22, maxNativeZoom: 19, detectRetina: true, tileSize: 512, zoomOffset: 0, className: 'cadastral-layer'
 });
 
@@ -151,33 +158,20 @@ const nasGukLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon/guk/{z
     minZoom: 1, maxZoom: 22, maxNativeZoom: 18, tms: false, pane: 'nasGukPane', opacity: 1, attribution: 'Suwon Guk'
 });
 
-// 7. 행정경계 레이어 (WMS)
-const adminLayers = {
-    // 광역시도
-    sido: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
-        key: VWORLD_API_KEY, layers: 'lt_c_adsido', styles: 'lt_c_adsido', format: 'image/png',
-        transparent: true, opacity: 0.8, version: '1.3.0', maxZoom: 22, maxNativeZoom: 18,
-        className: 'admin-layer'
-    }),
-    // 시군구
-    sigg: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
-        key: VWORLD_API_KEY, layers: 'lt_c_adsigg', styles: 'lt_c_adsigg', format: 'image/png',
-        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 9, maxZoom: 22, maxNativeZoom: 18,
-        className: 'admin-layer'
-    }),
-    // 읍면동
-    emd: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
-        key: VWORLD_API_KEY, layers: 'lt_c_ademd', styles: 'lt_c_ademd', format: 'image/png',
-        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 12, maxZoom: 22, maxNativeZoom: 18,
-        className: 'admin-layer'
-    }),
-    // 리
-    ri: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
-        key: VWORLD_API_KEY, layers: 'lt_c_adri', styles: 'lt_c_adri', format: 'image/png',
-        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 14, maxZoom: 22, maxNativeZoom: 18,
-        className: 'admin-layer'
-    })
-};
+// 7. 행정경계 레이어 (통합 WMS)
+const mergedAdminLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY,
+    layers: 'lt_c_adsido,lt_c_adsigg,lt_c_ademd,lt_c_adri',
+    styles: 'lt_c_adsido,lt_c_adsigg,lt_c_ademd,lt_c_adri',
+    format: 'image/png',
+    transparent: true,
+    opacity: 1,
+    version: '1.3.0',
+    minZoom: 6,
+    maxZoom: 22,
+    maxNativeZoom: 18,
+    className: 'admin-layer'
+});
 
 
 // 초기 레이어 추가 (위성지도 + 연속지적도 + 하이브리드)
@@ -186,7 +180,8 @@ map.addLayer(vworldContinuousLayer);
 map.addLayer(vworldHybrid);
 
 // 초기 행정경계 레이어 설정
-if (document.getElementById('chk-admin-group').checked) {
+// 초기 행정경계 레이어 설정
+if (document.getElementById('chk-admin') && document.getElementById('chk-admin').checked) {
     toggleOverlay('admin', true);
 }
 
@@ -201,6 +196,7 @@ function toggleBaseLayer(isChecked) {
     } else {
         map.removeLayer(vworldSatellite);
         map.removeLayer(vworldBase);
+        map.removeLayer(esriSatelliteLayer);
     }
 }
 
@@ -211,25 +207,32 @@ function changeBaseMap(type) {
     if (type === 'satellite') {
         map.addLayer(vworldSatellite);
         map.removeLayer(vworldBase);
+        map.removeLayer(esriSatelliteLayer);
+    } else if (type === 'esri') {
+        map.addLayer(esriSatelliteLayer);
+        map.removeLayer(vworldSatellite);
+        map.removeLayer(vworldBase);
     } else {
         map.addLayer(vworldBase);
         map.removeLayer(vworldSatellite);
+        map.removeLayer(esriSatelliteLayer);
     }
 
     // 오버레이 레이어들을 순서대로 맨 위로 올림 (지적도 -> 하이브리드 -> 행정경계)
     updateLayerOrder();
 }
 
-// 레이어 순서 재조정 함수 (지적도 < 하이브리드 < 행정경계)
+// 레이어 순서 재조정 함수 (하이브리드 < 지적도 < 행정경계)
 function updateLayerOrder() {
-    if (map.hasLayer(vworldLxLayer)) vworldLxLayer.bringToFront();
-    if (map.hasLayer(vworldContinuousLayer)) vworldContinuousLayer.bringToFront();
+    // 1. 하이브리드 먼저 (가장 아래)
     if (map.hasLayer(vworldHybrid)) vworldHybrid.bringToFront();
 
-    // 행정경계가 가장 위에 오도록 (체크된 것들만)
-    Object.values(adminLayers).forEach(layer => {
-        if (map.hasLayer(layer)) layer.bringToFront();
-    });
+    // 2. 지적도 (하이브리드 위)
+    if (map.hasLayer(vworldLxLayer)) vworldLxLayer.bringToFront();
+    if (map.hasLayer(vworldContinuousLayer)) vworldContinuousLayer.bringToFront();
+
+    // 3. 행정경계가 가장 위에 오도록
+    if (map.hasLayer(mergedAdminLayer)) mergedAdminLayer.bringToFront();
 }
 
 // 지적도 종류 변경 (연속지적도 vs LX)
@@ -264,22 +267,12 @@ function toggleOverlay(type, isChecked) {
         }
         return;
     } else if (type === 'admin') {
-        // 행정경계 메뉴 처리
+        // 행정경계 메뉴 처리 (통합 레이어)
         if (isChecked) {
-            // 모든 하위 항목 켜기 (강제 동기화)
-            ['sido', 'sigg', 'emd', 'ri'].forEach(subType => {
-                const cb = document.getElementById('chk-admin-' + subType);
-                if (cb) cb.checked = true;
-                map.addLayer(adminLayers[subType]);
-                adminLayers[subType].bringToFront();
-            });
+            map.addLayer(mergedAdminLayer);
+            mergedAdminLayer.bringToFront();
         } else {
-            // 모든 하위 항목 끄기 및 체크 해제
-            ['sido', 'sigg', 'emd', 'ri'].forEach(subType => {
-                const cb = document.getElementById('chk-admin-' + subType);
-                if (cb) cb.checked = false;
-                map.removeLayer(adminLayers[subType]);
-            });
+            map.removeLayer(mergedAdminLayer);
         }
         return;
     } else if (type === 'nasGuk') {
@@ -326,17 +319,7 @@ function toggleOverlay(type, isChecked) {
     }
 }
 
-// 행정경계 하위 레이어 토글
-function toggleAdminSubLayer(subType, isChecked) {
-    if (!document.getElementById('chk-admin-group').checked) return; // 그룹이 꺼져있으면 무시
 
-    if (isChecked) {
-        map.addLayer(adminLayers[subType]);
-        adminLayers[subType].bringToFront();
-    } else {
-        map.removeLayer(adminLayers[subType]);
-    }
-}
 
 // 산림보호구역 데이터 가져오기 (VWorld Data API)
 function fetchForestData() {
@@ -415,12 +398,16 @@ function closeSidebar() {
 function syncSidebarUI() {
     const hasBase = map.hasLayer(vworldBase);
     const hasSat = map.hasLayer(vworldSatellite);
+    const hasEsri = map.hasLayer(esriSatelliteLayer);
 
     // 배경 지도
-    document.getElementById('chk-base-layer').checked = (hasBase || hasSat);
+    document.getElementById('chk-base-layer').checked = (hasBase || hasSat || hasEsri);
     if (hasSat) document.querySelector('input[name="baseMap"][value="satellite"]').checked = true;
+    else if (hasEsri) document.querySelector('input[name="baseMap"][value="esri"]').checked = true;
     else if (hasBase) document.querySelector('input[name="baseMap"][value="base"]').checked = true;
-    toggleBaseLayer(hasBase || hasSat);
+
+    // toggleBaseLayer 호출은 중복 실행을 막기 위해 제거하거나 상태만 맞춤
+    // toggleBaseLayer(hasBase || hasSat || hasEsri); -> 이미 map 상태가 정확하므로 UI만 맞추면 됨
 
     // 하이브리드
     document.getElementById('chk-hybrid').checked = map.hasLayer(vworldHybrid);

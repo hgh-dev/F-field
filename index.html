@@ -211,10 +211,13 @@
             border-radius: 0 0 8px 8px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             z-index: 2001;
+            /* display는 script에서 제어 (block/none) */
             display: none;
-            margin-top: 2px;
+            margin-top: 5px;
             box-sizing: border-box;
-            border: 1px solid #eee;
+            border: 1px solid #ddd;
+            overflow: hidden;
+            /* 내부 넘침 방지 */
         }
 
         .search-result-panel {
@@ -251,12 +254,33 @@
             cursor: pointer;
             font-size: 13px;
             display: flex;
+            /* align-items: center; -> 제거 (search-result는 column이라) */
+        }
+
+        .history-item {
+            justify-content: space-between;
             align-items: center;
+        }
+
+        .search-result-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
         }
 
         .history-item:hover,
         .search-result-item:hover {
             background-color: #fcfcfc;
+        }
+
+        .search-result-title {
+            font-size: 13px;
+            color: #000000;
+        }
+
+        .search-result-addr {
+            font-size: 12px;
+            color: #666;
         }
 
         .badge-road,
@@ -470,9 +494,9 @@
             transition: fill 0.2s;
         }
 
-        /* 행정경계 레이어 색상 변경 (회색 -> 밝은 연두색) */
+        /* 행정경계 레이어 필터 단순화 (성능 최적화: 밝은 노란색) */
         .admin-layer {
-            filter: invert(100%) sepia(100%) saturate(1000%) hue-rotate(80deg) brightness(1.5);
+            filter: invert(100%) sepia(100%) brightness(2.0);
         }
 
         /* --- 사이드바 (메뉴) --- */
@@ -639,7 +663,7 @@
 
         .menu-title {
             font-size: 14px;
-            font-weight: normal;
+            font-weight: bold;
             color: #8898AA;
             margin-bottom: 12px;
             padding-bottom: 8px;
@@ -739,7 +763,13 @@
         .accordion-content {
             display: none;
             overflow: hidden;
-            transition: max-height 0.3s ease;
+            transition: max-height 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        /* 아코디언 내부 텍스트 스타일 (작고 회색으로) */
+        .accordion-content .option-row span {
+            font-size: 14px;
+            color: #666;
         }
 
         .option-row input[type="radio"] {
@@ -1066,19 +1096,7 @@
         }
 
         /* 녹화 모드 테두리 효과 */
-        @keyframes pulse-border {
-            0% {
-                box-shadow: inset 0 0 0 5px rgba(59, 130, 246, 0.4);
-            }
 
-            50% {
-                box-shadow: inset 0 0 0 10px rgba(59, 130, 246, 1);
-            }
-
-            100% {
-                box-shadow: inset 0 0 0 5px rgba(59, 130, 246, 0.4);
-            }
-        }
 
         body.recording-mode::after {
             content: "";
@@ -1086,7 +1104,8 @@
             inset: 0;
             pointer-events: none;
             z-index: 10000;
-            animation: pulse-border 3s infinite;
+            box-shadow: inset 0 0 30px rgba(0, 100, 255, 0.5);
+            border: 0px solid rgba(0, 100, 255, 0.3);
         }
 
         /* --- 점 3개 메뉴 & 팝업 --- */
@@ -1355,9 +1374,13 @@
                             <div id="base-layer-options" class="accordion-content"
                                 style="margin-top: 0; padding: 10px 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">
                                 <label class="option-row" style="padding:8px 0;">
-                                    <span style="flex:1;">위성지도</span>
+                                    <span style="flex:1;">위성지도(VWorld)</span>
                                     <input type="radio" name="baseMap" value="satellite"
                                         onchange="changeBaseMap('satellite')">
+                                </label>
+                                <label class="option-row" style="padding:8px 0;">
+                                    <span style="flex:1;">위성지도(Esri)</span>
+                                    <input type="radio" name="baseMap" value="esri" onchange="changeBaseMap('esri')">
                                 </label>
                                 <label class="option-row" style="border:none; padding:8px 0;">
                                     <span style="flex:1;">일반지도</span>
@@ -1369,37 +1392,11 @@
                                 <span style="flex:1;">하이브리드(도로/지명)</span>
                                 <input type="checkbox" id="chk-hybrid" onchange="toggleOverlay('hybrid', this.checked)">
                             </label>
-                            <div class="option-row" style="border-bottom:none; padding-bottom:5px;">
-                                <div class="accordion-header" onclick="toggleAccordion('admin-layer-options', this)">
-                                    <span class="toggle-icon"></span>
-                                    <span>행정경계</span>
-                                </div>
-                                <input type="checkbox" id="chk-admin-group"
-                                    onchange="toggleOverlay('admin', this.checked)">
-                            </div>
-                            <div id="admin-layer-options" class="accordion-content"
-                                style="margin-top: 0; padding: 10px 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">
-                                <label class="option-row" style="padding:8px 0;">
-                                    <span style="flex:1;">광역시도</span>
-                                    <input type="checkbox" id="chk-admin-sido"
-                                        onchange="toggleAdminSubLayer('sido', this.checked)">
-                                </label>
-                                <label class="option-row" style="padding:8px 0;">
-                                    <span style="flex:1;">시군구</span>
-                                    <input type="checkbox" id="chk-admin-sigg"
-                                        onchange="toggleAdminSubLayer('sigg', this.checked)">
-                                </label>
-                                <label class="option-row" style="padding:8px 0;">
-                                    <span style="flex:1;">읍면동</span>
-                                    <input type="checkbox" id="chk-admin-emd"
-                                        onchange="toggleAdminSubLayer('emd', this.checked)">
-                                </label>
-                                <label class="option-row" style="border:none; padding:8px 0;">
-                                    <span style="flex:1;">리</span>
-                                    <input type="checkbox" id="chk-admin-ri"
-                                        onchange="toggleAdminSubLayer('ri', this.checked)">
-                                </label>
-                            </div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">행정경계</span>
+                                <input type="checkbox" id="chk-admin" onchange="toggleOverlay('admin', this.checked)">
+                            </label>
                             <div class="option-row" style="border-bottom:none; padding-bottom:5px;">
                                 <div class="accordion-header"
                                     onclick="toggleAccordion('cadastral-layer-options', this)">
