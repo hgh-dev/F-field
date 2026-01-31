@@ -73,7 +73,14 @@
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
             -webkit-user-select: none;
+            -webkit-user-select: none;
             user-select: none;
+
+            /* 지도 컨테이너도 하드웨어 레이어로 분리하여 충돌 방지 */
+            transform: translate3d(0, 0, 0);
+            -webkit-transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
         }
 
         /* --- 상단 툴바 (주소 및 메뉴) --- */
@@ -94,6 +101,9 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             /* 하드웨어 가속 적용 (지도와의 충돌 방지) */
             transform: translate3d(0, 0, 0);
+            -webkit-transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
         }
 
         /* 상단 버튼 (햄버거 메뉴, 검색 등) */
@@ -294,6 +304,9 @@
             gap: 15px;
             z-index: 1500;
             transform: translate3d(0, 0, 0);
+            -webkit-transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
         }
 
         .circle-btn {
@@ -351,6 +364,9 @@
             z-index: 1000;
             box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
             transform: translate3d(0, 0, 0);
+            -webkit-transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
         }
 
         .bottom-btn {
@@ -498,6 +514,9 @@
             opacity: 0;
             transition: opacity 0.3s ease;
             transform: translate3d(0, 0, 0);
+            -webkit-transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
             /* 깜빡임 방지 */
         }
 
@@ -520,6 +539,8 @@
             /* 화면 밖으로 숨김 (하드웨어 가속) */
             transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
             padding-top: env(safe-area-inset-top);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
         }
 
         .sidebar-overlay.visible .sidebar-content {
