@@ -73,14 +73,7 @@
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
             -webkit-user-select: none;
-            -webkit-user-select: none;
             user-select: none;
-
-            /* 지도 컨테이너도 하드웨어 레이어로 분리하여 충돌 방지 */
-            transform: translate3d(0, 0, 0);
-            -webkit-transform: translate3d(0, 0, 0);
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
         }
 
         /* --- 상단 툴바 (주소 및 메뉴) --- */
@@ -99,11 +92,6 @@
             z-index: 2000;
             /* 지도보다 위에 표시 */
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            /* 하드웨어 가속 적용 (지도와의 충돌 방지) */
-            transform: translate3d(0, 0, 0);
-            -webkit-transform: translate3d(0, 0, 0);
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
         }
 
         /* 상단 버튼 (햄버거 메뉴, 검색 등) */
@@ -180,9 +168,7 @@
             position: absolute;
             top: calc(55px + env(safe-area-inset-top));
             left: 50%;
-            top: calc(55px + env(safe-area-inset-top));
-            left: 50%;
-            /* transform: translateX(-50%); -> 아래에서 translate3d로 대체 */
+            transform: translateX(-50%);
             /* 가운데 정렬 */
             width: 90%;
             max-width: 400px;
@@ -195,8 +181,6 @@
             gap: 5px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             z-index: 2000;
-            transform: translate3d(-50%, 0, 0);
-            /* translateX(-50%) 대신 translate3d 사용 */
         }
 
         #search-input {
@@ -302,11 +286,8 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
+            gap: 15px;
             z-index: 1500;
-            transform: translate3d(0, 0, 0);
-            -webkit-transform: translate3d(0, 0, 0);
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
         }
 
         .circle-btn {
@@ -363,10 +344,6 @@
             align-items: center;
             z-index: 1000;
             box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
-            transform: translate3d(0, 0, 0);
-            -webkit-transform: translate3d(0, 0, 0);
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
         }
 
         .bottom-btn {
@@ -414,8 +391,7 @@
             bottom: calc(85px + env(safe-area-inset-bottom));
             left: 50%;
             left: 50%;
-            /* transform: translateX(-50%); -> 하드웨어 가속 포함 */
-            transform: translate3d(-50%, 0, 0);
+            transform: translateX(-50%);
             width: auto;
             min-width: 320px;
             max-width: 95%;
@@ -513,11 +489,6 @@
             z-index: 5000;
             opacity: 0;
             transition: opacity 0.3s ease;
-            transform: translate3d(0, 0, 0);
-            -webkit-transform: translate3d(0, 0, 0);
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
-            /* 깜빡임 방지 */
         }
 
         .sidebar-overlay.visible {
@@ -535,16 +506,14 @@
             box-shadow: 5px 0 25px rgba(0, 0, 0, 0.15);
             display: flex;
             flex-direction: column;
-            transform: translate3d(-100%, 0, 0);
-            /* 화면 밖으로 숨김 (하드웨어 가속) */
+            transform: translateX(-100%);
+            /* 화면 밖으로 숨김 */
             transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
             padding-top: env(safe-area-inset-top);
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
         }
 
         .sidebar-overlay.visible .sidebar-content {
-            transform: translate3d(0, 0, 0);
+            transform: translateX(0);
         }
 
         /* 슬라이드 인 */
@@ -670,7 +639,7 @@
 
         .menu-title {
             font-size: 14px;
-            font-weight: 700;
+            font-weight: normal;
             color: #8898AA;
             margin-bottom: 12px;
             padding-bottom: 8px;
@@ -985,7 +954,7 @@
 
         .nav-modal-overlay.visible {
             opacity: 1;
-            transform: translate3d(0, 0, 0);
+            transform: translateY(0);
         }
 
         .nav-modal-content {
@@ -995,12 +964,12 @@
             border-radius: 20px 20px 0 0;
             padding: 24px;
             box-sizing: border-box;
-            transform: translate3d(0, 100%, 0);
+            transform: translateY(100%);
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .nav-modal-overlay.visible .nav-modal-content {
-            transform: translate3d(0, 0, 0);
+            transform: translateY(0);
         }
 
         .nav-app-list {
@@ -1063,7 +1032,6 @@
             right: 20px !important;
             margin: 0 !important;
             z-index: 999 !important;
-            transform: translate3d(0, 0, 0);
         }
 
         .leaflet-control-scale-line {
@@ -1073,7 +1041,6 @@
             margin: 0 !important;
             z-index: 990 !important;
             background: rgba(255, 255, 255, 0.8);
-            transform: translate3d(0, 0, 0);
         }
 
         .leaflet-draw-toolbar {
@@ -1380,7 +1347,7 @@
                             <div class="option-row" style="border-bottom:none; padding-bottom:5px;">
                                 <div class="accordion-header" onclick="toggleAccordion('base-layer-options', this)">
                                     <span class="toggle-icon"></span>
-                                    <span style="font-weight: 500;">배경지도</span>
+                                    <span>배경지도</span>
                                 </div>
                                 <input type="checkbox" id="chk-base-layer" checked
                                     onchange="toggleBaseLayer(this.checked)">
@@ -1399,13 +1366,13 @@
                             </div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
-                                <span style="flex:1; font-weight: 500;">하이브리드(도로/지명)</span>
+                                <span style="flex:1;">하이브리드(도로/지명)</span>
                                 <input type="checkbox" id="chk-hybrid" onchange="toggleOverlay('hybrid', this.checked)">
                             </label>
                             <div class="option-row" style="border-bottom:none; padding-bottom:5px;">
                                 <div class="accordion-header" onclick="toggleAccordion('admin-layer-options', this)">
                                     <span class="toggle-icon"></span>
-                                    <span style="font-weight: 500;">행정경계</span>
+                                    <span>행정경계</span>
                                 </div>
                                 <input type="checkbox" id="chk-admin-group"
                                     onchange="toggleOverlay('admin', this.checked)">
@@ -1437,7 +1404,7 @@
                                 <div class="accordion-header"
                                     onclick="toggleAccordion('cadastral-layer-options', this)">
                                     <span class="toggle-icon"></span>
-                                    <span style="font-weight: 500;">지적도</span>
+                                    <span>지적도</span>
                                 </div>
                                 <input type="checkbox" id="chk-cadastral"
                                     onchange="toggleOverlay('cadastral', this.checked)">
@@ -1457,7 +1424,7 @@
                         <div class="menu-title">산림 주제도</div>
                         <label class="option-row">
                             <span class="static-icon"></span>
-                            <span style="flex:1; font-weight: 500;">산림보호구역</span>
+                            <span style="flex:1;">산림보호구역</span>
                             <input type="checkbox" id="chk-forest" onchange="toggleOverlay('forest', this.checked)">
                         </label>
                     </div>
@@ -1466,7 +1433,7 @@
                         <div class="menu-title">비공개 레이어</div>
                         <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
                             <span class="static-icon"></span>
-                            <span style="flex:1; font-weight: 500;">국유재산기본도</span>
+                            <span style="flex:1;">국유재산기본도</span>
                             <input type="checkbox" id="chk-nas-guk" onchange="toggleOverlay('nasGuk', this.checked)">
                         </label>
                         <div id="nas-guk-legend"
