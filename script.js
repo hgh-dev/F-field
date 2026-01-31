@@ -149,7 +149,7 @@ const vworldLxLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
 // 5. 연속 지적도
 const vworldContinuousLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun', styles: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun',
-    format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0',
+    format: 'image/png', transparent: true, opacity: 0.6, version: '1.3.0',
     maxZoom: 22, maxNativeZoom: 19, detectRetina: true, tileSize: 512, zoomOffset: 0, className: 'cadastral-layer'
 });
 
