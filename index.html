@@ -92,6 +92,8 @@
             z-index: 2000;
             /* 지도보다 위에 표시 */
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            /* 하드웨어 가속 적용 (지도와의 충돌 방지) */
+            transform: translate3d(0, 0, 0);
         }
 
         /* 상단 버튼 (햄버거 메뉴, 검색 등) */
@@ -168,7 +170,9 @@
             position: absolute;
             top: calc(55px + env(safe-area-inset-top));
             left: 50%;
-            transform: translateX(-50%);
+            top: calc(55px + env(safe-area-inset-top));
+            left: 50%;
+            /* transform: translateX(-50%); -> 아래에서 translate3d로 대체 */
             /* 가운데 정렬 */
             width: 90%;
             max-width: 400px;
@@ -181,6 +185,8 @@
             gap: 5px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             z-index: 2000;
+            transform: translate3d(-50%, 0, 0);
+            /* translateX(-50%) 대신 translate3d 사용 */
         }
 
         #search-input {
@@ -287,6 +293,7 @@
             flex-direction: column;
             gap: 15px;
             z-index: 1500;
+            transform: translate3d(0, 0, 0);
         }
 
         .circle-btn {
@@ -343,6 +350,7 @@
             align-items: center;
             z-index: 1000;
             box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+            transform: translate3d(0, 0, 0);
         }
 
         .bottom-btn {
@@ -389,7 +397,9 @@
             position: absolute;
             bottom: calc(85px + env(safe-area-inset-bottom));
             left: 50%;
-            transform: translateX(-50%);
+            left: 50%;
+            /* transform: translateX(-50%); -> 하드웨어 가속 포함 */
+            transform: translate3d(-50%, 0, 0);
             width: auto;
             min-width: 320px;
             max-width: 95%;
@@ -487,6 +497,8 @@
             z-index: 5000;
             opacity: 0;
             transition: opacity 0.3s ease;
+            transform: translate3d(0, 0, 0);
+            /* 깜빡임 방지 */
         }
 
         .sidebar-overlay.visible {
@@ -504,14 +516,14 @@
             box-shadow: 5px 0 25px rgba(0, 0, 0, 0.15);
             display: flex;
             flex-direction: column;
-            transform: translateX(-100%);
-            /* 화면 밖으로 숨김 */
+            transform: translate3d(-100%, 0, 0);
+            /* 화면 밖으로 숨김 (하드웨어 가속) */
             transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
             padding-top: env(safe-area-inset-top);
         }
 
         .sidebar-overlay.visible .sidebar-content {
-            transform: translateX(0);
+            transform: translate3d(0, 0, 0);
         }
 
         /* 슬라이드 인 */
@@ -952,7 +964,7 @@
 
         .nav-modal-overlay.visible {
             opacity: 1;
-            transform: translateY(0);
+            transform: translate3d(0, 0, 0);
         }
 
         .nav-modal-content {
@@ -962,12 +974,12 @@
             border-radius: 20px 20px 0 0;
             padding: 24px;
             box-sizing: border-box;
-            transform: translateY(100%);
+            transform: translate3d(0, 100%, 0);
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .nav-modal-overlay.visible .nav-modal-content {
-            transform: translateY(0);
+            transform: translate3d(0, 0, 0);
         }
 
         .nav-app-list {
@@ -1030,6 +1042,7 @@
             right: 20px !important;
             margin: 0 !important;
             z-index: 999 !important;
+            transform: translate3d(0, 0, 0);
         }
 
         .leaflet-control-scale-line {
@@ -1039,6 +1052,7 @@
             margin: 0 !important;
             z-index: 990 !important;
             background: rgba(255, 255, 255, 0.8);
+            transform: translate3d(0, 0, 0);
         }
 
         .leaflet-draw-toolbar {
@@ -1540,7 +1554,7 @@
         accept=".geojson, .json">
 
     <!-- 메인 스크립트 연결 -->
-    <script src="script.js?v=1.4.0"></script>
+    <script src="script.js?v=1.4.2"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {
