@@ -156,25 +156,25 @@ const adminLayers = {
     // 광역시도
     sido: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
         key: VWORLD_API_KEY, layers: 'lt_c_adsido', styles: 'lt_c_adsido', format: 'image/png',
-        transparent: true, opacity: 0.8, version: '1.3.0', maxZoom: 22, maxNativeZoom: 19,
+        transparent: true, opacity: 0.8, version: '1.3.0', maxZoom: 22, maxNativeZoom: 18,
         className: 'admin-layer'
     }),
     // 시군구
     sigg: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
         key: VWORLD_API_KEY, layers: 'lt_c_adsigg', styles: 'lt_c_adsigg', format: 'image/png',
-        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 9, maxZoom: 22, maxNativeZoom: 19,
+        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 9, maxZoom: 22, maxNativeZoom: 18,
         className: 'admin-layer'
     }),
     // 읍면동
     emd: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
         key: VWORLD_API_KEY, layers: 'lt_c_ademd', styles: 'lt_c_ademd', format: 'image/png',
-        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 12, maxZoom: 22, maxNativeZoom: 19,
+        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 12, maxZoom: 22, maxNativeZoom: 18,
         className: 'admin-layer'
     }),
     // 리
     ri: L.tileLayer.wms("https://api.vworld.kr/req/wms", {
         key: VWORLD_API_KEY, layers: 'lt_c_adri', styles: 'lt_c_adri', format: 'image/png',
-        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 14, maxZoom: 22, maxNativeZoom: 19,
+        transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 14, maxZoom: 22, maxNativeZoom: 18,
         className: 'admin-layer'
     })
 };
@@ -266,17 +266,20 @@ function toggleOverlay(type, isChecked) {
     } else if (type === 'admin') {
         // 행정경계 메뉴 처리
         if (isChecked) {
-            // 체크된 하위 항목들 켜기
+            // 모든 하위 항목 켜기 (강제 동기화)
             ['sido', 'sigg', 'emd', 'ri'].forEach(subType => {
                 const cb = document.getElementById('chk-admin-' + subType);
-                if (cb && cb.checked) {
-                    map.addLayer(adminLayers[subType]);
-                    adminLayers[subType].bringToFront();
-                }
+                if (cb) cb.checked = true;
+                map.addLayer(adminLayers[subType]);
+                adminLayers[subType].bringToFront();
             });
         } else {
-            // 모든 하위 항목 끄기
-            Object.values(adminLayers).forEach(l => map.removeLayer(l));
+            // 모든 하위 항목 끄기 및 체크 해제
+            ['sido', 'sigg', 'emd', 'ri'].forEach(subType => {
+                const cb = document.getElementById('chk-admin-' + subType);
+                if (cb) cb.checked = false;
+                map.removeLayer(adminLayers[subType]);
+            });
         }
         return;
     } else if (type === 'nasGuk') {
