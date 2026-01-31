@@ -1191,6 +1191,19 @@
             height: 18px;
             fill: #777;
         }
+
+        .sidebar-warning {
+            font-size: 11px;
+            color: #999;
+            margin-top: 15px;
+            line-height: 1.4;
+            padding: 0 5px;
+        }
+
+        .sidebar-warning p {
+            margin: 5px 0;
+            word-break: keep-all;
+        }
     </style>
 </head>
 
@@ -1445,6 +1458,10 @@
                             </div>
                         </div>
                     </div>
+                    <div class="sidebar-warning">
+                        <p>※ 모든 정보는 법적 효력이 없으며, 참고용으로만 활용하시기 바랍니다.</p>
+                        <p>※ 많은 레이어를 표시할 경우 오류가 발생할 수 있습니다.</p>
+                    </div>
                 </div>
                 <!-- 탭 2: 기록 관리 -->
                 <div id="content-record" class="tab-content">
@@ -1471,6 +1488,10 @@
                             </div>
                             <button onclick="clearAllData()"
                                 style="width:100%; padding:14px; border:1px solid #EF4444; background:white; color:#EF4444; border-radius:12px; font-weight:bold; cursor:pointer;">초기화</button>
+                        </div>
+                        <div class="sidebar-warning">
+                            <p>※ 많은 기록을 표시하거나 용량이 큰 파일을 불러올 경우 오류가 발생할 수 있습니다.</p>
+                            <p>※ 웹브라우저의 인터넷 기록이나 캐시를 삭제하면 기록한 데이터가 모두 없어지니 미리 기기에 저장하시기 바랍니다.</p>
                         </div>
                     </div>
                 </div>
