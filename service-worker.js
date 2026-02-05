@@ -1,5 +1,5 @@
 // [중요] 버전이 바뀔 때마다 여기 숫자를 꼭 바꿔주세요! (예: v1.1.2)
-const CACHE_NAME = 'F-field-v1.4.2';
+const CACHE_NAME = 'F-field-v1.5.0';
 
 // 미리 저장해둘 파일 목록
 const FILES_TO_CACHE = [

@@ -1,6 +1,6 @@
 /* ==========================================================================
    프로젝트: 국유림 현장조사 앱 (F-Field)
-   버전: v1.4.2
+   버전: v1.5.0
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -46,6 +46,10 @@ let forestDataLayer = null;   // 산림보호구역 레이어
 let isForestActive = false;   // 산림보호구역 보기 활성화 여부
 let lastForestRequestId = 0;  // 데이터 요청 순서 확인용
 
+// 프로젝트 관리 상태
+let projects = [];             // 전체 프로젝트 목록
+let currentProjectId = null;   // 현재 선택된 프로젝트 ID
+
 
 
 /* --------------------------------------------------------------------------
@@ -76,7 +80,9 @@ const SVG_ICONS = {
     // 잠금 해제 아이콘
     unlock: `<svg viewBox="0 0 24 24"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c.55 0 1 .45 1 1s-.45 1-1 1H7c-1.66 0-3 1.34-3 3v2H3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/></svg>`,
     // 더보기(점 3개) 아이콘
-    more: `<svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`
+    more: `<svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`,
+    // 폴더 이동 아이콘 (커스텀: 큰 화살표)
+    folder_move: `<svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h11v-2H4V8h16v4h2V8c0-1.1-.9-2-2-2z"/><path d="M14 13v-3l7 4.5-7 4.5v-3H9v-3h5z"/></svg>`
 };
 
 /* [패치] Leaflet 라이브러리의 터치 오류 방지 */
@@ -1166,11 +1172,9 @@ map.on('draw:edited', function (e) {
 
 function renderSurveyList() {
     const listContainer = document.getElementById('survey-list-area');
-    const countSpan = document.getElementById('record-count');
     listContainer.innerHTML = "";
 
     const layers = drawnItems.getLayers();
-    countSpan.innerText = "(" + layers.length + "개)";
 
     const allVisible = layers.length > 0 && layers.every(l => !l.feature.properties.isHidden);
     document.getElementById('chk-select-all').checked = (layers.length > 0 && allVisible);
@@ -1180,8 +1184,9 @@ function renderSurveyList() {
         return;
     }
 
-    // 최신순 정렬
-    layers.slice().reverse().forEach(function (layer) {
+    // 생성 순으로 정렬 (오래된 것 -> 최신 것)
+    // appendChild를 사용하므로 최신 기록이 리스트의 하단에 추가됨
+    layers.slice().forEach(function (layer) {
         const props = layer.feature.properties || {};
         const isHidden = props.isHidden === true;
         const typeIcon = (layer instanceof L.Marker) ? SVG_ICONS.marker : (layer instanceof L.Polygon ? SVG_ICONS.polygon : SVG_ICONS.ruler);
@@ -1201,6 +1206,9 @@ function renderSurveyList() {
         </div>`;
         listContainer.appendChild(div);
     });
+
+    // 프로젝트 선택기의 수치를 최신화
+    renderProjectSelector();
 }
 
 // 레이어 팝업 내용 업데이트(면적, 거리 계산 포함)
@@ -1239,13 +1247,121 @@ function updateLayerInfo(layer) {
 
 // --- 데이터 저장/로드 헬퍼 ---
 
-function saveToStorage() { localStorage.setItem(STORAGE_KEY, JSON.stringify(drawnItems.toGeoJSON())); }
+// 데이터 저장 (프로젝트 구조 반영)
+function saveToStorage() {
+    if (!currentProjectId) return; // 초기화 전이면 중단
 
+    // 현재 프로젝트 찾기
+    const project = projects.find(p => p.id === parseInt(currentProjectId));
+    if (project) {
+        project.features = drawnItems.toGeoJSON(); // 현재 그려진 내용을 프로젝트 데이터로 업데이트
+        project.updatedAt = new Date().toISOString();
+    }
+
+    const storageData = {
+        version: "2.0",
+        currentProjectId: currentProjectId,
+        projects: projects
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(storageData));
+}
+
+// 데이터 로드 (마이그레이션 포함)
 function loadFromStorage() {
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) restoreFeatures(JSON.parse(saved));
-    } catch (e) { }
+        if (!saved) {
+            // 데이터가 아예 없으면 기본 프로젝트 생성
+            initDefaultProject();
+            return;
+        }
+
+        const parsed = JSON.parse(saved);
+
+        // 구 버전 데이터 감지 (배열이거나 FeatureCollection 인 경우)
+        if (Array.isArray(parsed) || (parsed.type === "FeatureCollection")) {
+            console.log("Legacy data detected. Migrating...");
+            migrateLegacyData(parsed);
+        } else if (parsed.version === "2.0") {
+            // 신규 버전 데이터 로드
+            projects = parsed.projects || [];
+            currentProjectId = parsed.currentProjectId;
+
+            // 만약 오류로 프로젝트가 없으면 초기화
+            if (projects.length === 0) {
+                initDefaultProject();
+            } else {
+                // 현재 프로젝트 ID가 유효하지 않으면 첫번째로 설정
+                if (!projects.find(p => p.id === parseInt(currentProjectId))) {
+                    currentProjectId = projects[0].id;
+                }
+                renderProjectSelector();
+                loadCurrentProjectFeatures();
+            }
+        } else {
+            // 알 수 없는 형식이면 초기화
+            initDefaultProject();
+        }
+    } catch (e) {
+        console.error("Load failed:", e);
+        initDefaultProject();
+    }
+}
+
+// 초기 프로젝트 생성
+function initDefaultProject() {
+    const defaultProject = {
+        id: Date.now(),
+        name: "기본 프로젝트",
+        features: { type: "FeatureCollection", features: [] },
+        createdAt: new Date().toISOString()
+    };
+    projects = [defaultProject];
+    currentProjectId = defaultProject.id;
+
+    saveToStorage();
+    renderProjectSelector();
+    // 빈 상태로 시작
+}
+
+// 레거시 데이터 마이그레이션
+function migrateLegacyData(legacyData) {
+    // GeoJSON 형식 맞추기
+    let featureCollection = legacyData;
+    if (Array.isArray(legacyData)) {
+        // 혹시 단순 배열로 저장된 경우 (아주 아주 옛날 버전?)
+        // (현재 코드는 FeatureCollection을 저장하므로 이 케이스는 드물겠지만 안전장치)
+        featureCollection = { type: "FeatureCollection", features: legacyData };
+    }
+
+    const migratedProject = {
+        id: Date.now(),
+        name: "기본 프로젝트 (가져옴)",
+        features: featureCollection,
+        createdAt: new Date().toISOString()
+    };
+
+    projects = [migratedProject];
+    currentProjectId = migratedProject.id;
+
+    saveToStorage();
+    renderProjectSelector();
+    loadCurrentProjectFeatures();
+
+    alert("이전 버전의 데이터가 '기본 프로젝트 (가져옴)'으로 이동되었습니다.");
+}
+
+// 현재 선택된 프로젝트의 데이터 지도에 표시
+function loadCurrentProjectFeatures() {
+    drawnItems.clearLayers(); // 기존 레이어 제거
+
+    const project = projects.find(p => p.id === parseInt(currentProjectId));
+    if (project && project.features) {
+        restoreFeatures(project.features);
+    }
+
+    // UI 업데이트
+    renderSurveyList();
 }
 
 function restoreFeatures(geoJsonData) {
@@ -1266,6 +1382,225 @@ function restoreFeatures(geoJsonData) {
     });
     renderSurveyList();
 }
+
+
+// --- 프로젝트 관리 기능 ---
+
+// 프로젝트 선택 UI 렌더링
+function renderProjectSelector() {
+    const select = document.getElementById('project-select');
+    if (!select) return;
+
+    select.innerHTML = "";
+    projects.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.id;
+        option.text = p.name + ` (${p.features.features ? p.features.features.length : 0}개)`;
+        if (p.id === parseInt(currentProjectId)) option.selected = true;
+        select.appendChild(option);
+    });
+}
+
+// 프로젝트 전환
+window.switchProject = function (id) {
+    saveToStorage(); // 현재 상태 저장 먼저
+    currentProjectId = parseInt(id);
+    loadCurrentProjectFeatures();
+    renderProjectSelector(); // 개수 업데이트 등을 위해 다시 렌더링
+};
+
+// 새 프로젝트 생성
+// 새 프로젝트 생성
+window.createNewProject = function (initialName) {
+    let defaultName = initialName || ("새 프로젝트 " + (projects.length + 1));
+    // 이름 중복 방지 로직
+    if (projects.some(p => p.name === defaultName)) {
+        let cnt = 1;
+        while (projects.some(p => p.name === `${defaultName} (${cnt})`)) cnt++;
+        defaultName = `${defaultName} (${cnt})`;
+    }
+
+    const name = prompt("새 프로젝트 이름을 입력하세요:", defaultName);
+    if (!name) return;
+
+    // 현재 상태 저장
+    saveToStorage();
+
+    const newProject = {
+        id: Date.now(),
+        name: name,
+        features: { type: "FeatureCollection", features: [] },
+        createdAt: new Date().toISOString()
+    };
+
+    projects.push(newProject);
+
+    // 새 프로젝트로 전환 (데이터 먼저 저장 후 ID 변경)
+    saveToStorage();
+
+    currentProjectId = newProject.id;
+
+    // 중요: 기존 레이어 비우기
+    drawnItems.clearLayers();
+
+    saveToStorage(); // 새 프로젝트 상태(빈 상태)로 저장
+    renderProjectSelector();
+    renderSurveyList(); // 빈 리스트 렌더링
+    alert(`'${name}' 프로젝트가 생성되었습니다.`);
+};
+
+// 프로젝트 이름 변경
+window.editProjectName = function () {
+    // 기본 프로젝트 보호 (첫 번째 프로젝트)
+    if (projects.length > 0 && parseInt(currentProjectId) === projects[0].id) {
+        alert("기본 프로젝트의 이름은 변경할 수 없습니다.");
+        return;
+    }
+
+    const project = projects.find(p => p.id === parseInt(currentProjectId));
+    if (!project) return;
+
+    const newName = prompt("프로젝트 이름을 변경합니다:", project.name);
+    if (newName && newName !== project.name) {
+        project.name = newName;
+        saveToStorage();
+        renderProjectSelector();
+    }
+};
+
+// 프로젝트 삭제
+window.deleteCurrentProject = function () {
+    // 기본 프로젝트 보호 (첫 번째 프로젝트)
+    if (projects.length > 0 && parseInt(currentProjectId) === projects[0].id) {
+        alert("기본 프로젝트는 삭제할 수 없습니다.");
+        return;
+    }
+
+    if (projects.length <= 1) {
+        alert("최소 하나의 프로젝트는 존재해야 합니다.");
+        return;
+    }
+
+    const project = projects.find(p => p.id === parseInt(currentProjectId));
+    if (!confirm(`'${project.name}' 프로젝트와 포함된 모든 기록을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+
+    // 삭제
+    projects = projects.filter(p => p.id !== parseInt(currentProjectId));
+
+    // 이전 프로젝트(또는 첫번째)로 전환
+    currentProjectId = projects[0].id; // 보통 기본 프로젝트로 돌아감
+
+    saveToStorage();
+    renderProjectSelector();
+    loadCurrentProjectFeatures();
+
+    alert("삭제되었습니다.");
+};
+
+
+// --- 프로젝트 이동 기능 ---
+
+let moveTargetLayerIds = []; // 이동할 레이어 ID 목록
+
+window.openMoveProjectModal = function (layerId) {
+    // 이동 대상 설정
+    if (layerId) {
+        moveTargetLayerIds = [layerId];
+    } else {
+        // 선택된 레이어 찾기
+        moveTargetLayerIds = [];
+        const layers = drawnItems.getLayers();
+        layers.forEach(layer => {
+            const props = layer.feature.properties;
+            const checkbox = document.querySelector(`.survey-item input[onchange="toggleLayerVisibility(${props.id})"]`);
+            // 주의: 현재 구조상 체크박스와 isHidden이 반대임 (체크됨=보임). 
+            // 하지만 리스트 UI에서 checkbox dom을 직접 찾기는 까다로울 수 있음.
+            // 대신 isHidden 값을 사용할 수도 있지만, "선택"이라는 개념이 "보임/숨김"과 다를 수 있음.
+            // 여기서는 "보이는(체크된) 항목"을 이동한다고 가정하거나, 별도의 "선택" 모드가 없으므로 
+            // "화면에 보이는(체크된) 항목"을 대상으로 함.
+            if (!props.isHidden) {
+                moveTargetLayerIds.push(props.id);
+            }
+        });
+
+        if (moveTargetLayerIds.length === 0) {
+            alert("이동할 기록이 없습니다. (체크된 항목이 이동됩니다)");
+            return;
+        }
+    }
+
+    // 프로젝트 목록 렌더링
+    const list = document.getElementById('project-move-list');
+    list.innerHTML = "";
+
+    projects.forEach(p => {
+        // 현재 프로젝트 제외
+        if (p.id === parseInt(currentProjectId)) return;
+
+        const btn = document.createElement('button');
+        btn.style.cssText = "padding:12px; background:white; border:1px solid #ddd; border-radius:8px; text-align:left; cursor:pointer; font-size:14px; color:#333;";
+        btn.innerHTML = `<b>${p.name}</b> <span style='color:#888; font-size:12px;'>(${p.features.features ? p.features.features.length : 0}개)</span>`;
+        btn.onclick = () => executeMoveProject(p.id);
+        list.appendChild(btn);
+    });
+
+    if (list.children.length === 0) {
+        list.innerHTML = "<div style='text-align:center; padding:20px; color:#999;'>이동할 다른 프로젝트가 없습니다.</div>";
+    }
+
+    const overlay = document.getElementById('project-move-modal-overlay');
+    overlay.style.display = 'flex';
+    setTimeout(() => { overlay.classList.add('visible'); }, 10);
+};
+
+window.openMoveSelectionModal = function () {
+    openMoveProjectModal(null);
+};
+
+window.closeMoveProjectModal = function () {
+    const overlay = document.getElementById('project-move-modal-overlay');
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+    moveTargetLayerIds = [];
+};
+
+function executeMoveProject(targetProjectId) {
+    if (moveTargetLayerIds.length === 0) return;
+
+    const targetProject = projects.find(p => p.id === parseInt(targetProjectId));
+    if (!targetProject) return;
+
+    // 대상 프로젝트의 features가 없으면 초기화
+    if (!targetProject.features || !targetProject.features.features) {
+        targetProject.features = { type: "FeatureCollection", features: [] };
+    }
+
+    let movedCount = 0;
+
+    moveTargetLayerIds.forEach(id => {
+        const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+        if (layer) {
+            // 레이어의 GeoJSON 데이터를 대상 프로젝트에 추가
+            const geoJSON = layer.toGeoJSON();
+            targetProject.features.features.push(geoJSON);
+
+            // 현재 맵에서 제거
+            drawnItems.removeLayer(layer);
+            movedCount++;
+        }
+    });
+
+    if (movedCount > 0) {
+        saveToStorage(); // 변경사항 저장 (현재 프로젝트: 제거됨, 대상 프로젝트: 추가됨)
+        renderSurveyList();
+        renderProjectSelector(); // 카운트 갱신
+        alert(`${movedCount}개의 기록이 '${targetProject.name}'으로 이동되었습니다.`);
+        closeMoveProjectModal();
+    }
+}
+
+// 컨텍스트 메뉴(점3개) 열기 함수 (기존 구현이 없거나 찾기 어려워 새로 작성/대체)
+// (기존 openContextMenu 중복 정의 제거)
 
 
 
@@ -1325,7 +1660,42 @@ function toggleTracking() {
         btn.classList.add('tracking-active');
     }
 }
+// 선택된 레이어 일괄 삭제
+window.deleteSelectedLayers = function () {
+    let targetLayerIds = [];
+    const layers = drawnItems.getLayers();
 
+    // 선택(체크)된 레이어 식별
+    layers.forEach(layer => {
+        const props = layer.feature.properties;
+        if (!props.isHidden) { // 여기서는 체크된(보이는) 레이어를 선택된 것으로 간주
+            targetLayerIds.push(props.id);
+        }
+    });
+
+    if (targetLayerIds.length === 0) {
+        alert("삭제할 기록이 없습니다. (체크된 항목이 삭제됩니다)");
+        return;
+    }
+
+    if (!confirm(`선택한 ${targetLayerIds.length}개의 기록을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+
+    let deletedCount = 0;
+    targetLayerIds.forEach(id => {
+        const layer = layers.find(l => l.feature.properties.id === id);
+        if (layer) {
+            drawnItems.removeLayer(layer);
+            deletedCount++;
+        }
+    });
+
+    if (deletedCount > 0) {
+        saveToStorage();
+        renderSurveyList();
+        renderProjectSelector();
+        alert(`${deletedCount}개의 기록이 삭제되었습니다.`);
+    }
+};
 function findMe() {
     if (!navigator.geolocation) { alert("GPS 미지원"); return; }
     navigator.geolocation.getCurrentPosition(function (pos) {
@@ -1615,13 +1985,43 @@ window.exportSingleLayer = function (id) {
     saveOrShareFile(JSON.stringify(layer.toGeoJSON(), null, 2), safeMemo + ".geojson");
 };
 
-window.exportSelectedGeoJSON = function () {
-    const visibleLayers = drawnItems.getLayers().filter(l => !l.feature.properties.isHidden);
-    if (visibleLayers.length === 0) { alert("저장할 항목이 없습니다."); return; }
-    if (!confirm('선택한 기록을 저장합니다.')) return;
-    const featureCollection = L.layerGroup(visibleLayers).toGeoJSON();
-    const fileName = "Project_" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + ".geojson";
-    saveOrShareFile(JSON.stringify(featureCollection, null, 2), fileName);
+// 변경: 현재 프로젝트 전체 저장 (파일명: 프로젝트명_yymmdd)
+// 변경: 현재 프로젝트 전체 저장 (파일명: 프로젝트명_yymmdd)
+window.exportCurrentProject = function () {
+    const project = projects.find(p => p.id === parseInt(currentProjectId));
+    if (!project) return;
+
+    // 현재 그려진 내용으로 features 갱신
+    const currentFeatures = drawnItems.toGeoJSON();
+
+    if (currentFeatures.features.length === 0) {
+        alert("저장할 기록이 없습니다.");
+        return;
+    }
+
+    // 메타데이터 주입 (스마트 불러오기용)
+    currentFeatures.isProjectExport = true;
+    currentFeatures.projectName = project.name;
+    currentFeatures.exportedAt = new Date().toISOString();
+
+    // 날짜 포맷 생성 (YYMMDD)
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const dateStr = `${yy}${mm}${dd}`;
+
+    // 파일명 생성 (공백 등 특수문자 처리)
+    const safeProjectName = project.name.replace(/[^a-zA-Z0-9가-힣_-]/g, "_");
+    const fileName = `${safeProjectName}_${dateStr}.geojson`;
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentFeatures));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", fileName);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
 };
 
 function saveOrShareFile(content, fileName) {
@@ -1665,11 +2065,28 @@ function handleFileSelect(input) {
     const r = new FileReader();
     r.onload = function (e) {
         try {
-            restoreFeatures(JSON.parse(e.target.result));
+            const json = JSON.parse(e.target.result);
+
+            // 스마트 불러오기: 프로젝트 파일 감지
+            if (json.isProjectExport && json.projectName) {
+                if (confirm(`프로젝트 '${json.projectName}' 데이터를 감지했습니다.\n새 프로젝트로 불러오시겠습니까?\n(취소 시 현재 프로젝트에 합쳐집니다)`)) {
+                    // 새 프로젝트 생성 및 전환
+                    createNewProject(json.projectName);
+                    // 데이터 로드
+                    restoreFeatures(json);
+                    saveToStorage();
+                    closeSidebar();
+                    input.value = '';
+                    return;
+                }
+            }
+
+            // 일반 불러오기 (현재 프로젝트에 병합)
+            restoreFeatures(json);
             saveToStorage();
             alert("완료");
             closeSidebar();
-        } catch (err) { alert("오류"); }
+        } catch (err) { alert("오류: " + err); }
         input.value = '';
     };
     r.readAsText(file);
@@ -1757,6 +2174,10 @@ function initContextMenu() {
         <div class="more-menu-item" onclick="handleMenuAction('edit')">
             ${SVG_ICONS.edit} 기록명 수정
         </div>
+        <div class="more-menu-item" onclick="handleMenuAction('move')">
+            ${SVG_ICONS.folder_move}
+            프로젝트 이동
+        </div>
         <div class="more-menu-item danger" onclick="handleMenuAction('delete')">
             ${SVG_ICONS.trash} 삭제
         </div>
@@ -1816,6 +2237,8 @@ window.handleMenuAction = function (action) {
             exportSingleLayer(id);
         } else if (action === 'edit') {
             editLayerMemo(id);
+        } else if (action === 'move') {
+            openMoveProjectModal(id);
         } else if (action === 'delete') {
             deleteLayerById(id);
         }
@@ -1841,3 +2264,35 @@ window.toggleAccordion = function (contentId, headerElement) {
         headerElement.classList.add('active');
     }
 };
+
+
+/* --------------------------------------------------------------------------
+   14. 기능: 더보기 메뉴 토글 (Feature: More Menu Toggle)
+   -------------------------------------------------------------------------- */
+function toggleMoreMenu(event) {
+    event.stopPropagation();
+    closeAllDropdowns();
+    const menu = document.getElementById('more-menu');
+    menu.classList.toggle('visible');
+}
+
+function toggleProjectMenu(event) {
+    event.stopPropagation();
+    closeAllDropdowns();
+    const menu = document.getElementById('project-menu');
+    menu.classList.toggle('visible');
+}
+
+function closeAllDropdowns() {
+    const dropdowns = document.querySelectorAll('.dropdown-menu');
+    dropdowns.forEach(menu => {
+        if (menu.classList.contains('visible')) {
+            menu.classList.remove('visible');
+        }
+    });
+}
+
+// 외부 클릭 시 모든 메뉴 닫기
+window.addEventListener('click', function (event) {
+    closeAllDropdowns();
+});

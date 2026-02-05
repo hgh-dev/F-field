@@ -780,6 +780,108 @@
             margin: 0;
         }
 
+        .mono-btn {
+            background: white;
+            border: 1px solid #ccc;
+            color: #333;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .mono-btn:active {
+            background: #f0f0f0;
+            transform: scale(0.98);
+        }
+
+        .mono-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: #555;
+        }
+
+        .mono-btn.small {
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 6px;
+        }
+
+        .mono-btn.danger {
+            border-color: #EF4444;
+            color: #EF4444;
+        }
+
+        .mono-btn.danger svg {
+            fill: #EF4444;
+        }
+
+        .mono-btn.circle {
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 드롭다운 메뉴 스타일 */
+        .dropdown-container {
+            position: relative;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            display: none;
+            z-index: 1000;
+            min-width: 130px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .dropdown-menu.visible {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .dropdown-item {
+            padding: 10px 12px;
+            font-size: 13px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .dropdown-item:active {
+            background: #f5f5f5;
+        }
+
+        .dropdown-item.danger {
+            color: #ef4444;
+        }
+
+        .dropdown-item svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
         /* 기록 리스트 스타일 (복구됨) */
         .survey-list-container {
             border: 1px solid #eee;
@@ -1466,12 +1568,87 @@
                 <!-- 탭 2: 기록 관리 -->
                 <div id="content-record" class="tab-content">
                     <div class="menu-section flex-card">
+                        <!-- 프로젝트 관리 컨트롤 -->
+                        <div id="project-controls"
+                            style="margin-bottom:15px; background:#f0f2f5; padding:10px; border-radius:12px;">
+                            <div
+                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <span style="font-size:13px; font-weight:bold; color:#555;">프로젝트</span>
+                                <div style="display:flex; gap:5px;">
+                                    <button onclick="createNewProject()" class="mono-btn small"
+                                        style="font-weight:lighter;">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                                        </svg>
+                                        새 프로젝트
+                                    </button>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:5px;">
+                                <select id="project-select" onchange="switchProject(this.value)"
+                                    style="flex:1; padding:8px; border:1px solid #ddd; border-radius:8px; font-size:14px; background:white;">
+                                    <!-- 프로젝트 목록이 여기 로드됨 -->
+                                </select>
+                                <div class="dropdown-container">
+                                    <button onclick="toggleProjectMenu(event)" class="mono-btn small circle">
+                                        <svg viewBox="0 0 24 24">
+                                            <path
+                                                d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                                        </svg>
+                                    </button>
+                                    <div id="project-menu" class="dropdown-menu">
+                                        <div class="dropdown-item" onclick="editProjectName()">
+                                            <svg viewBox="0 0 24 24">
+                                                <path
+                                                    d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+                                            </svg>
+                                            이름 변경
+                                        </div>
+                                        <div class="dropdown-item danger" onclick="deleteCurrentProject()">
+                                            <svg viewBox="0 0 24 24">
+                                                <path
+                                                    d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                                            </svg>
+                                            프로젝트 삭제
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- 상단: 헤더 -->
                         <div
-                            style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:14px; color:#888; flex-shrink: 0;">
-                            <span>저장된 기록 <span id="record-count">(0개)</span></span>
-                            <label style="cursor:pointer; color:#333;"><input type="checkbox" id="chk-select-all"
-                                    checked onchange="toggleAllLayers(this.checked)"> 전체 선택</label>
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:14px; color:#888; flex-shrink: 0;">
+                            <label style="cursor:pointer; color:#333; display:flex; align-items:center;"><input
+                                    type="checkbox" id="chk-select-all" checked onchange="toggleAllLayers(this.checked)"
+                                    style="margin-right:5px;"> 전체 선택</label>
+
+                            <div class="dropdown-container">
+                                <button onclick="toggleMoreMenu(event)" class="mono-btn small circle">
+                                    <svg viewBox="0 0 24 24">
+                                        <path
+                                            d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                                    </svg>
+                                </button>
+                                <div id="more-menu" class="dropdown-menu">
+                                    <div class="dropdown-item" onclick="openMoveSelectionModal()">
+                                        <!-- 폴더 + 화살표 커스텀 아이콘 -->
+                                        <svg viewBox="0 0 24 24">
+                                            <path
+                                                d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h11v-2H4V8h16v4h2V8c0-1.1-.9-2-2-2z" />
+                                            <path d="M14 13v-3l7 4.5-7 4.5v-3H9v-3h5z" />
+                                        </svg>
+                                        선택 이동
+                                    </div>
+                                    <div class="dropdown-item danger" onclick="deleteSelectedLayers()">
+                                        <svg viewBox="0 0 24 24">
+                                            <path
+                                                d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                                        </svg>
+                                        선택 삭제
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- 중간: 리스트 (유연하게 늘어남) -->
@@ -1479,32 +1656,51 @@
                             style="flex:1; overflow-y:auto; min-height:0; margin-bottom:15px; max-height:none;"></div>
 
                         <!-- 하단: 버튼 그룹 (고정) -->
+                        <!-- 하단: 버튼 그룹 (고정) -->
                         <div style="flex-shrink: 0;">
-                            <div style="display:flex; gap:10px; margin-bottom:10px;">
-                                <button onclick="triggerFileInput()"
-                                    style="flex:1; padding:12px; border:none; border-radius:12px; background:#3B82F6; color:white; font-weight:bold; cursor:pointer;">불러오기</button>
-                                <button onclick="exportSelectedGeoJSON()"
-                                    style="flex:1; padding:12px; border:none; border-radius:12px; background:#10B981; color:white; font-weight:bold; cursor:pointer;">저장하기</button>
+                            <div style="display:flex; gap:8px; margin-bottom:10px;">
+                                <button onclick="triggerFileInput()" class="mono-btn"
+                                    style="flex:1; justify-content:center; padding: 12px; font-size: 14px;">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z" />
+                                    </svg>
+                                    불러오기
+                                </button>
+                                <button onclick="exportCurrentProject()" class="mono-btn"
+                                    style="flex:1; justify-content:center; padding: 12px; font-size: 14px;">
+                                    <svg viewBox="0 0 24 24">
+                                        <path
+                                            d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
+                                    </svg>
+                                    프로젝트 저장
+                                </button>
                             </div>
-                            <button onclick="clearAllData()"
-                                style="width:100%; padding:14px; border:1px solid #EF4444; background:white; color:#EF4444; border-radius:12px; font-weight:bold; cursor:pointer;">초기화</button>
                         </div>
-                        <div class="sidebar-warning">
-                            <p>※ 많은 기록을 표시하거나 용량이 큰 파일을 불러올 경우 오류가 발생할 수 있습니다.</p>
-                            <p>※ 웹브라우저의 인터넷 기록이나 캐시를 삭제하면 기록한 데이터가 모두 없어지니 미리 기기에 저장하시기 바랍니다.</p>
-                        </div>
+                        <button onclick="clearAllData()" class="mono-btn danger"
+                            style="width:100%; justify-content:center; padding: 12px; font-size: 14px;">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                            </svg>
+                            초기화
+                        </button>
+                    </div>
+                    <div class="sidebar-warning">
+                        <p>※ 많은 기록을 표시하거나 용량이 큰 파일을 불러올 경우 오류가 발생할 수 있습니다.</p>
+                        <p>※ 웹브라우저의 인터넷 기록이나 캐시를 삭제하면 기록한 데이터가 모두 없어지니 미리 기기에 저장하시기 바랍니다.</p>
                     </div>
                 </div>
             </div>
-            <!-- 히든 레이어 잠금 버튼 -->
-            <button id="btn-lock" onclick="unlockHiddenLayers()"
-                style="position: absolute; bottom: 20px; left: 20px; border: none; background: none; color: #aaa;">
-                <svg id="icon-lock" viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;">
-                    <path
-                        d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
-                </svg>
-            </button>
         </div>
+        <!-- 히든 레이어 잠금 버튼 -->
+        <button id="btn-lock" onclick="unlockHiddenLayers()"
+            style="position: absolute; bottom: 20px; left: 20px; border: none; background: none; color: #aaa;">
+            <svg id="icon-lock" viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;">
+                <path
+                    d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+            </svg>
+        </button>
+    </div>
     </div>
 
     <!-- 네비게이션 앱 선택 모달 -->
@@ -1555,12 +1751,29 @@
         </div>
     </div>
 
+    <!-- 프로젝트 이동 선택 모달 -->
+    <div id="project-move-modal-overlay" class="nav-modal-overlay" onclick="closeMoveProjectModal()">
+        <div class="nav-modal-content" onclick="event.stopPropagation()">
+            <div class="nav-modal-header"
+                style="font-size:18px; font-weight:bold; margin-bottom:10px; text-align:center;">프로젝트 이동</div>
+            <p style="text-align:center; color:#666; font-size:13px; margin-bottom:20px;">선택한 기록을 어느 프로젝트로 이동할까요?</p>
+
+            <div id="project-move-list"
+                style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px; max-height:200px; overflow-y:auto;">
+                <!-- 프로젝트 목록 투입 -->
+            </div>
+
+            <button onclick="closeMoveProjectModal()"
+                style="width:100%; padding:14px; background:#f5f5f5; border:none; border-radius:12px; font-weight:bold; color:#666;">취소</button>
+        </div>
+    </div>
+
     <!-- 파일 입력 (숨김) -->
     <input type="file" id="geoJsonInput" style="display:none" onchange="handleFileSelect(this)"
         accept=".geojson, .json">
 
     <!-- 메인 스크립트 연결 -->
-    <script src="script.js?v=1.4.2"></script>
+    <script src="script.js?v=1.5.0"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {
