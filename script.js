@@ -1357,8 +1357,7 @@ map.on(L.Draw.Event.CREATED, function (event) {
 
     updateLayerInfo(layer);
     drawnItems.addLayer(layer);
-    saveToStorage();
-    saveToFirestore(); // Firestore 저장 추가
+    saveToStorage(); // 내부에서 saveToFirestore 호출됨
 
     resetDrawingState();
     currentDrawer = null;
@@ -1371,15 +1370,13 @@ map.on(L.Draw.Event.CREATED, function (event) {
 // 편집 이벤트 핸들러
 map.on('draw:edited', function (e) {
     e.layers.eachLayer(updateLayerInfo);
-    saveToStorage();
-    saveToFirestore(); // Firestore 저장 추가
+    saveToStorage(); // 내부에서 saveToFirestore 호출됨
     renderSurveyList();
 });
 
 // 삭제 이벤트 핸들러
 map.on('draw:deleted', function (e) {
-    saveToStorage();
-    saveToFirestore(); // Firestore 저장 추가
+    saveToStorage(); // 내부에서 saveToFirestore 호출됨
     renderSurveyList();
 });
 
@@ -1489,8 +1486,13 @@ function saveToStorage() {
     // 로그인 상태에 따라 저장 키 분리
     // 로그인 중일 때는 기기 원본 데이터(f_field_survey_data)를 덮어쓰지 않고 _auth 키에 저장
     const key = currentUser ? STORAGE_KEY_AUTH : STORAGE_KEY;
-    console.log("Saving to storage:", key);
+    // console.log("Saving to storage:", key); // 로그 너무 많아서 주석 처리
     localStorage.setItem(key, JSON.stringify(storageData));
+
+    // [중요] 로그인 상태라면 Firestore에도 자동 동기화
+    if (currentUser) {
+        saveToFirestore();
+    }
 }
 
 // 데이터 로드 (마이그레이션 포함)
@@ -2169,7 +2171,6 @@ window.deleteLayerById = function (id) {
         const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
         if (layer) drawnItems.removeLayer(layer);
         saveToStorage();
-        saveToFirestore(); // Firestore 저장 추가
         renderSurveyList();
     }
 };
@@ -2226,7 +2227,6 @@ window.toggleLayerVisibility = function (id) {
             if (layer._path) layer._path.style.pointerEvents = 'auto';
         }
         saveToStorage();
-        saveToFirestore(); // Firestore 저장 추가
         renderSurveyList();
     }
 };
@@ -2258,7 +2258,6 @@ window.toggleAllLayers = function (isChecked) {
         }
     });
     saveToStorage();
-    saveToFirestore(); // Firestore 저장 추가
     renderSurveyList();
 };
 
@@ -2398,7 +2397,6 @@ window.updateLayerColor = function (id, newColor) {
     else layer.setStyle({ color: newColor, fillColor: newColor });
     layer.feature.properties.customColor = newColor;
     saveToStorage();
-    saveToFirestore(); // Firestore 저장 추가
 };
 
 
