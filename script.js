@@ -574,7 +574,7 @@ function executeSearch(keyword) {
                                 if (parcelResult) {
                                     handleSingleResult(parcelResult, query, 'PARCEL');
                                 } else {
-                                    alert("검색 결과가 없습니다.\n정확한 주소(예: 화성시 장안면 장안리 산124)를 입력해보세요.");
+                                    alert("검색 결과가 없습니다.\n정확한 주소를 입력해보세요.");
                                 }
                             });
                         }
@@ -1263,6 +1263,12 @@ function saveToStorage() {
         currentProjectId: currentProjectId,
         projects: projects
     };
+    // -----------------------------------------------------------
+    // [교육용] localStorage 저장
+    // localStorage는 문자열만 저장할 수 있습니다.
+    // 따라서 JavaScript 객체(storageData)를 JSON.stringify()를 통해
+    // JSON 포맷의 문자열로 변환하여 저장합니다.
+    // -----------------------------------------------------------
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storageData));
 }
 
@@ -1276,6 +1282,11 @@ function loadFromStorage() {
             return;
         }
 
+        // -----------------------------------------------------------
+        // [교육용] JSON 파싱
+        // 저장된 문자열을 다시 JavaScript 객체로 변환하기 위해
+        // JSON.parse()를 사용합니다.
+        // -----------------------------------------------------------
         const parsed = JSON.parse(saved);
 
         // 구 버전 데이터 감지 (배열이거나 FeatureCollection 인 경우)
@@ -1336,7 +1347,7 @@ function migrateLegacyData(legacyData) {
 
     const migratedProject = {
         id: Date.now(),
-        name: "기본 프로젝트 (가져옴)",
+        name: "기본 프로젝트",
         features: featureCollection,
         createdAt: new Date().toISOString()
     };
@@ -1348,7 +1359,7 @@ function migrateLegacyData(legacyData) {
     renderProjectSelector();
     loadCurrentProjectFeatures();
 
-    alert("이전 버전의 데이터가 '기본 프로젝트 (가져옴)'으로 이동되었습니다.");
+    alert("이전 버전의 데이터가 '기본 프로젝트'으로 이동되었습니다.");
 }
 
 // 현재 선택된 프로젝트의 데이터 지도에 표시
@@ -1923,7 +1934,14 @@ updateCoordDisplay();
 
 // 그 외 export/import 함수들
 window.deleteLayerById = function (id) {
-    if (confirm("해당 기록을 삭제합니다.")) {
+    // -------------------------
+    // [교육용] deleteLayerById
+    // 특정 ID를 가진 레이어(기록)를 삭제하는 함수입니다.
+    // 1. drawnItems에서 해당 ID를 가진 레이어를 찾습니다.
+    // 2. 사용자에게 삭제 확인(confirm)을 받습니다.
+    // 3. 확인 시 레이어를 지도에서 제거하고, 저장소(localStorage)를 업데이트한 뒤 리스트를 다시 그립니다.
+    // -------------------------
+    if (confirm("정말로 이 기록을 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.")) {
         const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
         if (layer) drawnItems.removeLayer(layer);
         saveToStorage();
@@ -1932,8 +1950,16 @@ window.deleteLayerById = function (id) {
 };
 
 window.editLayerMemo = function (id) {
+    // -----------------------------------------------------------
+    // [교육용] editLayerMemo
+    // 기록의 이름(메모)을 수정하는 함수입니다.
+    // prompt 창을 띄워 사용자 입력을 받고, 입력된 값이 있으면
+    // 해당 레이어의 속성(properties.memo)을 업데이트합니다.
+    // * updateLayerInfo()를 호출하여 팝업 내용도 갱신해야 합니다.
+    // -----------------------------------------------------------
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (!layer) return;
+
     const newMemo = prompt("수정할 메모:", layer.feature.properties.memo);
     if (newMemo) {
         layer.feature.properties.memo = newMemo;
@@ -1944,16 +1970,34 @@ window.editLayerMemo = function (id) {
 };
 
 window.toggleLayerVisibility = function (id) {
+    // -----------------------------------------------------------
+    // [교육용] toggleLayerVisibility
+    // 리스트의 체크박스 상태에 따라 레이어의 '보임/숨김'을 토글합니다.
+    // 1. isHidden 속성을 반전시킵니다.
+    // 2. 숨김 상태(isHidden=true)일 경우: 투명도(opacity)를 0으로 설정하여 시각적으로 숨기고,
+    //    클릭 등의 이벤트(pointerEvents)를 차단하여 선택되지 않게 합니다.
+    // 3. 보임 상태(isHidden=false)일 경우: 투명도를 원래대로 복구하고 이벤트를 활성화합니다.
+    // -----------------------------------------------------------
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (layer) {
         const isHidden = !layer.feature.properties.isHidden;
         layer.feature.properties.isHidden = isHidden;
         if (isHidden) {
-            layer instanceof L.Marker ? layer.setOpacity(0) : layer.setStyle({ opacity: 0, fillOpacity: 0, stroke: false });
+            // 마커와 일반 도형(Polygon, Polyline)은 스타일 설정 방식이 다릅니다.
+            layer instanceof L.Marker ? layer.setOpacity(0) : layer.setStyle({
+                opacity: 0,
+                fillOpacity: 0,
+                stroke: false
+            });
             layer.closePopup();
+            // _path 속성은 Leaflet 내부 SVG 요소를 가리킵니다. 이를 통해 이벤트를 끕니다.
             if (layer._path) layer._path.style.pointerEvents = 'none';
         } else {
-            layer instanceof L.Marker ? layer.setOpacity(1) : layer.setStyle({ opacity: 1, fillOpacity: 0.2, stroke: true });
+            layer instanceof L.Marker ? layer.setOpacity(1) : layer.setStyle({
+                opacity: 1,
+                fillOpacity: 0.2,
+                stroke: true
+            });
             if (layer._path) layer._path.style.pointerEvents = 'auto';
         }
         saveToStorage();
@@ -1962,15 +2006,28 @@ window.toggleLayerVisibility = function (id) {
 };
 
 window.toggleAllLayers = function (isChecked) {
+    // -----------------------------------------------------------
+    // [교육용] toggleAllLayers
+    // "전체 선택" 체크박스 조작 시 모든 레이어의 상태를 일괄 변경합니다.
+    // forEach를 활용하여 모든 레이어에 대해 동일한 로직(Visibility 설정)을 수행합니다.
+    // -----------------------------------------------------------
     drawnItems.getLayers().forEach(function (layer) {
-        layer.feature.properties.isHidden = !isChecked;
-        // visibility setter logic repeated... (생략 말고 구현)
+        layer.feature.properties.isHidden = !isChecked; // 체크 해제 시 -> 숨김(isHidden=true)
+
         if (!isChecked) {
-            layer instanceof L.Marker ? layer.setOpacity(0) : layer.setStyle({ opacity: 0, fillOpacity: 0, stroke: false });
+            layer instanceof L.Marker ? layer.setOpacity(0) : layer.setStyle({
+                opacity: 0,
+                fillOpacity: 0,
+                stroke: false
+            });
             layer.closePopup();
             if (layer._path) layer._path.style.pointerEvents = 'none';
         } else {
-            layer instanceof L.Marker ? layer.setOpacity(1) : layer.setStyle({ opacity: 1, fillOpacity: 0.2, stroke: true });
+            layer instanceof L.Marker ? layer.setOpacity(1) : layer.setStyle({
+                opacity: 1,
+                fillOpacity: 0.2,
+                stroke: true
+            });
             if (layer._path) layer._path.style.pointerEvents = 'auto';
         }
     });
@@ -1988,6 +2045,14 @@ window.exportSingleLayer = function (id) {
 // 변경: 현재 프로젝트 전체 저장 (파일명: 프로젝트명_yymmdd)
 // 변경: 현재 프로젝트 전체 저장 (파일명: 프로젝트명_yymmdd)
 window.exportCurrentProject = function () {
+    // -----------------------------------------------------------
+    // [교육용] exportCurrentProject (프로젝트 내보내기)
+    // 현재 프로젝트의 모든 기록을 GeoJSON 파일로 저장합니다.
+    // 1. 현재 프로젝트 객체를 찾습니다.
+    // 2. drawnItems(지도에 그려진 레이어들)의 상태를 GeoJSON으로 변환합니다.
+    // 3. 메타데이터(프로젝트명, 내보낸 시간)를 추가하여 추후 '스마트 불러오기'가 가능하게 합니다.
+    // 4. Blob 객체를 생성하여 브라우저에서 파일 다운로드를 트리거합니다.
+    // -----------------------------------------------------------
     const project = projects.find(p => p.id === parseInt(currentProjectId));
     if (!project) return;
 
@@ -2108,52 +2173,7 @@ window.updateLayerColor = function (id, newColor) {
     saveToStorage();
 };
 
-// --- 누락된 기능 복구 (Missing Functions Restored) ---
 
-window.toggleLayerVisibility = function (id) {
-    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
-    if (!layer) return;
-
-    const isHidden = !layer.feature.properties.isHidden;
-    layer.feature.properties.isHidden = isHidden;
-
-    if (isHidden) {
-        if (layer instanceof L.Marker) layer.setOpacity(0);
-        else layer.setStyle({ opacity: 0, fillOpacity: 0, stroke: false });
-        layer.closePopup();
-        if (layer._path) layer._path.style.pointerEvents = 'none';
-    } else {
-        if (layer instanceof L.Marker) layer.setOpacity(1);
-        else layer.setStyle({ opacity: 1, fillOpacity: 0.2, stroke: true });
-        if (layer._path) layer._path.style.pointerEvents = 'auto';
-    }
-    saveToStorage();
-    renderSurveyList();
-};
-
-window.deleteLayerById = function (id) {
-    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
-    if (!layer) return;
-
-    if (confirm("정말로 삭제하시겠습니까?")) {
-        drawnItems.removeLayer(layer);
-        saveToStorage();
-        renderSurveyList();
-    }
-};
-
-window.editLayerMemo = function (id) {
-    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
-    if (!layer) return;
-
-    const newMemo = prompt("새로운 기록명을 입력하세요:", layer.feature.properties.memo);
-    if (newMemo !== null) {
-        layer.feature.properties.memo = newMemo;
-        updateLayerInfo(layer);
-        saveToStorage();
-        renderSurveyList();
-    }
-};
 
 /* --------------------------------------------------------------------------
    15. 기능: 컨텍스트 메뉴 (Context Menu)
@@ -2163,6 +2183,12 @@ let currentContextId = null;
 function initContextMenu() {
     if (document.getElementById('global-context-menu')) return;
 
+    // -----------------------------------------------------------
+    // [교육용] 동적 DOM 생성 (Context Menu)
+    // HTML에 미리 적어두지 않고, JavaScript에서 필요할 때 요소를 생성(createElement)하여
+    // body에 추가(appendChild)하는 방식입니다.
+    // 이렇게 하면 초기 로딩 시 불필요한 마크업을 줄일 수 있습니다.
+    // -----------------------------------------------------------
     const menu = document.createElement('div');
     menu.id = 'global-context-menu';
     menu.className = 'more-context-menu';

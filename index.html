@@ -832,6 +832,11 @@
             justify-content: center;
         }
 
+        /* --------------------------------------------------------------------------
+           [교육용] 드롭다운 메뉴 스타일 (Dropdown Menu)
+           position: absolute를 사용하여 버튼 바로 아래에 메뉴가 나타나도록 설정합니다.
+           부모 요소(.dropdown-container)에 position: relative가 있어야 합니다.
+           -------------------------------------------------------------------------- */
         /* 드롭다운 메뉴 스타일 */
         .dropdown-container {
             position: relative;
@@ -847,10 +852,16 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             display: none;
             z-index: 1000;
-            min-width: 130px;
+            min-width: 140px;
             overflow: hidden;
             margin-top: 4px;
         }
+
+        /* 
+           [교육용] 메뉴 표시 애니메이션 (Animation)
+           display: block으로 바뀌는 순간 애니메이션(fadeIn)을 실행하여
+           부드럽게 나타나는 효과를 줍니다.
+        */
 
         .dropdown-menu.visible {
             display: block;
@@ -882,7 +893,12 @@
             fill: currentColor;
         }
 
-        /* 기록 리스트 스타일 (복구됨) */
+        /* --------------------------------------------------------------------------
+           [교육용] 리스트 컨테이너 (List Container)
+           border-radius로 모서리를 둥글게 처리하고, box-shadow로 깊이감을 줍니다.
+           overflow-y: auto 속성은 내용이 넘칠 때만 스크롤바를 생기게 합니다.
+           -------------------------------------------------------------------------- */
+        /* 기록 리스트 스타일 */
         .survey-list-container {
             border: 1px solid #eee;
             border-radius: 12px;
@@ -1004,7 +1020,7 @@
             fill: currentColor;
         }
 
-        /* 버튼 그룹 (복구됨) */
+        /* 버튼 그룹 */
         .btn-group {
             display: flex;
             gap: 10px;
@@ -1068,6 +1084,11 @@
 
 
 
+        /* --------------------------------------------------------------------------
+           [교육용] 모달 및 오버레이 (Overlay & Modal)
+           position: fixed를 사용하여 화면 전체를 덮는 오버레이(배경)를 만듭니다.
+           z-index 값을 높게 설정하여 다른 요소들 위에 뜨도록 합니다.
+           -------------------------------------------------------------------------- */
         /* --- 모달 (길찾기, 좌표설정 등) --- */
         .nav-modal-overlay {
             display: none;
@@ -1245,12 +1266,12 @@
             position: fixed;
             /* overflow:hidden 컨테이너 밖으로 벗어나기 위해 fixed 위치 사용 */
             background: white;
-            border: 1px solid #f0f0f0;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             z-index: 9999;
-            min-width: 150px;
-            padding: 6px 0;
+            min-width: 140px;
+            overflow: hidden;
             display: none;
             flex-direction: column;
             opacity: 0;
@@ -1265,33 +1286,36 @@
         }
 
         .more-menu-item {
-            padding: 12px 16px;
-            font-size: 14px;
-            font-weight: 500;
-            color: #444;
+            padding: 10px 12px;
+            font-size: 13px;
+            color: #333;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 10px;
-            transition: background 0.1s;
+            gap: 8px;
+            transition: background 0.2s;
         }
 
         .more-menu-item:hover {
-            background-color: #f8f9fa;
+            background-color: #f5f5f5;
+        }
+
+        .more-menu-item:active {
+            background: #f5f5f5;
         }
 
         .more-menu-item.danger {
-            color: #d32f2f;
+            color: #ef4444;
         }
 
         .more-menu-item.danger svg {
-            fill: #d32f2f;
+            fill: #ef4444;
         }
 
         .more-menu-item svg {
-            width: 18px;
-            height: 18px;
-            fill: #777;
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
         }
 
         .sidebar-warning {
@@ -1306,6 +1330,28 @@
             margin: 5px 0;
             word-break: keep-all;
         }
+
+        .sidebar-warning ul {
+            list-style: none;
+            padding: 0;
+            margin: 5px 0;
+        }
+
+        .sidebar-warning li {
+            position: relative;
+            padding-left: 12px;
+            /* 불릿 공간 확보 */
+            margin-bottom: 4px;
+            word-break: keep-all;
+        }
+
+        .sidebar-warning li::before {
+            content: "※";
+            position: absolute;
+            left: 0;
+            top: 0;
+            /* line-height가 1.4(약 15.4px)이므로, 글자와 높이를 맞춤 */
+        }
     </style>
 </head>
 
@@ -1316,7 +1362,13 @@
     ==========================================================================
     -->
 
-    <!-- [상단] 툴바 (사이드바 메뉴 버튼, 주소 표시, 검색 버튼) -->
+    <!-- 
+    ==========================================================================
+    [구조 1] 상단 툴바 (Top Toolbar)
+    메뉴 버튼, 주소 표시창, 검색 버튼을 포함하는 상단 고정 영역입니다.
+    Flexbox를 사용하여 좌-중-우 배치를 쉽게 구현했습니다.
+    ==========================================================================
+    -->
     <div class="top-toolbar">
         <button class="top-icon-btn" onclick="openSidebar()" aria-label="메뉴 열기">
             <svg class="svg-icon" viewBox="0 0 24 24">
@@ -1338,7 +1390,13 @@
         </button>
     </div>
 
-    <!-- [검색] 검색창 및 결과 패널 -->
+    <!-- 
+    ==========================================================================
+    [구조 2] 검색 컨테이너 (Search Container)
+    평소에는 보이지 않다가(display: none 또는 height: 0), 
+    검색 버튼을 눌렀을 때 나타나는 영역입니다.
+    ==========================================================================
+    -->
     <div id="search-container">
         <input type="text" id="search-input" placeholder="주소 또는 장소명 (예: 산124)"
             onkeypress="if(event.key==='Enter') executeSearch()" onfocus="showHistoryPanel()">
@@ -1392,30 +1450,48 @@
         </button>
     </div>
 
-    <!-- [맵] 지도 영역 (Leaflet이 렌더링되는 곳) -->
+    <!-- 
+    ==========================================================================
+    [구조 3] 지도 컨테이너 (Map Container)
+    Leaflet.js 라이브러리가 지도를 렌더링하는 핵심 영역입니다.
+    화면 전체를 차지하도록 CSS가 설정되어 있습니다.
+    ==========================================================================
+    -->
     <div id="map"></div>
 
-    <!-- [하단] 그리기 도구 툴바 -->
+    <!-- 
+    ==========================================================================
+    [구조 4] 하단 툴바 (Bottom Toolbar)
+    점, 선, 면 그리기 도구를 선택할 수 있는 하단 버튼 영역입니다.
+    모바일 환경을 고려하여 화면 하단에 고정 배치됩니다.
+    ==========================================================================
+    -->
     <div class="bottom-toolbar">
         <button id="btn-poly" class="bottom-btn" onclick="startDraw('polygon')">
-            <div class="icon-box"><svg class="svg-icon" viewBox="0 0 24 24">
+            <div class="icon-box">
+                <svg class="svg-icon" viewBox="0 0 24 24">
                     <path d="M12 2L2 9L6 21H18L22 9L12 2Z" fill="currentColor" fill-opacity="0.3" stroke="currentColor"
                         stroke-width="2" stroke-linejoin="round" />
-                </svg></div>
+                </svg>
+            </div>
             <span>면</span>
         </button>
         <button id="btn-line" class="bottom-btn" onclick="startDraw('polyline')">
-            <div class="icon-box"><svg class="svg-icon" viewBox="0 0 24 24">
+            <div class="icon-box">
+                <svg class="svg-icon" viewBox="0 0 24 24">
                     <path
                         d="M23 8c0 1.1-.9 2-2 2-.18 0-.35-.02-.51-.07l-3.56 3.55c.05.16.07.34.07.52 0 1.1-.9 2-2 2s-2-.9-2-2c0-.18.02-.36.07-.52l-2.55-2.55c-.16.05-.34.07-.52.07s-.36-.02-.52-.07l-4.55 4.56c.05.16.07.33.07.51 0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2c.18 0 .35.02.51.07l4.56-4.55C8.02 9.36 8 9.18 8 9c0-1.1.9-2 2-2s2 .9 2 2c0 .18-.02.36-.07.52l2.55 2.55c.16-.05.34-.07.52-.07s.36.02.52.07l3.55-3.56C19.02 8.35 19 8.18 19 8c0-1.1.9-2 2-2s2 .9 2 2z" />
-                </svg></div>
+                </svg>
+            </div>
             <span>선</span>
         </button>
         <button id="btn-point" class="bottom-btn" onclick="startDraw('marker')">
-            <div class="icon-box"><svg class="svg-icon" viewBox="0 0 24 24">
+            <div class="icon-box">
+                <svg class="svg-icon" viewBox="0 0 24 24">
                     <path
                         d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                </svg></div>
+                </svg>
+            </div>
             <span>점</span>
         </button>
     </div>
@@ -1457,7 +1533,13 @@
     ==========================================================================
     -->
 
-    <!-- 사이드바 (메뉴 목록) -->
+    <!-- 
+    ==========================================================================
+    [구조 5] 사이드바 (Sidebar)
+    메뉴 버튼 클릭 시 왼쪽에서 슬라이드되어 나오는 오버레이 영역입니다.
+    지도 설정과 기록 관리를 위한 탭 인터페이스를 포함합니다.
+    ==========================================================================
+    -->
     <div id="sidebar-overlay" class="sidebar-overlay" onclick="if(event.target === this) closeSidebar()">
         <div class="sidebar-content">
             <div class="sidebar-header">
@@ -1561,8 +1643,10 @@
                         </div>
                     </div>
                     <div class="sidebar-warning">
-                        <p>※ 모든 정보는 법적 효력이 없으며, 참고용으로만 활용하시기 바랍니다.</p>
-                        <p>※ 많은 레이어를 표시할 경우 오류가 발생할 수 있습니다.</p>
+                        <ul>
+                            <li>모든 정보는 법적 효력이 없으며, 참고용으로만 활용하시기 바랍니다.</li>
+                            <li>많은 레이어를 표시할 경우 오류가 발생할 수 있습니다.</li>
+                        </ul>
                     </div>
                 </div>
                 <!-- 탭 2: 기록 관리 -->
@@ -1574,29 +1658,20 @@
                             <div
                                 style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                                 <span style="font-size:13px; font-weight:bold; color:#555;">프로젝트</span>
-                                <div style="display:flex; gap:5px;">
-                                    <button onclick="createNewProject()" class="mono-btn small"
-                                        style="font-weight:lighter;">
-                                        <svg viewBox="0 0 24 24">
-                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-                                        </svg>
-                                        새 프로젝트
-                                    </button>
-                                </div>
-                            </div>
-                            <div style="display:flex; gap:5px;">
-                                <select id="project-select" onchange="switchProject(this.value)"
-                                    style="flex:1; padding:8px; border:1px solid #ddd; border-radius:8px; font-size:14px; background:white;">
-                                    <!-- 프로젝트 목록이 여기 로드됨 -->
-                                </select>
                                 <div class="dropdown-container">
-                                    <button onclick="toggleProjectMenu(event)" class="mono-btn small circle">
+                                    <button onclick="toggleProjectMenu(event)" class="btn-more">
                                         <svg viewBox="0 0 24 24">
                                             <path
                                                 d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                                         </svg>
                                     </button>
                                     <div id="project-menu" class="dropdown-menu">
+                                        <div class="dropdown-item" onclick="createNewProject()">
+                                            <svg viewBox="0 0 24 24">
+                                                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                                            </svg>
+                                            새 프로젝트
+                                        </div>
                                         <div class="dropdown-item" onclick="editProjectName()">
                                             <svg viewBox="0 0 24 24">
                                                 <path
@@ -1614,6 +1689,12 @@
                                     </div>
                                 </div>
                             </div>
+                            <div style="display:flex; gap:5px;">
+                                <select id="project-select" onchange="switchProject(this.value)"
+                                    style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px; font-size:14px; background:white;">
+                                    <!-- 프로젝트 목록이 여기 로드됨 -->
+                                </select>
+                            </div>
                         </div>
 
                         <!-- 상단: 헤더 -->
@@ -1624,7 +1705,7 @@
                                     style="margin-right:5px;"> 전체 선택</label>
 
                             <div class="dropdown-container">
-                                <button onclick="toggleMoreMenu(event)" class="mono-btn small circle">
+                                <button onclick="toggleMoreMenu(event)" class="btn-more">
                                     <svg viewBox="0 0 24 24">
                                         <path
                                             d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
@@ -1686,8 +1767,10 @@
                         </button>
                     </div>
                     <div class="sidebar-warning">
-                        <p>※ 많은 기록을 표시하거나 용량이 큰 파일을 불러올 경우 오류가 발생할 수 있습니다.</p>
-                        <p>※ 웹브라우저의 인터넷 기록이나 캐시를 삭제하면 기록한 데이터가 모두 없어지니 미리 기기에 저장하시기 바랍니다.</p>
+                        <ul>
+                            <li>많은 기록을 표시하거나 용량이 큰 파일을 불러올 경우 오류가 발생할 수 있습니다.</li>
+                            <li>웹브라우저의 인터넷 기록이나 캐시를 삭제하면 기록한 데이터가 모두 없어지니 미리 기기에 저장하시기 바랍니다.</li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -1773,7 +1856,7 @@
         accept=".geojson, .json">
 
     <!-- 메인 스크립트 연결 -->
-    <script src="script.js?v=1.5.0"></script>
+    <script src="script.js?v=1.5.1"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {
