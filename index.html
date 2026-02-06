@@ -34,16 +34,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.4.4/proj4.js"></script>
 
-    <!-- Firebase SDK (Compat version for easier integration) -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-
-    <!-- Firebase SDK (Compat version for easier integration) -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-
     <!-- 
     ==========================================================================
     2. 스타일 (CSS Styles)
@@ -1552,32 +1542,8 @@
     -->
     <div id="sidebar-overlay" class="sidebar-overlay" onclick="if(event.target === this) closeSidebar()">
         <div class="sidebar-content">
-            <div class="sidebar-header" style="justify-content: space-between; gap: 10px;">
-                <!-- 왼쪽: 로그인/로그아웃/유저정보 -->
-                <div id="login-section" style="display: flex; align-items: center;">
-                    <button id="btn-login" class="mono-btn" onclick="loginWithGoogle()"
-                        style="padding: 6px 10px; font-size: 12px; background-color: #f8f9fa; border: 1px solid #ddd;">
-                        <svg class="svg-inline" viewBox="0 0 24 24" style="fill:#4285F4; width:16px; height:16px;">
-                            <path
-                                d="M21.35 11.1h-9.17v2.98h5.24c-.27 1.67-1.6 4.07-5.24 4.07-3.1 0-5.63-2.51-5.63-5.6 0-3.09 2.53-5.6 5.63-5.6 1.77 0 3.01.76 3.69 1.41l2.35-2.28c-1.5-1.4-3.46-2.24-6.04-2.24-4.97 0-9 4.03-9 9s4.03 9 9 9c5.2 0 8.65-3.66 8.65-8.8 0-.57-.07-1.12-.18-1.74z" />
-                        </svg>
-                        로그인
-                    </button>
-                    <div id="user-info" style="display: none; align-items: center; gap: 8px;">
-                        <span id="user-email"
-                            style="font-size: 12px; color: #333; font-weight: bold; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
-                        <button class="mono-btn" onclick="logout()"
-                            style="padding: 5px 8px; font-size: 11px;">로그아웃</button>
-                    </div>
-                </div>
-
-                <!-- 중앙: 안내 문구 (로그인 시 숨김 처리 예정) -->
-                <div id="login-notice-msg"
-                    style="font-size: 11px; color: #666; text-align: center; flex: 1; word-break: keep-all; line-height: 1.2;">
-                    로그인하면 기록이 안전하게 보관됩니다.
-                </div>
-
-                <!-- 우측: 닫기 버튼 -->
+            <div class="sidebar-header">
+                <div class="sidebar-title">F-Field</div>
                 <button class="btn-close-sidebar" onclick="closeSidebar()">
                     <svg class="svg-icon" viewBox="0 0 24 24">
                         <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
@@ -1890,7 +1856,7 @@
         accept=".geojson, .json">
 
     <!-- 메인 스크립트 연결 -->
-    <script src="script.js?v=1.5.1"></script>
+    <script src="script.js?v=1.5.2"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {

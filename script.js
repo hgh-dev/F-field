@@ -1,295 +1,68 @@
 /* ==========================================================================
    프로젝트: 국유림 현장조사 앱 (F-Field)
-   버전: v1.5.0
+   버전: v1.5.2
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
    1. 설정 및 상수 (Configuration & Constants)
    -------------------------------------------------------------------------- */
-// VMWORLD API 키: 지도 데이터를 가져오기 위한 인증 키입니다.
+/**
+ * VWORLD_API_KEY
+ * 국토교통부 VWorld 지도 서비스를 이용하기 위한 인증 키입니다.
+ * 이 키가 있어야만 위성지도, 지적도 등의 타일 이미지를 받아올 수 있습니다.
+ */
 const VWORLD_API_KEY = "EE6276F5-3176-37ED-8478-85C820FB8529";
 
-// 로컬 스토리지 키: 브라우저에 데이터를 저장할 때 사용하는 이름표입니다.
-const STORAGE_KEY = "my_survey_data_v4";         // 측량 데이터 저장용
-const SEARCH_HISTORY_KEY = 'my_search_history';    // 검색 기록 저장용
-const SEARCH_SETTING_KEY = 'my_search_setting_enabled'; // 검색 기록 저장 설정용
-
-
-/* --------------------------------------------------------------------------
-   Firebase 초기화 및 인증 관리
-   -------------------------------------------------------------------------- */
-async function initFirebase() {
-    // Firebase SDK가 로드되었는지 확인
-    if (typeof firebase === 'undefined') {
-        console.warn("Firebase SDK not loaded yet. Retrying in 500ms...");
-        setTimeout(initFirebase, 500);
-        return;
-    }
-
-    try {
-        firebaseApp = firebase.initializeApp(firebaseConfig);
-        auth = firebase.auth();
-        db = firebase.firestore();
-        isFirebaseInitialized = true;
-        console.log("Firebase initialized successfully");
-
-        // 인증 상태 변화 감지
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                console.log("User logged in:", user.email);
-
-                // 로그인 시점 처리
-                const wasLoggedOut = !currentUser;
-                currentUser = user;
-                updateLoginUI(user);
-
-                if (wasLoggedOut) {
-                    // -----------------------------------------------------------
-                    // [로그인 시 흐름 개선]
-                    // 사용자 요청: 기기의 데이터 불러올거냐는 팝업 삭제,
-                    // 로그인 시 기기 데이터는 화면에서 지우고 계정 데이터만 불러옴.
-                    // -----------------------------------------------------------
-                    console.log("Switching to account data. Clearing local view...");
-
-                    // 1. 화면 및 상태 초기화 (기기 데이터 숨김)
-                    initDefaultProject(); // '기본 프로젝트' 빈 상태로 리셋
-
-                    // 2. 이 빈 상태를 _auth 키에 저장하여 초기화 (나중에 로드 실패해도 깨끗하게)
-                    saveToStorage();
-
-                    // 3. Firestore 데이터 로드 (계정 데이터로 덮어씌워짐)
-                    loadFromFirestore(user.uid);
-                } else {
-                    // 이미 로그인 상태에서 리프레시 된 경우 등
-                    // 로컬 캐시(_auth)에서 로드
-                    loadFromStorage(STORAGE_KEY_AUTH);
-                }
-
-            } else {
-                console.log("User logged out");
-                currentUser = null;
-                updateLoginUI(null);
-
-                // 로그아웃 시: 화면 비우고 기기 원본 데이터 복구
-                drawnItems.clearLayers();
-                loadFromStorage(STORAGE_KEY);
-                alert("로그아웃 되었습니다.\n기기에 저장된 기록으로 돌아갑니다.");
-            }
-        });
-
-    } catch (e) {
-        console.error("Firebase Initialization Error:", e);
-    }
-}
-
-// 구글 로그인
-async function loginWithGoogle() {
-    if (!isFirebaseInitialized || !auth) {
-        alert("Firebase가 아직 초기화되지 않았습니다.");
-        return;
-    }
-    const provider = new firebase.auth.GoogleAuthProvider();
-    try {
-        await auth.signInWithPopup(provider);
-    } catch (error) {
-        console.error("Login Failed:", error);
-        alert("로그인 실패: " + error.message);
-    }
-}
-
-// 로그아웃
-async function logout() {
-    if (!auth) return;
-    try {
-        await auth.signOut();
-        alert("로그아웃 되었습니다.");
-    } catch (error) {
-        console.error("Logout Failed:", error);
-    }
-}
-
-// UI 업데이트
-function updateLoginUI(user) {
-    const btnLogin = document.getElementById('btn-login');
-    const userInfo = document.getElementById('user-info');
-    const userEmail = document.getElementById('user-email');
-    const loginNotice = document.getElementById('login-notice-msg');
-
-    if (user) {
-        if (btnLogin) btnLogin.style.display = 'none';
-        if (userInfo) userInfo.style.display = 'flex';
-        if (userEmail) userEmail.innerText = user.displayName || user.email;
-        if (loginNotice) loginNotice.style.display = 'none'; // 로그인 시 안내 문구 숨김
-    } else {
-        if (btnLogin) btnLogin.style.display = 'flex';
-        if (userInfo) userInfo.style.display = 'none';
-        if (userEmail) userEmail.innerText = '';
-        if (loginNotice) loginNotice.style.display = 'block'; // 로그아웃 시 안내 문구 표시
-    }
-}
-
-// Firestore에 데이터 저장 (전체 프로젝트 동기화)
-async function saveToFirestore() {
-    if (!currentUser || !db) return; // 로그인 안했으면 패스
-
-    try {
-        // -----------------------------------------------------------
-        // [중요] 전체 프로젝트 동기화
-        // 기존에는 현재 화면(drawnItems)만 저장했으나, 
-        // 프로젝트 관리 기능을 위해 '모든 프로젝트(projects)'를 저장해야 함.
-        // saveToStorage()에서 사용하는 데이터 구조와 동일하게 저장.
-        // -----------------------------------------------------------
-
-        // 1. 현재 화면의 변경사항을 projects 배열에 반영 (확실히 하기 위함)
-        if (currentProjectId) {
-            const project = projects.find(p => p.id === parseInt(currentProjectId));
-            if (project) {
-                project.features = drawnItems.toGeoJSON();
-                project.updatedAt = new Date().toISOString();
-            }
-        }
-
-        // 2. 저장할 전체 데이터 구성
-        const storageData = {
-            version: "2.0",
-            currentProjectId: currentProjectId,
-            projects: projects
-        };
-
-        const dataStr = JSON.stringify(storageData);
-
-        // Firestore에 저장 (덮어쓰기)
-        await db.collection("users").doc(currentUser.uid).set({
-            survey_data: dataStr,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-
-        console.log("Full project data synced to Firestore");
-
-    } catch (e) {
-        console.error("Error saving to Firestore:", e);
-    }
-}
-
-// Firestore에서 데이터 로드 (전체 프로젝트)
-async function loadFromFirestore(uid) {
-    if (!db) return;
-
-    try {
-        console.log("Loading data from Firestore...");
-        const docRef = db.collection("users").doc(uid);
-        const doc = await docRef.get();
-
-        if (doc.exists) {
-            const data = doc.data();
-            if (data.survey_data) {
-                const parsed = JSON.parse(data.survey_data);
-
-                // 데이터 구조 확인 (Legacy 배열 vs Full Project Object)
-                if (Array.isArray(parsed) || parsed.type === "FeatureCollection") {
-                    // 구 버전 데이터라면 마이그레이션
-                    console.log("Legacy cloud data detected. Migrating...");
-                    migrateLegacyData(parsed);
-                } else if (parsed.version === "2.0") {
-                    // 정산적인 프로젝트 데이터 로드 (Full Sync)
-                    projects = parsed.projects || [];
-                    currentProjectId = parsed.currentProjectId;
-
-                    // 유효성 검사 및 복구
-                    if (projects.length === 0) {
-                        initDefaultProject();
-                    } else {
-                        if (!projects.find(p => p.id === parseInt(currentProjectId))) {
-                            currentProjectId = projects[0].id;
-                        }
-                        // UI 및 지도 업데이트
-                        renderProjectSelector();
-                        loadCurrentProjectFeatures();
-                    }
-                } else {
-                    // 알 수 없는 형식이면 초기화
-                    console.warn("Unknown data format in cloud. Initializing...");
-                    initDefaultProject();
-                }
-
-                // 로드 후 즉시 로컬 캐시(_auth 키)에도 저장하여 동기화 유지
-                // (주의: saveToStorage가 다시 saveToFirestore를 부를 수 있으므로 순환 호출 주의 필요하나,
-                // 현재 saveToFirestore는 내부 변경이 없으면 무해하거나, flag로 제어 가능.
-                // 일단은 로드 후 상태를 로컬에 반영하는 것이 중요함)
-                saveToStorage();
-            } else {
-                console.log("No survey data in user profile.");
-                // 데이터가 필드 자체가 없으면 초기화
-                initDefaultProject();
-                saveToStorage();
-            }
-        } else {
-            console.log("No user document.");
-            // 문서가 없으면 초기화
-            initDefaultProject();
-            saveToStorage();
-        }
-    } catch (e) {
-        console.error("Error loading from Firestore:", e);
-    }
-}
-
-// 앱 시작 시 Firebase 초기화
-window.addEventListener('load', initFirebase);
-
+/**
+ * LocalStorage Keys
+ * 브라우저의 로컬 스토리지(내부 저장소)에 데이터를 저장할 때 사용하는 키(Key) 이름입니다.
+ * - STORAGE_KEY: 사용자가 그린 도형(측량 기록)과 프로젝트 데이터를 저장함
+ * - SEARCH_HISTORY_KEY: 주소 검색 기록을 저장함
+ * - SEARCH_SETTING_KEY: 검색 기록 저장 기능의 켜짐/꺼짐 상태를 저장함
+ */
+const STORAGE_KEY = "my_survey_data_v4";
+const SEARCH_HISTORY_KEY = 'my_search_history';
+const SEARCH_SETTING_KEY = 'my_search_setting_enabled';
 
 
 
 /* --------------------------------------------------------------------------
    2. 전역 상태 변수 (Global State)
    -------------------------------------------------------------------------- */
-// 앱의 현재 상태를 기억하는 변수들입니다.
+// 앱 실행 중에 계속 변하는 값들을 저장하는 변수들입니다.
+// 이 값들은 함수들 사이에서 공유되며, 앱의 현재 상황(Conext)을 나타냅니다.
 
-// 좌표 표시 모드 (0: 도분초 DMS, 1: 십진수 Decimal, 2: TM 좌표)
+// [좌표계 설정]
+// 0: 도분초 (DMS, 예: 37° 14' 20")
+// 1: 십진수 (Decimal, 예: 37.2388)
+// 2: TM 좌표 (Transverse Mercator, 예: X 200000, Y 600000)
 let coordMode = 0;
 
-// 위치 추적 상태
-let isFollowing = false; // 내 위치 따라가기 모드인지 여부
-let watchId = null;      // 위치 추적 프로세스 ID
-let lastHeading = 0;     // 나침반 방향 (0~360도)
-let lastGpsLat = 37.245911; // 마지막 GPS 위도 (초기값: 지도 중심)
-let lastGpsLng = 126.960302; // 마지막 GPS 경도
+// [위치 추적 상태]
+let isFollowing = false; // '내 위치 따라가기' 버튼이 켜져 있는지 여부
+let watchId = null;      // geolocation.watchPosition()이 반환하는 ID (추적 중지 시 필요)
+let lastHeading = 0;     // 나침반 방향 (0~360도), 디바이스 orientation 이벤트로 업데이트됨
+let lastGpsLat = 37.245911; // 마지막으로 수신된 GPS 위도 (기본값: 수원)
+let lastGpsLng = 126.960302; // 마지막으로 수신된 GPS 경도
 
-// 지도 위의 요소들
-let trackingMarker = null;    // 내 위치 표시 마커 (화살표)
-let trackingCircle = null;    // 내 위치 오차 범위 원
-let currentBoundaryLayer = null; // 선택된 지적 경계 (붉은 테두리)
-let currentSearchMarker = null;  // 검색 또는 클릭한 위치 마커
+// [지도 상의 임시 마커들]
+let trackingMarker = null;    // 내 위치를 표시하는 화살표 마커
+let trackingCircle = null;    // GPS 오차 범위(정확도)를 보여주는 파란 원
+let currentBoundaryLayer = null; // 지적도 검색 시 나타나는 붉은색 테두리 (선택된 땅)
+let currentSearchMarker = null;  // 주소 검색이나 클릭 시 나타나는 빨간 핀
 
-// 그리기 도구 상태
-let currentDrawer = null;     // 현재 사용 중인 그리기 도구
-let isManualFinish = false;   // 그리기 수동 종료 여부 체크
+// [그리기 도구 (Leaflet.Draw) 상태]
+let currentDrawer = null;     // 현재 활성화된 그리기 도구 객체 (Polygon, Polyline, Marker 등)
+let isManualFinish = false;   // '그리기 완료' 버튼을 눌렀을 때, 로직 중복 실행을 방지하기 위한 플래그
 
-// 산림 데이터 상태
-let forestDataLayer = null;   // 산림보호구역 레이어
-let isForestActive = false;   // 산림보호구역 보기 활성화 여부
-let lastForestRequestId = 0;  // 데이터 요청 순서 확인용
+// [산림 데이터 상태]
+let forestDataLayer = null;   // 산림보호구역 데이터를 보여주는 GeoJSON 레이어
+let isForestActive = false;   // 산림보호구역 레이어가 켜져 있는지 여부
+let lastForestRequestId = 0;  // 비동기 요청 순서 꼬임 방지용 시퀀스 ID
 
-// 프로젝트 관리 상태
-let projects = [];             // 전체 프로젝트 목록
-let currentProjectId = null;   // 현재 선택된 프로젝트 ID
-
-// Firebase 관련 상태 변수
-let firebaseApp = null;
-let auth = null;
-let db = null;
-let currentUser = null;
-let isFirebaseInitialized = false;
-
-// Firebase 설정
-const firebaseConfig = {
-    apiKey: "AIzaSyBo5tkMWBLFFiZwYfshhfVh_venKS-plcg",
-    authDomain: "f-field-f7b65.firebaseapp.com",
-    projectId: "f-field-f7b65",
-    storageBucket: "f-field-f7b65.firebasestorage.app",
-    messagingSenderId: "174823124514",
-    appId: "1:174823124514:web:6e15a7698226c64d3f647b",
-};
+// [프로젝트 관리]
+let projects = [];             // 모든 프로젝트와 그 안의 기록들을 담고 있는 배열
+let currentProjectId = null;   // 현재 작업 중인 프로젝트의 ID (projects 배열 내 객체의 id)
 
 
 
@@ -335,26 +108,51 @@ L.Draw.Polyline.prototype._onTouch = function (e) { return; };
 /* --------------------------------------------------------------------------
    4. 지도 초기화 (Map Initialization)
    -------------------------------------------------------------------------- */
-// Leaflet(L)을 사용하여 지도를 생성하고 설정합니다.
-
+/**
+ * Leaflet Map 생성
+ * L.map('id')를 통해 HTML의 <div id="map"> 요소에 지도를 연결합니다.
+ * 
+ * [주요 옵션 설명]
+ * - zoomControl: false -> 기본 줌 버튼(+/-)을 끕니다. (우리가 원하는 위치에 따로 만들기 위해)
+ * - attributionControl: false -> 우측 하단 Leaflet 로고를 숨깁니다.
+ * - tap: false -> 모바일에서 터치 반응이 느리거나 두 번 클릭되는 문제를 방지합니다.
+ * - maxZoom: 22 -> 지도를 얼마나 가까이(상세하게) 확대할 수 있는지 설정합니다.
+ */
 const map = L.map('map', {
-    zoomControl: false,        // 줌 버튼 숨김 (별도로 만듦)
-    attributionControl: false, // 로고 숨김
-    tap: false,                // 모바일 터치 딜레이 해제
-    maxZoom: 22,               // 최대 확대 레벨
-    doubleClickZoom: false     // 더블 클릭 확대 방지 (정보창 띄우기 기능으로 사용)
-}).setView([37.245911, 126.960302], 17); // 초기 위치 설정 (수원)
+    zoomControl: false,
+    attributionControl: false,
+    tap: false,
+    maxZoom: 22,
+    doubleClickZoom: false // 더블 클릭 시 확대되는 기본 기능을 막고, '정보 팝업'을 띄우는 기능으로 대신 사용함
+}).setView([37.245911, 126.960302], 17); // 초기 중심 좌표(수원)와 줌 레벨(17)
 
-// 줌 버튼과 축척바(Scale) 추가
+// 줌 컨트롤(확대/축소 버튼)을 왼쪽 아래에 추가
 L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+// 스케일 컨트롤(지도 축척 막대) 추가 (imperial: false -> 마일 단위 끔, metric: true -> 미터 단위 켬)
 L.control.scale({ imperial: false, metric: true }).addTo(map);
 
-// 'nasGukPane'이라는 별도의 레이어 층을 만듭니다. (다른 레이어보다 위에 표시하기 위함)
+/**
+ * [커스텀 Pane 생성]
+ * Leaflet은 기본적으로 타일(Tile), 오버레이(Overlay), 마커(Marker), 팝업(Popup) 등의 층(Pane) 순서가 정해져 있습니다.
+ * 특정 레이어(여기서는 국유림 레이어)를 다른 레이어보다 항상 위에, 혹은 아래에 표시하고 싶을 때 커스텀 Pane을 씁니다.
+ * 
+ * - zIndex: 350 -> 기본 TilePane(200)보다 높고, OverlayPane(400)보다 낮게 설정
+ * - pointerEvents: 'none' -> 이 레이어가 마우스 클릭을 가로채지 않도록 설정 (지도 클릭 가능하게)
+ */
 map.createPane('nasGukPane');
 map.getPane('nasGukPane').style.zIndex = 350;
-map.getPane('nasGukPane').style.pointerEvents = 'none'; // 지도가 클릭되도록 설정
+map.getPane('nasGukPane').style.pointerEvents = 'none';
 
-// TM 좌표계 설정 (EPSG:5186 - 한국 중부원점)
+/**
+ * [Proj4js 좌표계 정의]
+ * 지도에서 사용하는 좌표계는 여러 종류가 있습니다.
+ * - EPSG:4326 (WGS84): 위도, 경도 (GPS에서 사용)
+ * - EPSG:3857 (Web Mercator): 구글지도, 브이월드 등 웹 지도에서 사용
+ * - EPSG:5186 (Korea Central Belt 2010): 한국 국토지리정보원 표준 (TM 좌표)
+ * 
+ * 아래 코드는 TM 좌표(EPSG:5186)를 변환하기 위한 수식을 정의하는 것입니다.
+ */
 proj4.defs("EPSG:5186", "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs");
 
 
@@ -364,48 +162,115 @@ proj4.defs("EPSG:5186", "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=
    -------------------------------------------------------------------------- */
 // VWorld에서 제공하는 지도 타일들입니다.
 
-// 1. 기본 배경 지도
+/* --------------------------------------------------------------------------
+   5. 레이어 관리 (Layer Management)
+   -------------------------------------------------------------------------- */
+// 지도에 표시할 다양한 지도 데이터(타일)를 정의합니다.
+
+/**
+ * [TileLayer]
+ * 이미지가 타일(조각) 형태로 제공되는 지도 서비스입니다.
+ * URL의 {z}, {x}, {y} 부분이 줌 레벨과 좌표로 자동 치환되어 서버에 이미지를 요청합니다.
+ */
+
+// 1. VWorld 기본 배경 지도 (일반 지도)
 const vworldBase = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', {
-    key: VWORLD_API_KEY, layer: 'Base', ext: 'png', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22
+    key: VWORLD_API_KEY,
+    layer: 'Base',
+    ext: 'png',
+    attribution: 'VWorld',
+    maxNativeZoom: 19, // 서버가 제공하는 최대 줌 레벨
+    maxZoom: 22        // 클라이언트에서 확대해서 보여줄 최대 레벨 (이미지가 깨질 수 있음)
 });
 
-// 2. 위성(영상) 지도
+// 2. VWorld 위성(영상) 지도
 const vworldSatellite = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', {
-    key: VWORLD_API_KEY, layer: 'Satellite', ext: 'jpeg', attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22
+    key: VWORLD_API_KEY,
+    layer: 'Satellite',
+    ext: 'jpeg',
+    attribution: 'VWorld',
+    maxNativeZoom: 19,
+    maxZoom: 22
 });
 
-// 3. 하이브리드(지명, 도로 등) 오버레이
+// 3. VWorld 하이브리드 오버레이 (도로, 지명 등 투명 배경)
+// 위성 지도 위에 겹쳐서 보기 위해 사용합니다. (opacity: 1)
 const vworldHybrid = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', {
-    key: VWORLD_API_KEY, layer: 'Hybrid', ext: 'png', opacity: 1, attribution: 'VWorld', maxNativeZoom: 19, maxZoom: 22
+    key: VWORLD_API_KEY,
+    layer: 'Hybrid',
+    ext: 'png',
+    opacity: 1,
+    attribution: 'VWorld',
+    maxNativeZoom: 19,
+    maxZoom: 22
 });
 
 // 8. Esri 위성지도 (World Imagery)
+// VWorld 위성 지도가 안 나올 때를 대비한 대체 지도입니다.
 const esriSatelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'Esri World Imagery',
     maxNativeZoom: 19,
     maxZoom: 22
 });
 
+/**
+ * [WMS Layer] (Web Map Service)
+ * 타일 형태가 아니라, 클라이언트가 요청하는 영역(BBOX)에 맞춰 서버가 이미지를 생성해서 보내주는 방식입니다.
+ * (Leaflet에서는 TileLayer.WMS를 통해 타일 방식처럼 쓸 수도 있습니다)
+ * 
+ * - transparent: true -> 배경을 투명하게 해서 밑에 있는 지도가 보이게 함
+ * - format: 'image/png' -> 투명도를 지원하는 이미지 포맷 사용
+ * - layers: 서버에서 요청할 레이어의 이름
+ */
+
 // 4. 지적도 (LX, 편집도)
 const vworldLxLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
-    key: VWORLD_API_KEY, layers: 'lt_c_landinfobasemap', styles: '', format: 'image/png',
-    transparent: true, opacity: 0.6, version: '1.3.0', maxZoom: 22, maxNativeZoom: 19,
-    detectRetina: true, tileSize: 512, zoomOffset: 0, className: 'cadastral-layer'
+    key: VWORLD_API_KEY,
+    layers: 'lt_c_landinfobasemap', // 지적편집도 레이어명
+    styles: '',
+    format: 'image/png',
+    transparent: true,
+    opacity: 0.6, // 반투명하게 설정하여 아래 위성지도가 비치도록 함
+    version: '1.3.0',
+    maxZoom: 22,
+    maxNativeZoom: 19,
+    detectRetina: true,
+    tileSize: 512, // 고해상도 처리를 위해 타일 크기 조정
+    zoomOffset: 0,
+    className: 'cadastral-layer' // CSS로 스타일 제어를 위해 클래스 추가
 });
 
-// 5. 연속 지적도
+// 5. 연속 지적도 (실제 지적선)
 const vworldContinuousLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
-    key: VWORLD_API_KEY, layers: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun', styles: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun',
-    format: 'image/png', transparent: true, opacity: 0.6, version: '1.3.0',
-    maxZoom: 22, maxNativeZoom: 19, detectRetina: true, tileSize: 512, zoomOffset: 0, className: 'cadastral-layer'
+    key: VWORLD_API_KEY,
+    layers: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun', // 부번, 본번 레이어 동시 요청
+    styles: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun',
+    format: 'image/png',
+    transparent: true,
+    opacity: 0.6,
+    version: '1.3.0',
+    maxZoom: 22,
+    maxNativeZoom: 19,
+    detectRetina: true,
+    tileSize: 512,
+    zoomOffset: 0,
+    className: 'cadastral-layer'
 });
 
-// 6. 국유림 레이어 (사용자 정의 타일)
+// 6. 국유림 레이어 (직접 호스팅하는 커스텀 타일)
+// GitHub Pages 등에 올려둔 타일 이미지를 불러옵니다.
 const nasGukLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon/guk/{z}/{x}/{y}.png', {
-    minZoom: 1, maxZoom: 22, maxNativeZoom: 18, tms: false, pane: 'nasGukPane', opacity: 1, attribution: 'Suwon Guk'
+    minZoom: 1,
+    maxZoom: 22,
+    maxNativeZoom: 18,
+    tms: false, // TMS 방식(Y축 반전)이 아니므로 false
+    pane: 'nasGukPane', // 아까 만든 커스텀 Pane에 배치하여 항상 위에 표시됨
+    opacity: 1,
+    attribution: 'Suwon Guk'
 });
 
 // 7. 행정경계 레이어 (통합 WMS)
+// 시도, 시군구, 읍면동, 리 경계를 한 번에 불러옵니다.
 const mergedAdminLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY,
     layers: 'lt_c_adsido,lt_c_adsigg,lt_c_ademd,lt_c_adri',
@@ -414,7 +279,7 @@ const mergedAdminLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     transparent: true,
     opacity: 1,
     version: '1.3.0',
-    minZoom: 6,
+    minZoom: 6, // 너무 넓은 지역(전국)에서는 데이터 양이 많아 렉이 걸리므로 줌 제한
     maxZoom: 22,
     maxNativeZoom: 18,
     className: 'admin-layer'
@@ -623,21 +488,36 @@ map.on('moveend', function () {
    -------------------------------------------------------------------------- */
 // 사이드바, 모달창, 탭 등 화면의 UI를 제어하는 함수들입니다.
 
-// 사이드바 열기 애니메이션
+/* --------------------------------------------------------------------------
+   6. UI 컨트롤러 (UI Controller)
+   -------------------------------------------------------------------------- */
+// 사이드바, 모달창, 탭 등 화면의 UI를 제어하는 함수들입니다.
+// 주로 document.getElementById()로 요소를 찾고, classList나 style을 변경하여 제어합니다.
+
+/**
+ * [사이드바 열기]
+ * 1. UI 동기화: 현재 지도 설정에 맞춰 사이드바의 체크박스 상태를 업데이트합니다.
+ * 2. 리스트 렌더링: 저장된 기록 목록을 최신화합니다.
+ * 3. 애니메이션: display: 'block'으로 공간을 차지하게 한 뒤, 'visible' 클래스를 추가하여 슬라이드 효과를 줍니다.
+ */
 function openSidebar() {
     syncSidebarUI(); // 현재 지도 상태와 버튼 동기화
     renderSurveyList(); // 저장된 기록 목록 표시
     const overlay = document.getElementById('sidebar-overlay');
     overlay.style.display = 'block';
-    // 약간의 딜레이 후 클래스 추가 (부드러운 효과)
+    // 약간의 딜레이(10ms)를 주어 브라우저가 display 변경을 인식한 후 transition이 작동하도록 함
     setTimeout(() => { overlay.classList.add('visible'); }, 10);
 }
 
-// 사이드바 닫기 애니메이션
+/**
+ * [사이드바 닫기]
+ * 1. 애니메이션: 'visible' 클래스를 제거하여 슬라이드 아웃 효과를 줍니다.
+ * 2. 숨김 처리: 애니메이션 시간(0.3s)이 지난 후 display: 'none'으로 완전히 숨깁니다.
+ */
 function closeSidebar() {
     const overlay = document.getElementById('sidebar-overlay');
     overlay.classList.remove('visible');
-    // 애니메이션이 끝난(0.3초) 후 숨김
+    // CSS transition-duration(0.3s)과 동일한 시간만큼 기다림
     setTimeout(() => { overlay.style.display = 'none'; }, 300);
 }
 
@@ -751,10 +631,22 @@ document.addEventListener('mousedown', function (e) {
     }
 });
 
-// VWorld 검색 API 호출 함수 (JSONP)
+/**
+ * [VWorld 검색 API 호출]
+ * 브라우저의 보안 정책(CORS)으로 인해, 일반적인 AJAX(fetch) 요청 대신 JSONP 방식을 사용합니다.
+ * 
+ * - JSONP(JSON with Padding): 
+ *   `<script>` 태그는 다른 도메인의 파일을 불러오는 데 제한이 없다는 점을 이용합니다.
+ *   서버에 요청할 때 callback 함수의 이름을 파라미터로 넘기고,
+ *   서버는 그 함수를 실행하는 자바스크립트 코드를 응답으로 보내줍니다.
+ */
 function callVworldSearchApi(query, type, callback) {
+    // 1. 유니크한 콜백 함수 이름 생성 (동시에 여러 요청이 올 수 있으므로 랜덤값 사용)
     const callbackName = 'vworld_search_' + type + '_' + Math.floor(Math.random() * 100000);
+
+    // 2. 전역(window)에 콜백 함수 정의
     window[callbackName] = function (data) {
+        // 4. 데이터 수신 후 뒤처리 (함수 삭제 및 스크립트 태그 제거)
         delete window[callbackName];
         document.getElementById(callbackName)?.remove();
 
@@ -764,8 +656,10 @@ function callVworldSearchApi(query, type, callback) {
             callback(null);
     };
 
+    // 3. script 태그를 생성하여 API 요청
     const script = document.createElement('script');
     script.id = callbackName;
+    // API URL에 callback 파라미터로 우리 함수의 이름을 전달합니다.
     script.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=50&page=1&query=${encodeURIComponent(query)}&type=${type}&format=json&errorformat=json&key=${VWORLD_API_KEY}&callback=${callbackName}`;
     document.body.appendChild(script);
 }
@@ -1387,7 +1281,7 @@ map.on(L.Draw.Event.CREATED, function (event) {
 
     updateLayerInfo(layer);
     drawnItems.addLayer(layer);
-    saveToStorage(); // 내부에서 saveToFirestore 호출됨
+    saveToStorage();
 
     resetDrawingState();
     currentDrawer = null;
@@ -1400,13 +1294,7 @@ map.on(L.Draw.Event.CREATED, function (event) {
 // 편집 이벤트 핸들러
 map.on('draw:edited', function (e) {
     e.layers.eachLayer(updateLayerInfo);
-    saveToStorage(); // 내부에서 saveToFirestore 호출됨
-    renderSurveyList();
-});
-
-// 삭제 이벤트 핸들러
-map.on('draw:deleted', function (e) {
-    saveToStorage(); // 내부에서 saveToFirestore 호출됨
+    saveToStorage();
     renderSurveyList();
 });
 
@@ -1417,12 +1305,20 @@ map.on('draw:deleted', function (e) {
    -------------------------------------------------------------------------- */
 // 그리기 데이터 목록 표시, 저장, 삭제 등
 
+/**
+ * [목록 렌더링]
+ * 저장된 기록(Layer)들을 화면 왼쪽 목록(Sidebar)에 표시하는 함수입니다.
+ * 
+ * - Element 생성: document.createElement('div')로 요소를 만들고, appendChild로 추가합니다.
+ * - 이벤트 연결: 생성된 요소에 onclick, onchange 등의 이벤트 핸들러를 연결합니다.
+ */
 function renderSurveyList() {
     const listContainer = document.getElementById('survey-list-area');
-    listContainer.innerHTML = "";
+    listContainer.innerHTML = ""; // 기존 목록 초기화
 
     const layers = drawnItems.getLayers();
 
+    // 전체 선택 체크박스 상태 동기화
     const allVisible = layers.length > 0 && layers.every(l => !l.feature.properties.isHidden);
     document.getElementById('chk-select-all').checked = (layers.length > 0 && allVisible);
 
@@ -1431,15 +1327,16 @@ function renderSurveyList() {
         return;
     }
 
-    // 생성 순으로 정렬 (오래된 것 -> 최신 것)
-    // appendChild를 사용하므로 최신 기록이 리스트의 하단에 추가됨
+    // 목록 생성 (오래된 순 -> 최신 순으로 추가됨)
     layers.slice().forEach(function (layer) {
         const props = layer.feature.properties || {};
         const isHidden = props.isHidden === true;
+        // 타입에 따른 아이콘 결정
         const typeIcon = (layer instanceof L.Marker) ? SVG_ICONS.marker : (layer instanceof L.Polygon ? SVG_ICONS.polygon : SVG_ICONS.ruler);
 
         const div = document.createElement('div');
         div.className = 'survey-item';
+        // HTML 문자열로 내부 구조 정의
         div.innerHTML = `
         <div class="survey-check-area">
             <input type="checkbox" class="survey-checkbox" ${!isHidden ? "checked" : ""} onchange="toggleLayerVisibility(${props.id})">
@@ -1454,11 +1351,17 @@ function renderSurveyList() {
         listContainer.appendChild(div);
     });
 
-    // 프로젝트 선택기의 수치를 최신화
+    // 프로젝트 선택기의 수량 정보도 함께 갱신
     renderProjectSelector();
 }
 
-// 레이어 팝업 내용 업데이트(면적, 거리 계산 포함)
+/**
+ * [팝업 내용 업데이트]
+ * 지도 위의 도형을 클릭했을 때 뜨는 말풍선(Popup)의 내용을 갱신합니다.
+ * 
+ * - Turf.js 라이브러리: 지도 상의 다각형 면적(area)이나 선의 거리(length)를 계산하는 데 사용합니다.
+ * - bindPopup: Leaflet 레이어에 HTML 내용을 연결합니다.
+ */
 function updateLayerInfo(layer) {
     const memo = layer.feature.properties.memo || "";
     let infoText = "";
@@ -1473,8 +1376,10 @@ function updateLayerInfo(layer) {
             infoText = convertToDms(pos.lat, 'lat') + "<br>" + convertToDms(pos.lng, 'lng');
         }
     } else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+        // 선 길이 계산 (km -> m 변환)
         infoText = "<b>" + SVG_ICONS.ruler + " 거리:</b> " + (turf.length(layer.toGeoJSON(), { units: 'kilometers' }) * 1000).toFixed(2) + " m";
     } else if (layer instanceof L.Polygon) {
+        // 면적 계산 (제곱미터)
         infoText = "<b>" + SVG_ICONS.polygon + " 면적:</b> " + turf.area(layer.toGeoJSON()).toFixed(2) + " ㎡";
     }
 
@@ -1484,6 +1389,7 @@ function updateLayerInfo(layer) {
     if (infoText) popupContent += `<div style="font-size:12px; color:#666;">${infoText}</div>`;
 
     const id = layer.feature.properties.id;
+    // 수정/삭제 버튼 추가
     popupContent += `<div style="margin-top:8px; padding-top:8px; display:flex; gap:5px;">
         <button class="popup-btn" style="flex:1; background:#f0f0f0; color:#333;" onclick="enableSingleLayerEdit(${id})">수정</button>
         <button class="popup-btn" style="flex:1; background:#ffebee; color:#d32f2f;" onclick="deleteLayerById(${id})">삭제</button>
@@ -1492,11 +1398,14 @@ function updateLayerInfo(layer) {
     layer.bindPopup(popupContent);
 }
 
-// --- 데이터 저장/로드 헬퍼 ---
-
-const STORAGE_KEY_AUTH = "f_field_survey_data_auth"; // 로그인 시 사용하는 임시 저장소 키
-
 // 데이터 저장 (프로젝트 구조 반영)
+/**
+ * [LocalStorage 저장]
+ * 웹 브라우저의 로컬 저장소를 사용하여 데이터를 영구적으로 보관합니다.
+ * 
+ * - 중요: LocalStorage는 '문자열'만 저장할 수 있습니다.
+ * - 따라서 JavaScript 객체(Object)를 JSON.stringify()를 사용하여 JSON 문자열로 변환해야 합니다.
+ */
 function saveToStorage() {
     if (!currentProjectId) return; // 초기화 전이면 중단
 
@@ -1513,36 +1422,25 @@ function saveToStorage() {
         projects: projects
     };
 
-    // 로그인 상태에 따라 저장 키 분리
-    // 로그인 중일 때는 기기 원본 데이터(f_field_survey_data)를 덮어쓰지 않고 _auth 키에 저장
-    const key = currentUser ? STORAGE_KEY_AUTH : STORAGE_KEY;
-    // console.log("Saving to storage:", key); // 로그 너무 많아서 주석 처리
-    localStorage.setItem(key, JSON.stringify(storageData));
-
-    // [중요] 로그인 상태라면 Firestore에도 자동 동기화
-    if (currentUser) {
-        saveToFirestore();
-    }
+    // 객체 -> JSON 문자열 변환 후 저장
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(storageData));
 }
 
 // 데이터 로드 (마이그레이션 포함)
-function loadFromStorage(targetKey) {
-    // 키를 명시하지 않으면 기본적으로:
-    // 로그인 상태 -> _auth, 비로그인 상태 -> 원본 키
-    // 하지만 "로그아웃 시 원본 복구"를 위해 명시적으로 호출할 수도 있음.
-    const key = targetKey || (currentUser ? STORAGE_KEY_AUTH : STORAGE_KEY);
-    console.log("Loading from storage:", key);
-
+function loadFromStorage() {
     try {
-        const saved = localStorage.getItem(key);
+        const saved = localStorage.getItem(STORAGE_KEY);
         if (!saved) {
-            // 해당 키에 데이터가 없으면
-            // 로그인 상태라면 -> 클라우드 데이터가 로드될 것이므로 여기선 빈 프로젝트로 초기화해도 무방
-            // 비로그인 상태라면 -> 최초 실행이므로 기본 프로젝트 생성
+            // 데이터가 아예 없으면 기본 프로젝트 생성
             initDefaultProject();
             return;
         }
 
+        /**
+         * [JSON 파싱]
+         * 저장된 문자열을 다시 JavaScript 객체로 변환하려면 JSON.parse()를 사용합니다.
+         * 만약 형식이 잘못되어 있으면 에러가 발생하므로 try-catch 문으로 감싸는 것이 안전합니다.
+         */
         const parsed = JSON.parse(saved);
 
         // 구 버전 데이터 감지 (배열이거나 FeatureCollection 인 경우)
@@ -2292,6 +2190,7 @@ window.toggleAllLayers = function (isChecked) {
 };
 
 window.exportSingleLayer = function (id) {
+    if (!confirm('기록을 기기에 저장합니다.')) return;
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (!layer) return;
     let safeMemo = (layer.feature.properties.memo || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
@@ -2299,16 +2198,17 @@ window.exportSingleLayer = function (id) {
 };
 
 // 변경: 현재 프로젝트 전체 저장 (파일명: 프로젝트명_yymmdd)
-// 변경: 현재 프로젝트 전체 저장 (파일명: 프로젝트명_yymmdd)
 window.exportCurrentProject = function () {
-    // -----------------------------------------------------------
-    // [교육용] exportCurrentProject (프로젝트 내보내기)
-    // 현재 프로젝트의 모든 기록을 GeoJSON 파일로 저장합니다.
-    // 1. 현재 프로젝트 객체를 찾습니다.
-    // 2. drawnItems(지도에 그려진 레이어들)의 상태를 GeoJSON으로 변환합니다.
-    // 3. 메타데이터(프로젝트명, 내보낸 시간)를 추가하여 추후 '스마트 불러오기'가 가능하게 합니다.
-    // 4. Blob 객체를 생성하여 브라우저에서 파일 다운로드를 트리거합니다.
-    // -----------------------------------------------------------
+    if (!confirm('현재 프로젝트를 기기에 저장합니다.')) return;
+
+    /**
+     * [프로젝트 내보내기]
+     * 현재 프로젝트의 데이터를 GeoJSON 파일로 생성하여 다운로드합니다.
+     * 
+     * 1. 데이터 준비: 현재 그려진 레이어들을 GeoJSON으로 변환하고, 메타데이터(프로젝트명, 날짜)를 추가합니다.
+     * 2. 파일명 생성: 프로젝트 이름과 오늘 날짜를 조합합니다. (특수문자는 제거)
+     * 3. 다운로드 트리거: <a> 태그를 동적으로 생성하여 클릭 이벤트를 발생시킵니다.
+     */
     const project = projects.find(p => p.id === parseInt(currentProjectId));
     if (!project) return;
 
@@ -2336,16 +2236,12 @@ window.exportCurrentProject = function () {
     const safeProjectName = project.name.replace(/[^a-zA-Z0-9가-힣_-]/g, "_");
     const fileName = `${safeProjectName}_${dateStr}.geojson`;
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentFeatures));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", fileName);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    // 파일 저장 공유 실행
+    saveOrShareFile(JSON.stringify(currentFeatures), fileName);
 };
 
 function saveOrShareFile(content, fileName) {
+    // 모바일 공유 기능(Navigator Share API) 지원 시 시도
     if (navigator.canShare && navigator.share) {
         const file = new File([content], fileName, { type: "application/json" });
         if (navigator.canShare({ files: [file] })) {
@@ -2356,6 +2252,15 @@ function saveOrShareFile(content, fileName) {
     }
 }
 
+/**
+ * [파일 다운로드 (PC/미지원 브라우저)]
+ * JavaScript에서 파일을 생성하고 다운로드하게 만드는 표준적인 방법입니다.
+ * 
+ * 1. Blob 객체 생성: 텍스트 데이터를 바이너리 데이터 덩어리(Blob)로 만듭니다.
+ * 2. URL 생성: Blob 객체를 가리키는 임시 URL(blob:...)을 만듭니다.
+ * 3. 링크 클릭: 보이지 않는 <a> 태그를 만들어 URL을 연결하고 click() 합니다.
+ * 4. 해제: 메모리 누수를 막기 위해 URL 객체를 해제(revokeObjectURL)합니다.
+ */
 function saveToDevice(content, fileName) {
     const blob = new Blob([content], { type: "application/geo+json" });
     const a = document.createElement('a');
@@ -2364,6 +2269,7 @@ function saveToDevice(content, fileName) {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    // URL.revokeObjectURL(a.href); // (선택사항) 메모리 해제
 }
 
 window.zoomToLayer = function (id) {
@@ -2383,6 +2289,12 @@ function triggerFileInput() { document.getElementById('geoJsonInput').click(); }
 function handleFileSelect(input) {
     const file = input.files[0];
     if (!file) return;
+
+    /**
+     * [파일 읽기]
+     * FileReader API를 사용하여 사용자가 선택한 로컬 파일을 읽어옵니다.
+     * 비동기적으로 동작하므로 onload 이벤트 핸들러에서 다 읽은 후의 로직을 처리합니다.
+     */
     const r = new FileReader();
     r.onload = function (e) {
         try {
@@ -2414,7 +2326,7 @@ function handleFileSelect(input) {
 }
 
 function clearAllData() {
-    if (confirm("선택한 기록이 모두 삭제됩니다.")) {
+    if (confirm("현재 프로젝트의 모든 기록이 삭제됩니다.")) {
         drawnItems.clearLayers();
         saveToStorage();
         renderSurveyList();
