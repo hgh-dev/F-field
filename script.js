@@ -15,6 +15,149 @@ const SEARCH_HISTORY_KEY = 'my_search_history';    // 검색 기록 저장용
 const SEARCH_SETTING_KEY = 'my_search_setting_enabled'; // 검색 기록 저장 설정용
 
 
+/* --------------------------------------------------------------------------
+   Firebase 초기화 및 인증 관리
+   -------------------------------------------------------------------------- */
+async function initFirebase() {
+    // Firebase SDK가 로드되었는지 확인
+    if (typeof firebase === 'undefined') {
+        console.warn("Firebase SDK not loaded yet. Retrying in 500ms...");
+        setTimeout(initFirebase, 500);
+        return;
+    }
+
+    try {
+        firebaseApp = firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.firestore();
+        isFirebaseInitialized = true;
+        console.log("Firebase initialized successfully");
+
+        // 인증 상태 변화 감지
+        auth.onAuthStateChanged((user) => {
+            currentUser = user;
+            updateLoginUI(user);
+
+            if (user) {
+                console.log("User logged in:", user.email);
+                // 로그인 시 Firestore에서 데이터 로드 (병합 또는 덮어쓰기 정책 결정 필요)
+                // 현재는 로컬 데이터가 우선이거나 별도로 로드 함수 호출
+                loadFromFirestore(user.uid);
+            } else {
+                console.log("User logged out");
+            }
+        });
+
+    } catch (e) {
+        console.error("Firebase Initialization Error:", e);
+    }
+}
+
+// 구글 로그인
+async function loginWithGoogle() {
+    if (!isFirebaseInitialized || !auth) {
+        alert("Firebase가 아직 초기화되지 않았습니다.");
+        return;
+    }
+    const provider = new firebase.auth.GoogleAuthProvider();
+    try {
+        await auth.signInWithPopup(provider);
+    } catch (error) {
+        console.error("Login Failed:", error);
+        alert("로그인 실패: " + error.message);
+    }
+}
+
+// 로그아웃
+async function logout() {
+    if (!auth) return;
+    try {
+        await auth.signOut();
+        alert("로그아웃 되었습니다.");
+    } catch (error) {
+        console.error("Logout Failed:", error);
+    }
+}
+
+// UI 업데이트
+function updateLoginUI(user) {
+    const btnLogin = document.getElementById('btn-login');
+    const userInfo = document.getElementById('user-info');
+    const userEmail = document.getElementById('user-email');
+    const loginNotice = document.getElementById('login-notice-msg');
+
+    if (user) {
+        if (btnLogin) btnLogin.style.display = 'none';
+        if (userInfo) userInfo.style.display = 'flex';
+        if (userEmail) userEmail.innerText = user.displayName || user.email;
+        if (loginNotice) loginNotice.style.display = 'none'; // 로그인 시 안내 문구 숨김
+    } else {
+        if (btnLogin) btnLogin.style.display = 'flex';
+        if (userInfo) userInfo.style.display = 'none';
+        if (userEmail) userEmail.innerText = '';
+        if (loginNotice) loginNotice.style.display = 'block'; // 로그아웃 시 안내 문구 표시
+    }
+}
+
+// Firestore에 데이터 저장 (측량 데이터)
+async function saveToFirestore() {
+    if (!currentUser || !db) return; // 로그인 안했으면 패스
+
+    try {
+        // 현재 지도에 그려진 모든 레이어를 GeoJSON으로 변환
+        const features = [];
+        drawnItems.eachLayer(layer => {
+            const geojson = layer.toGeoJSON();
+            // properties가 누락될 수 있으므로 수동으로 할당
+            if (layer.feature && layer.feature.properties) {
+                geojson.properties = layer.feature.properties;
+            }
+            features.push(geojson);
+        });
+
+        // Firestore에 저장 (덮어쓰기)
+        // users 컬렉션 -> uid 문서 -> survey_data 필드에 JSON 문자열로 저장
+        await db.collection("users").doc(currentUser.uid).set({
+            survey_data: JSON.stringify(features),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        console.log("Data saved to Firestore");
+
+    } catch (e) {
+        console.error("Error saving to Firestore:", e);
+    }
+}
+
+// Firestore에서 데이터 불러오기
+async function loadFromFirestore(uid) {
+    if (!db) return;
+
+    try {
+        const docRef = db.collection("users").doc(uid);
+        const doc = await docRef.get();
+
+        if (doc.exists) {
+            const data = doc.data();
+            if (data.survey_data) {
+                const features = JSON.parse(data.survey_data);
+                console.log("Loading data from Firestore:", features.length, "features");
+
+                // 기존 데이터 유지할지, 날릴지 선택. 여기서는 덮어쓰기(restoreFeatures 내부 동작)
+                // restoreFeatures는 기존 레이어를 clearLayers() 하므로 덮어쓰기가 됨.
+                restoreFeatures(features);
+            }
+        }
+    } catch (e) {
+        console.error("Error loading from Firestore:", e);
+    }
+}
+
+// 앱 시작 시 Firebase 초기화
+window.addEventListener('load', initFirebase);
+
+
+
 
 /* --------------------------------------------------------------------------
    2. 전역 상태 변수 (Global State)
@@ -49,6 +192,23 @@ let lastForestRequestId = 0;  // 데이터 요청 순서 확인용
 // 프로젝트 관리 상태
 let projects = [];             // 전체 프로젝트 목록
 let currentProjectId = null;   // 현재 선택된 프로젝트 ID
+
+// Firebase 관련 상태 변수
+let firebaseApp = null;
+let auth = null;
+let db = null;
+let currentUser = null;
+let isFirebaseInitialized = false;
+
+// Firebase 설정
+const firebaseConfig = {
+    apiKey: "AIzaSyBo5tkMWBLFFiZwYfshhfVh_venKS-plcg",
+    authDomain: "f-field-f7b65.firebaseapp.com",
+    projectId: "f-field-f7b65",
+    storageBucket: "f-field-f7b65.firebasestorage.app",
+    messagingSenderId: "174823124514",
+    appId: "1:174823124514:web:6e15a7698226c64d3f647b",
+};
 
 
 
@@ -1147,6 +1307,7 @@ map.on(L.Draw.Event.CREATED, function (event) {
     updateLayerInfo(layer);
     drawnItems.addLayer(layer);
     saveToStorage();
+    saveToFirestore(); // Firestore 저장 추가
 
     resetDrawingState();
     currentDrawer = null;
@@ -1160,6 +1321,14 @@ map.on(L.Draw.Event.CREATED, function (event) {
 map.on('draw:edited', function (e) {
     e.layers.eachLayer(updateLayerInfo);
     saveToStorage();
+    saveToFirestore(); // Firestore 저장 추가
+    renderSurveyList();
+});
+
+// 삭제 이벤트 핸들러
+map.on('draw:deleted', function (e) {
+    saveToStorage();
+    saveToFirestore(); // Firestore 저장 추가
     renderSurveyList();
 });
 
@@ -1945,6 +2114,7 @@ window.deleteLayerById = function (id) {
         const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
         if (layer) drawnItems.removeLayer(layer);
         saveToStorage();
+        saveToFirestore(); // Firestore 저장 추가
         renderSurveyList();
     }
 };
@@ -2001,6 +2171,7 @@ window.toggleLayerVisibility = function (id) {
             if (layer._path) layer._path.style.pointerEvents = 'auto';
         }
         saveToStorage();
+        saveToFirestore(); // Firestore 저장 추가
         renderSurveyList();
     }
 };
@@ -2032,6 +2203,7 @@ window.toggleAllLayers = function (isChecked) {
         }
     });
     saveToStorage();
+    saveToFirestore(); // Firestore 저장 추가
     renderSurveyList();
 };
 
@@ -2171,6 +2343,7 @@ window.updateLayerColor = function (id, newColor) {
     else layer.setStyle({ color: newColor, fillColor: newColor });
     layer.feature.properties.customColor = newColor;
     saveToStorage();
+    saveToFirestore(); // Firestore 저장 추가
 };
 
 
