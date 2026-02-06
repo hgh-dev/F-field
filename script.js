@@ -35,16 +35,60 @@ async function initFirebase() {
 
         // 인증 상태 변화 감지
         auth.onAuthStateChanged((user) => {
-            currentUser = user;
-            updateLoginUI(user);
-
             if (user) {
                 console.log("User logged in:", user.email);
-                // 로그인 시 Firestore에서 데이터 로드 (병합 또는 덮어쓰기 정책 결정 필요)
-                // 현재는 로컬 데이터가 우선이거나 별도로 로드 함수 호출
+
+                // 로그인 시점 처리: 즉시 currentUser를 설정하여 이후 로직이 auth 키를 쓰도록 함
+                // 단, 최초 로드 시점과 구분하기 위해 이전에 null이었는지 확인하는 것이 좋으나,
+                // 여기서는 간단히 처리함.
+                const wasLoggedOut = !currentUser;
+                currentUser = user;
+                updateLoginUI(user);
+
+                if (wasLoggedOut) {
+                    // 1. 기기에 저장된 원본 데이터 확인 (STORAGE_KEY)
+                    const localData = localStorage.getItem(STORAGE_KEY);
+                    let hasLocalData = false;
+                    try {
+                        if (localData) {
+                            const parsed = JSON.parse(localData);
+                            // 프로젝트가 있고, 그 안에 하나라도 데이터가 있는지 확인
+                            if (parsed.projects && parsed.projects.some(p => p.features && p.features.features && p.features.features.length > 0)) {
+                                hasLocalData = true;
+                            }
+                        }
+                    } catch (e) { }
+
+                    // 2. 사용자에게 선택지 제공
+                    if (hasLocalData) {
+                        if (confirm("기기에 저장된 기록이 있습니다.\n계정으로 불러오시겠습니까?\n\n[확인]: 기기 기록을 유지하고 계정 데이터를 합칩니다.\n[취소]: 기기 기록을 화면에서 지우고 계정 데이터만 봅니다.")) {
+                            // [확인]: 기기 데이터 로드 (현재 화면에 표시) -> 이후 Firestore 로드 시 병합됨
+                            console.log("Importing local data to account...");
+                            loadFromStorage(STORAGE_KEY);
+                        } else {
+                            // [취소]: 화면 클리어 (초기화) -> 이후 Firestore 데이터만 로드됨
+                            console.log("Clearing local data, loading only cloud...");
+                            initDefaultProject(); // 초기화 (빈 상태)
+                            saveToStorage(); // _auth 키에 빈 상태 저장
+                        }
+                    } else {
+                        // 기기 데이터가 없으면 그냥 초기화 상태에서 시작
+                        initDefaultProject();
+                    }
+                }
+
+                // 3. Firestore 데이터 로드 (병합)
                 loadFromFirestore(user.uid);
+
             } else {
                 console.log("User logged out");
+                currentUser = null;
+                updateLoginUI(null);
+
+                // 로그아웃 시: 화면 비우고 기기 원본 데이터 복구
+                drawnItems.clearLayers();
+                loadFromStorage(STORAGE_KEY);
+                alert("로그아웃 되었습니다.\n기기에 저장된 기록으로 돌아갑니다.");
             }
         });
 
@@ -115,14 +159,21 @@ async function saveToFirestore() {
             features.push(geojson);
         });
 
+        // -----------------------------------------------------------
+        // [버그 수정] 빈 배열([])도 정확히 저장되어야 함
+        // 기존에는 features가 비어있어도 저장은 되지만, 
+        // 명시적으로 "데이터 없음"을 표현하기 위해 빈 배열 문자열 "[]"을 저장
+        // -----------------------------------------------------------
+        const dataStr = JSON.stringify(features);
+
         // Firestore에 저장 (덮어쓰기)
         // users 컬렉션 -> uid 문서 -> survey_data 필드에 JSON 문자열로 저장
         await db.collection("users").doc(currentUser.uid).set({
-            survey_data: JSON.stringify(features),
+            survey_data: dataStr,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
-        console.log("Data saved to Firestore");
+        console.log("Data saved to Firestore:", features.length, "items");
 
     } catch (e) {
         console.error("Error saving to Firestore:", e);
@@ -1416,6 +1467,8 @@ function updateLayerInfo(layer) {
 
 // --- 데이터 저장/로드 헬퍼 ---
 
+const STORAGE_KEY_AUTH = "f_field_survey_data_auth"; // 로그인 시 사용하는 임시 저장소 키
+
 // 데이터 저장 (프로젝트 구조 반영)
 function saveToStorage() {
     if (!currentProjectId) return; // 초기화 전이면 중단
@@ -1432,30 +1485,32 @@ function saveToStorage() {
         currentProjectId: currentProjectId,
         projects: projects
     };
-    // -----------------------------------------------------------
-    // [교육용] localStorage 저장
-    // localStorage는 문자열만 저장할 수 있습니다.
-    // 따라서 JavaScript 객체(storageData)를 JSON.stringify()를 통해
-    // JSON 포맷의 문자열로 변환하여 저장합니다.
-    // -----------------------------------------------------------
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(storageData));
+
+    // 로그인 상태에 따라 저장 키 분리
+    // 로그인 중일 때는 기기 원본 데이터(f_field_survey_data)를 덮어쓰지 않고 _auth 키에 저장
+    const key = currentUser ? STORAGE_KEY_AUTH : STORAGE_KEY;
+    console.log("Saving to storage:", key);
+    localStorage.setItem(key, JSON.stringify(storageData));
 }
 
 // 데이터 로드 (마이그레이션 포함)
-function loadFromStorage() {
+function loadFromStorage(targetKey) {
+    // 키를 명시하지 않으면 기본적으로:
+    // 로그인 상태 -> _auth, 비로그인 상태 -> 원본 키
+    // 하지만 "로그아웃 시 원본 복구"를 위해 명시적으로 호출할 수도 있음.
+    const key = targetKey || (currentUser ? STORAGE_KEY_AUTH : STORAGE_KEY);
+    console.log("Loading from storage:", key);
+
     try {
-        const saved = localStorage.getItem(STORAGE_KEY);
+        const saved = localStorage.getItem(key);
         if (!saved) {
-            // 데이터가 아예 없으면 기본 프로젝트 생성
+            // 해당 키에 데이터가 없으면
+            // 로그인 상태라면 -> 클라우드 데이터가 로드될 것이므로 여기선 빈 프로젝트로 초기화해도 무방
+            // 비로그인 상태라면 -> 최초 실행이므로 기본 프로젝트 생성
             initDefaultProject();
             return;
         }
 
-        // -----------------------------------------------------------
-        // [교육용] JSON 파싱
-        // 저장된 문자열을 다시 JavaScript 객체로 변환하기 위해
-        // JSON.parse()를 사용합니다.
-        // -----------------------------------------------------------
         const parsed = JSON.parse(saved);
 
         // 구 버전 데이터 감지 (배열이거나 FeatureCollection 인 경우)
