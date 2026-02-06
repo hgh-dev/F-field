@@ -38,47 +38,32 @@ async function initFirebase() {
             if (user) {
                 console.log("User logged in:", user.email);
 
-                // 로그인 시점 처리: 즉시 currentUser를 설정하여 이후 로직이 auth 키를 쓰도록 함
-                // 단, 최초 로드 시점과 구분하기 위해 이전에 null이었는지 확인하는 것이 좋으나,
-                // 여기서는 간단히 처리함.
+                // 로그인 시점 처리
                 const wasLoggedOut = !currentUser;
                 currentUser = user;
                 updateLoginUI(user);
 
                 if (wasLoggedOut) {
-                    // 1. 기기에 저장된 원본 데이터 확인 (STORAGE_KEY)
-                    const localData = localStorage.getItem(STORAGE_KEY);
-                    let hasLocalData = false;
-                    try {
-                        if (localData) {
-                            const parsed = JSON.parse(localData);
-                            // 프로젝트가 있고, 그 안에 하나라도 데이터가 있는지 확인
-                            if (parsed.projects && parsed.projects.some(p => p.features && p.features.features && p.features.features.length > 0)) {
-                                hasLocalData = true;
-                            }
-                        }
-                    } catch (e) { }
+                    // -----------------------------------------------------------
+                    // [로그인 시 흐름 개선]
+                    // 사용자 요청: 기기의 데이터 불러올거냐는 팝업 삭제,
+                    // 로그인 시 기기 데이터는 화면에서 지우고 계정 데이터만 불러옴.
+                    // -----------------------------------------------------------
+                    console.log("Switching to account data. Clearing local view...");
 
-                    // 2. 사용자에게 선택지 제공
-                    if (hasLocalData) {
-                        if (confirm("기기에 저장된 기록이 있습니다.\n계정으로 불러오시겠습니까?\n\n[확인]: 기기 기록을 유지하고 계정 데이터를 합칩니다.\n[취소]: 기기 기록을 화면에서 지우고 계정 데이터만 봅니다.")) {
-                            // [확인]: 기기 데이터 로드 (현재 화면에 표시) -> 이후 Firestore 로드 시 병합됨
-                            console.log("Importing local data to account...");
-                            loadFromStorage(STORAGE_KEY);
-                        } else {
-                            // [취소]: 화면 클리어 (초기화) -> 이후 Firestore 데이터만 로드됨
-                            console.log("Clearing local data, loading only cloud...");
-                            initDefaultProject(); // 초기화 (빈 상태)
-                            saveToStorage(); // _auth 키에 빈 상태 저장
-                        }
-                    } else {
-                        // 기기 데이터가 없으면 그냥 초기화 상태에서 시작
-                        initDefaultProject();
-                    }
+                    // 1. 화면 및 상태 초기화 (기기 데이터 숨김)
+                    initDefaultProject(); // '기본 프로젝트' 빈 상태로 리셋
+
+                    // 2. 이 빈 상태를 _auth 키에 저장하여 초기화 (나중에 로드 실패해도 깨끗하게)
+                    saveToStorage();
+
+                    // 3. Firestore 데이터 로드 (계정 데이터로 덮어씌워짐)
+                    loadFromFirestore(user.uid);
+                } else {
+                    // 이미 로그인 상태에서 리프레시 된 경우 등
+                    // 로컬 캐시(_auth)에서 로드
+                    loadFromStorage(STORAGE_KEY_AUTH);
                 }
-
-                // 3. Firestore 데이터 로드 (병합)
-                loadFromFirestore(user.uid);
 
             } else {
                 console.log("User logged out");
@@ -143,61 +128,106 @@ function updateLoginUI(user) {
     }
 }
 
-// Firestore에 데이터 저장 (측량 데이터)
+// Firestore에 데이터 저장 (전체 프로젝트 동기화)
 async function saveToFirestore() {
     if (!currentUser || !db) return; // 로그인 안했으면 패스
 
     try {
-        // 현재 지도에 그려진 모든 레이어를 GeoJSON으로 변환
-        const features = [];
-        drawnItems.eachLayer(layer => {
-            const geojson = layer.toGeoJSON();
-            // properties가 누락될 수 있으므로 수동으로 할당
-            if (layer.feature && layer.feature.properties) {
-                geojson.properties = layer.feature.properties;
-            }
-            features.push(geojson);
-        });
+        // -----------------------------------------------------------
+        // [중요] 전체 프로젝트 동기화
+        // 기존에는 현재 화면(drawnItems)만 저장했으나, 
+        // 프로젝트 관리 기능을 위해 '모든 프로젝트(projects)'를 저장해야 함.
+        // saveToStorage()에서 사용하는 데이터 구조와 동일하게 저장.
+        // -----------------------------------------------------------
 
-        // -----------------------------------------------------------
-        // [버그 수정] 빈 배열([])도 정확히 저장되어야 함
-        // 기존에는 features가 비어있어도 저장은 되지만, 
-        // 명시적으로 "데이터 없음"을 표현하기 위해 빈 배열 문자열 "[]"을 저장
-        // -----------------------------------------------------------
-        const dataStr = JSON.stringify(features);
+        // 1. 현재 화면의 변경사항을 projects 배열에 반영 (확실히 하기 위함)
+        if (currentProjectId) {
+            const project = projects.find(p => p.id === parseInt(currentProjectId));
+            if (project) {
+                project.features = drawnItems.toGeoJSON();
+                project.updatedAt = new Date().toISOString();
+            }
+        }
+
+        // 2. 저장할 전체 데이터 구성
+        const storageData = {
+            version: "2.0",
+            currentProjectId: currentProjectId,
+            projects: projects
+        };
+
+        const dataStr = JSON.stringify(storageData);
 
         // Firestore에 저장 (덮어쓰기)
-        // users 컬렉션 -> uid 문서 -> survey_data 필드에 JSON 문자열로 저장
         await db.collection("users").doc(currentUser.uid).set({
             survey_data: dataStr,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
-        console.log("Data saved to Firestore:", features.length, "items");
+        console.log("Full project data synced to Firestore");
 
     } catch (e) {
         console.error("Error saving to Firestore:", e);
     }
 }
 
-// Firestore에서 데이터 불러오기
+// Firestore에서 데이터 로드 (전체 프로젝트)
 async function loadFromFirestore(uid) {
     if (!db) return;
 
     try {
+        console.log("Loading data from Firestore...");
         const docRef = db.collection("users").doc(uid);
         const doc = await docRef.get();
 
         if (doc.exists) {
             const data = doc.data();
             if (data.survey_data) {
-                const features = JSON.parse(data.survey_data);
-                console.log("Loading data from Firestore:", features.length, "features");
+                const parsed = JSON.parse(data.survey_data);
 
-                // 기존 데이터 유지할지, 날릴지 선택. 여기서는 덮어쓰기(restoreFeatures 내부 동작)
-                // restoreFeatures는 기존 레이어를 clearLayers() 하므로 덮어쓰기가 됨.
-                restoreFeatures(features);
+                // 데이터 구조 확인 (Legacy 배열 vs Full Project Object)
+                if (Array.isArray(parsed) || parsed.type === "FeatureCollection") {
+                    // 구 버전 데이터라면 마이그레이션
+                    console.log("Legacy cloud data detected. Migrating...");
+                    migrateLegacyData(parsed);
+                } else if (parsed.version === "2.0") {
+                    // 정산적인 프로젝트 데이터 로드 (Full Sync)
+                    projects = parsed.projects || [];
+                    currentProjectId = parsed.currentProjectId;
+
+                    // 유효성 검사 및 복구
+                    if (projects.length === 0) {
+                        initDefaultProject();
+                    } else {
+                        if (!projects.find(p => p.id === parseInt(currentProjectId))) {
+                            currentProjectId = projects[0].id;
+                        }
+                        // UI 및 지도 업데이트
+                        renderProjectSelector();
+                        loadCurrentProjectFeatures();
+                    }
+                } else {
+                    // 알 수 없는 형식이면 초기화
+                    console.warn("Unknown data format in cloud. Initializing...");
+                    initDefaultProject();
+                }
+
+                // 로드 후 즉시 로컬 캐시(_auth 키)에도 저장하여 동기화 유지
+                // (주의: saveToStorage가 다시 saveToFirestore를 부를 수 있으므로 순환 호출 주의 필요하나,
+                // 현재 saveToFirestore는 내부 변경이 없으면 무해하거나, flag로 제어 가능.
+                // 일단은 로드 후 상태를 로컬에 반영하는 것이 중요함)
+                saveToStorage();
+            } else {
+                console.log("No survey data in user profile.");
+                // 데이터가 필드 자체가 없으면 초기화
+                initDefaultProject();
+                saveToStorage();
             }
+        } else {
+            console.log("No user document.");
+            // 문서가 없으면 초기화
+            initDefaultProject();
+            saveToStorage();
         }
     } catch (e) {
         console.error("Error loading from Firestore:", e);
