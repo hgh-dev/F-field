@@ -1840,19 +1840,16 @@
 
             <div style="margin-bottom:20px;">
                 <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">좌표 표시 방식</div>
-                <div style="display:flex; flex-direction:column; gap:8px;">
-                    <label
-                        style="padding:10px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
+                <div style="display:flex; flex-direction:column; background:#f8f9fa; border-radius:12px; padding:4px;">
+                    <label style="padding:10px; display:flex; align-items:center;">
                         <input type="radio" name="coord-mode-select" value="0" onclick="setCoordMode(0)"
                             style="margin-right:10px;"> 도분초 (DMS)
                     </label>
-                    <label
-                        style="padding:10px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
+                    <label style="padding:10px; display:flex; align-items:center;">
                         <input type="radio" name="coord-mode-select" value="1" onclick="setCoordMode(1)"
                             style="margin-right:10px;"> 소수점 (Decimal)
                     </label>
-                    <label
-                        style="padding:10px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
+                    <label style="padding:10px; display:flex; align-items:center;">
                         <input type="radio" name="coord-mode-select" value="2" onclick="setCoordMode(2)"
                             style="margin-right:10px;"> TM 좌표 (X, Y)
                     </label>
@@ -1861,20 +1858,18 @@
 
             <div style="margin-bottom:20px;">
                 <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">내보내기 파일 형식</div>
-                <div style="display:flex; flex-direction:column; gap:8px;">
-                    <label
-                        style="padding:10px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
+                <div style="display:flex; flex-direction:column; background:#f8f9fa; border-radius:12px; padding:4px;">
+                    <label style="padding:10px; display:flex; align-items:center;">
                         <input type="radio" name="export-format-select" value="geojson"
-                            onclick="setExportFormat('geojson')" style="margin-right:10px;"> GeoJSON (기본)
+                            onclick="setExportFormat('geojson')" style="margin-right:10px;"> GeoJSON
                     </label>
-                    <label
-                        style="padding:10px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
+                    <label style="padding:10px; display:flex; align-items:center;">
                         <input type="radio" name="export-format-select" value="gpx" onclick="setExportFormat('gpx')"
-                            style="margin-right:10px;"> GPX (GPS 교환 포맷)
+                            style="margin-right:10px;"> GPX
                     </label>
-                    <div style="font-size:11px; color:#888; padding:0 5px;">
-                        ※ GPX로 저장 시 면(Polygon)은 선(Track)으로 변환됩니다.
-                    </div>
+                </div>
+                <div style="font-size:11px; color:#888; padding:5px 5px 0 5px;">
+                    ※ GPX로 저장 시 면(Polygon)은 선(Track)으로 변환됩니다.
                 </div>
             </div>
 
