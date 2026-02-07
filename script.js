@@ -1515,7 +1515,6 @@ function migrateLegacyData(legacyData) {
     renderProjectSelector();
     loadCurrentProjectFeatures();
 
-    alert("이전 버전의 데이터가 '기본 프로젝트'으로 이동되었습니다.");
 }
 
 // 현재 선택된 프로젝트의 데이터 지도에 표시
