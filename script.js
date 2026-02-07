@@ -1994,8 +1994,12 @@ function convertToDms(val, type) {
    14. 이벤트 리스너 및 초기화 (Events & Initialization)
    -------------------------------------------------------------------------- */
 
-// 우클릭 방지
-document.getElementById('map').oncontextmenu = function (e) { e.preventDefault(); e.stopPropagation(); return false; };
+// 우클릭(컨텍스트 메뉴) 방지 - 앱 전체 적용
+document.addEventListener('contextmenu', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+}, { passive: false });
 
 // 시작 시 데이터 로드 및 GPS 연결
 loadFromStorage();
