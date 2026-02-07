@@ -1,6 +1,5 @@
 /* ==========================================================================
    프로젝트: 국유림 현장조사 앱 (F-Field)
-   버전: v1.5.2
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -1533,21 +1532,52 @@ function loadCurrentProjectFeatures() {
 }
 
 function restoreFeatures(geoJsonData) {
+    // -----------------------------------------------------------
+    // [교육용] restoreFeatures
+    // 저장된 GeoJSON 데이터를 기반으로 지도에 도형(Layer)을 복구하는 핵심 함수입니다.
+    // - L.geoJSON: GeoJSON 데이터를 Leaflet 레이어로 변환합니다.
+    // - pointToLayer: Point 타입(마커) 생성 시 아이콘과 색상을 정의합니다.
+    // - style: LineString/Polygon 타입(선/면) 생성 시 스타일(색상 등)을 정의합니다.
+    // - onEachFeature: 각 레이어가 생성된 후 추가적인 속성(ID, Memo)을 연결합니다.
+    // -----------------------------------------------------------
     L.geoJSON(geoJsonData, {
+        pointToLayer: function (feature, latlng) {
+            // 마커 생성 시 색상 적용
+            const color = feature.properties.customColor || getRandomColor();
+            const marker = L.marker(latlng, { icon: createColoredMarkerIcon(color) });
+            return marker;
+        },
+        style: function (feature) {
+            // 선/면 스타일 적용
+            if (feature.geometry.type !== 'Point') {
+                const color = feature.properties.customColor || getRandomColor();
+                return { color: color, fillColor: color };
+            }
+        },
         onEachFeature: function (feature, layer) {
+            // 속성 바인딩 및 레이어 추가
             if (feature.properties) {
+                // 기존 properties 유지하면서 필요한 기본값 설정
+                if (!feature.properties.id) feature.properties.id = Date.now() + Math.floor(Math.random() * 1000);
+                if (!feature.properties.customColor) {
+                    // 스타일에서 생성된 색상을 properties에 역으로 저장 (중요)
+                    if (layer.options.icon) {
+                        // 마커의 경우 아이콘에서 색상을 추출하기 어려우므로, 위 pointToLayer에서 설정한 로직을 따라감
+                        // 이미 properties.customColor가 있으면 사용, 없으면 랜덤
+                        feature.properties.customColor = feature.properties.customColor || getRandomColor();
+                    } else {
+                        feature.properties.customColor = layer.options.color || getRandomColor();
+                    }
+                }
+
                 layer.feature = feature;
                 updateLayerInfo(layer);
             }
-            const savedColor = feature.properties.customColor;
-            if (feature.geometry.type === 'Point' && layer instanceof L.Marker)
-                layer.setIcon(createColoredMarkerIcon(savedColor || '#0040ff'));
-            else if (savedColor)
-                layer.setStyle({ color: savedColor, fillColor: savedColor });
-
             drawnItems.addLayer(layer);
         }
     });
+
+    // 모든 레이어 추가 후 리스트 갱신
     renderSurveyList();
 }
 
@@ -2097,13 +2127,23 @@ function copyCurrentCoords() {
 }
 
 function shareMyLocation() {
+    // -----------------------------------------------------------
+    // [교육용] shareMyLocation
+    // 현재 위치를 공유하는 함수입니다.
+    // 1. Web Share API (navigator.share)를 지원하는 모바일 환경에서는 네이티브 공유 창을 띄웁니다.
+    // 2. PC 등 미지원 환경에서는 클립보드에 위치 정보와 URL을 복사합니다.
+    // 3. 공유되는 URL에는 위도(lat), 경도(lng) 파라미터가 포함되어 있어, 
+    //    수신자가 링크를 열면 해당 위치가 지도 중심에 표시됩니다.
+    // -----------------------------------------------------------
     const address = document.getElementById('address-display').innerText || "주소 정보 없음";
     const coordText = document.getElementById('coord-display').innerText || "0, 0";
 
     // 현재 위치 (마지막 GPS 좌표 기준)
     const lat = lastGpsLat;
     const lng = lastGpsLng;
+    // 앱 내 링크 생성 (Query String으로 좌표 전달)
     const shareUrl = `${window.location.origin}${window.location.pathname}?lat=${lat}&lng=${lng}`;
+
     const shareData = {
         title: '[F-Field] 내 위치 공유',
         text: `\n주소: ${address}\n좌표: ${coordText}\n\n링크를 클릭하면 공유된 위치로 이동합니다.`,
@@ -2111,14 +2151,14 @@ function shareMyLocation() {
     };
 
     if (navigator.share) {
+        // 모바일 네이티브 공유
         navigator.share(shareData).then(() => {
             closeLocationActionModal();
         }).catch((err) => {
             console.error('공유 실패:', err);
         });
     } else {
-        // PC 등 미지원 환경에서는 클립보드 복사로 대체
-        // (shareLocationText와 동일한 로직 적용)
+        // PC/미지원 브라우저: 클립보드 복사 Fallback
         const clipText = `${shareData.text}\n${shareUrl}`;
         copyText(clipText);
         closeLocationActionModal();
@@ -2261,11 +2301,30 @@ window.toggleAllLayers = function (isChecked) {
 };
 
 window.exportSingleLayer = function (id) {
+    // -----------------------------------------------------------
+    // [교육용] exportSingleLayer
+    // 선택한 단일 기록(Layer)을 파일로 내보내는 함수입니다.
+    // - exportFormat 변수(설정 값)에 따라 GPX 또는 GeoJSON 형식을 선택합니다.
+    // - GPX 내보내기 시: geoJsonToGpx 유틸리티를 사용하기 위해 
+    //   단일 Layer를 FeatureCollection 형태로 감싸서 전달합니다.
+    // -----------------------------------------------------------
     if (!confirm('기록을 기기에 저장합니다.')) return;
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (!layer) return;
+
+    // 파일명에 사용할 수 없는 문자 제거
     let safeMemo = (layer.feature.properties.memo || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
-    saveOrShareFile(JSON.stringify(layer.toGeoJSON(), null, 2), safeMemo + ".geojson");
+
+    if (exportFormat === 'gpx') {
+        const featureCollection = {
+            type: "FeatureCollection",
+            features: [layer.toGeoJSON()]
+        };
+        const gpxData = geoJsonToGpx(featureCollection, safeMemo);
+        saveOrShareFile(gpxData, safeMemo + ".gpx", "application/gpx+xml");
+    } else {
+        saveOrShareFile(JSON.stringify(layer.toGeoJSON(), null, 2), safeMemo + ".geojson", "application/geo+json");
+    }
 };
 
 // 변경: 현재 프로젝트 전체 저장 (파일명: 프로젝트명_yymmdd)
@@ -2309,6 +2368,13 @@ window.exportCurrentProject = function () {
 // --- GPX 변환 유틸리티 (GPX Conversion Utilities) ---
 
 function geoJsonToGpx(geoJson, projectName) {
+    // -----------------------------------------------------------
+    // [교육용] geoJsonToGpx
+    // GeoJSON 데이터를 GPX(XML) 포맷의 문자열로 변환합니다.
+    // - GPX 1.1 스키마를 따릅니다.
+    // - 사용자 정의 색상(customColor)을 저장하기 위해 <extensions> 태그를 활용합니다.
+    //   이는 표준 GPX 스펙은 아니지만, 주요 지도 앱들에서 널리 지원되는 방식입니다.
+    // -----------------------------------------------------------
     let gpx = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="F-Field" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata>
@@ -2319,18 +2385,24 @@ function geoJsonToGpx(geoJson, projectName) {
     geoJson.features.forEach(feature => {
         const props = feature.properties || {};
         const name = props.memo || "기록";
+        const color = props.customColor || "";
         const coords = feature.geometry.coordinates;
 
+        // [중요] 색상 정보 유지: <extensions><color>#RRGGBB</color></extensions>
+        const extensions = color ? `<extensions><color>${color}</color></extensions>` : "";
+
         if (feature.geometry.type === 'Point') {
+            // Point -> <wpt> (Waypoint)
             gpx += `
   <wpt lat="${coords[1]}" lon="${coords[0]}">
     <name>${name}</name>
-    <desc>${props.description || ""}</desc>
+    <desc>${props.description || ""}</desc>${extensions}
   </wpt>`;
         } else if (feature.geometry.type === 'LineString') {
+            // LineString -> <trk> (Track)
             gpx += `
   <trk>
-    <name>${name}</name>
+    <name>${name}</name>${extensions}
     <trkseg>`;
             coords.forEach(pt => {
                 gpx += `
@@ -2347,7 +2419,7 @@ function geoJsonToGpx(geoJson, projectName) {
                 gpx += `
   <trk>
     <name>${name} (면)</name>
-    <desc>Converted from Polygon</desc>
+    <desc>Converted from Polygon</desc>${extensions}
     <trkseg>`;
                 coords[0].forEach(pt => {
                     gpx += `
@@ -2366,11 +2438,29 @@ function geoJsonToGpx(geoJson, projectName) {
 }
 
 function gpxToGeoJson(gpxText) {
+    // -----------------------------------------------------------
+    // [교육용] gpxToGeoJson
+    // GPX(XML) 문자열을 파싱하여 GeoJSON 객체로 변환합니다.
+    // - 브라우저 내장 API인 DOMParser를 사용하여 XML을 탐색합니다.
+    // - <wpt>는 Point로, <trk>와 <rte>는 LineString으로 변환합니다.
+    // - <extensions> 태그 내의 색상 정보를 추출하여 customColor 속성에 할당합니다.
+    // -----------------------------------------------------------
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(gpxText, "text/xml");
     const features = [];
 
-    // Waypoints -> Point
+    // [Helper] 색상 추출 함수
+    function getColor(node) {
+        // XML 노드 하위의 <extensions> -> <color> 태그 탐색
+        const ext = node.getElementsByTagName("extensions")[0];
+        if (ext) {
+            const colorTag = ext.getElementsByTagName("color")[0];
+            if (colorTag) return colorTag.textContent;
+        }
+        return null;
+    }
+
+    // 1. Waypoints (wpt) -> Point Feature
     const wpts = xmlDoc.getElementsByTagName("wpt");
     for (let i = 0; i < wpts.length; i++) {
         const lat = parseFloat(wpts[i].getAttribute("lat"));
@@ -2380,11 +2470,16 @@ function gpxToGeoJson(gpxText) {
         features.push({
             type: "Feature",
             geometry: { type: "Point", coordinates: [lon, lat] },
-            properties: { id: Date.now() + i, memo: name, customColor: '#FF0000', isHidden: false }
+            properties: {
+                id: Date.now() + i,
+                memo: name,
+                customColor: getColor(wpts[i]) || '#FF0000', // 저장된 색상 없으면 빨강
+                isHidden: false
+            }
         });
     }
 
-    // Tracks -> LineString
+    // 2. Tracks (trk) -> LineString Feature
     const trks = xmlDoc.getElementsByTagName("trk");
     for (let i = 0; i < trks.length; i++) {
         const name = trks[i].getElementsByTagName("name")[0]?.textContent || "GPX Track";
@@ -2401,7 +2496,7 @@ function gpxToGeoJson(gpxText) {
             features.push({
                 type: "Feature",
                 geometry: { type: "LineString", coordinates: coords },
-                properties: { id: Date.now() + 1000 + i, memo: name, customColor: '#0040ff', isHidden: false }
+                properties: { id: Date.now() + 1000 + i, memo: name, customColor: getColor(trks[i]) || '#0040ff', isHidden: false }
             });
         }
     }
@@ -2423,7 +2518,7 @@ function gpxToGeoJson(gpxText) {
             features.push({
                 type: "Feature",
                 geometry: { type: "LineString", coordinates: coords },
-                properties: { id: Date.now() + 2000 + i, memo: name, customColor: '#0040ff', isHidden: false }
+                properties: { id: Date.now() + 2000 + i, memo: name, customColor: getColor(rtes[i]) || '#0040ff', isHidden: false }
             });
         }
     }
