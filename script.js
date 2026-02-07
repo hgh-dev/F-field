@@ -63,6 +63,7 @@ let lastForestRequestId = 0;  // 비동기 요청 순서 꼬임 방지용 시퀀
 // [프로젝트 관리]
 let projects = [];             // 모든 프로젝트와 그 안의 기록들을 담고 있는 배열
 let currentProjectId = null;   // 현재 작업 중인 프로젝트의 ID (projects 배열 내 객체의 id)
+let exportFormat = 'geojson';  // 내보내기 파일 형식 ('geojson' | 'gpx')
 
 
 
@@ -1379,8 +1380,10 @@ function updateLayerInfo(layer) {
         // 선 길이 계산 (km -> m 변환)
         infoText = "<b>" + SVG_ICONS.ruler + " 거리:</b> " + (turf.length(layer.toGeoJSON(), { units: 'kilometers' }) * 1000).toFixed(2) + " m";
     } else if (layer instanceof L.Polygon) {
-        // 면적 계산 (제곱미터)
-        infoText = "<b>" + SVG_ICONS.polygon + " 면적:</b> " + turf.area(layer.toGeoJSON()).toFixed(2) + " ㎡";
+        // 면적 계산 (제곱미터 + 평)
+        const areaM2 = turf.area(layer.toGeoJSON());
+        const areaPyeong = areaM2 * 0.3025;
+        infoText = "<b>" + SVG_ICONS.polygon + " 면적:</b> " + areaM2.toFixed(2) + " ㎡ (" + areaPyeong.toFixed(2) + "평)";
     }
 
     let popupContent = `<div style="font-size:14px; color:#3B82F6; font-weight:bold; margin-bottom:5px;">${memo}</div>`;
@@ -2053,6 +2056,8 @@ function getAddressFromCoords(lat, lng) {
     document.body.appendChild(script);
 }
 
+// --- 모달 및 설정 UI 제어 (UI & Settings Control) ---
+
 function updateCoordDisplay() {
     let lat = lastGpsLat;
     let lng = lastGpsLng;
@@ -2065,24 +2070,90 @@ function updateCoordDisplay() {
     document.getElementById('coord-display').innerText = text;
 }
 
-function openCoordModal() {
-    document.getElementsByName('coord-mode-select').forEach(r => { if (parseInt(r.value) === coordMode) r.checked = true; });
-    const overlay = document.getElementById('coord-modal-overlay');
+// [위치 액션 모달] (주소 클릭 시)
+function openLocationActionModal() {
+    const overlay = document.getElementById('location-action-modal-overlay');
     overlay.style.display = 'flex';
     setTimeout(() => { overlay.classList.add('visible'); }, 10);
 }
 
-function closeCoordModal() {
-    const overlay = document.getElementById('coord-modal-overlay');
+function closeLocationActionModal() {
+    const overlay = document.getElementById('location-action-modal-overlay');
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+}
+
+function copyCurrentAddress() {
+    const text = document.getElementById('address-display').innerText;
+    if (!text || text === "주소 확인 중...") { alert("주소 정보가 없습니다."); return; }
+    copyText(text, false, "주소");
+    closeLocationActionModal();
+}
+
+function copyCurrentCoords() {
+    const text = document.getElementById('coord-display').innerText;
+    copyText(text, false, "좌표");
+    closeLocationActionModal();
+}
+
+function shareMyLocation() {
+    const address = document.getElementById('address-display').innerText || "주소 정보 없음";
+    const coordText = document.getElementById('coord-display').innerText || "0, 0";
+
+    // 현재 위치 (마지막 GPS 좌표 기준)
+    const lat = lastGpsLat;
+    const lng = lastGpsLng;
+    const shareUrl = `${window.location.origin}${window.location.pathname}?lat=${lat}&lng=${lng}`;
+    const shareData = {
+        title: '[F-Field] 내 위치 공유',
+        text: `\n주소: ${address}\n좌표: ${coordText}\n\n링크를 클릭하면 공유된 위치로 이동합니다.`,
+        url: shareUrl
+    };
+
+    if (navigator.share) {
+        navigator.share(shareData).then(() => {
+            closeLocationActionModal();
+        }).catch((err) => {
+            console.error('공유 실패:', err);
+        });
+    } else {
+        // PC 등 미지원 환경에서는 클립보드 복사로 대체
+        // (shareLocationText와 동일한 로직 적용)
+        const clipText = `${shareData.text}\n${shareUrl}`;
+        copyText(clipText);
+        closeLocationActionModal();
+    }
+}
+
+// [설정 모달] (사이드바 설정 버튼)
+function openSettingsModal() {
+    closeSidebar();
+
+    // 현재 설정값 UI 반영
+    document.getElementsByName('coord-mode-select').forEach(r => { if (parseInt(r.value) === coordMode) r.checked = true; });
+    document.getElementsByName('export-format-select').forEach(r => { if (r.value === exportFormat) r.checked = true; });
+
+    const overlay = document.getElementById('settings-modal-overlay');
+    overlay.style.display = 'flex';
+    setTimeout(() => { overlay.classList.add('visible'); }, 10);
+}
+
+function closeSettingsModal() {
+    const overlay = document.getElementById('settings-modal-overlay');
     overlay.classList.remove('visible');
     setTimeout(() => { overlay.style.display = 'none'; }, 300);
 }
 
 function setCoordMode(mode) {
-    coordMode = mode;
+    coordMode = parseInt(mode);
     updateCoordDisplay();
-    setTimeout(closeCoordModal, 200);
+    // 설정 모달은 닫지 않음 (사용자가 다른 설정도 바꿀 수 있으므로)
 }
+
+function setExportFormat(format) {
+    exportFormat = format;
+}
+
 // 초기 좌표 표시
 updateCoordDisplay();
 
@@ -2201,14 +2272,6 @@ window.exportSingleLayer = function (id) {
 window.exportCurrentProject = function () {
     if (!confirm('현재 프로젝트를 기기에 저장합니다.')) return;
 
-    /**
-     * [프로젝트 내보내기]
-     * 현재 프로젝트의 데이터를 GeoJSON 파일로 생성하여 다운로드합니다.
-     * 
-     * 1. 데이터 준비: 현재 그려진 레이어들을 GeoJSON으로 변환하고, 메타데이터(프로젝트명, 날짜)를 추가합니다.
-     * 2. 파일명 생성: 프로젝트 이름과 오늘 날짜를 조합합니다. (특수문자는 제거)
-     * 3. 다운로드 트리거: <a> 태그를 동적으로 생성하여 클릭 이벤트를 발생시킵니다.
-     */
     const project = projects.find(p => p.id === parseInt(currentProjectId));
     if (!project) return;
 
@@ -2220,25 +2283,153 @@ window.exportCurrentProject = function () {
         return;
     }
 
-    // 메타데이터 주입 (스마트 불러오기용)
-    currentFeatures.isProjectExport = true;
-    currentFeatures.projectName = project.name;
-    currentFeatures.exportedAt = new Date().toISOString();
-
     // 날짜 포맷 생성 (YYMMDD)
     const now = new Date();
     const yy = String(now.getFullYear()).slice(2);
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const dd = String(now.getDate()).padStart(2, '0');
     const dateStr = `${yy}${mm}${dd}`;
-
-    // 파일명 생성 (공백 등 특수문자 처리)
     const safeProjectName = project.name.replace(/[^a-zA-Z0-9가-힣_-]/g, "_");
-    const fileName = `${safeProjectName}_${dateStr}.geojson`;
 
-    // 파일 저장 공유 실행
-    saveOrShareFile(JSON.stringify(currentFeatures), fileName);
+    if (exportFormat === 'gpx') {
+        const gpxData = geoJsonToGpx(currentFeatures, project.name);
+        const fileName = `${safeProjectName}_${dateStr}.gpx`;
+        saveOrShareFile(gpxData, fileName, "application/gpx+xml");
+    } else {
+        // GeoJSON (기본)
+        currentFeatures.isProjectExport = true;
+        currentFeatures.projectName = project.name;
+        currentFeatures.exportedAt = new Date().toISOString();
+
+        const fileName = `${safeProjectName}_${dateStr}.geojson`;
+        saveOrShareFile(JSON.stringify(currentFeatures), fileName, "application/geo+json");
+    }
 };
+
+// --- GPX 변환 유틸리티 (GPX Conversion Utilities) ---
+
+function geoJsonToGpx(geoJson, projectName) {
+    let gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="F-Field" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>${projectName}</name>
+    <time>${new Date().toISOString()}</time>
+  </metadata>`;
+
+    geoJson.features.forEach(feature => {
+        const props = feature.properties || {};
+        const name = props.memo || "기록";
+        const coords = feature.geometry.coordinates;
+
+        if (feature.geometry.type === 'Point') {
+            gpx += `
+  <wpt lat="${coords[1]}" lon="${coords[0]}">
+    <name>${name}</name>
+    <desc>${props.description || ""}</desc>
+  </wpt>`;
+        } else if (feature.geometry.type === 'LineString') {
+            gpx += `
+  <trk>
+    <name>${name}</name>
+    <trkseg>`;
+            coords.forEach(pt => {
+                gpx += `
+      <trkpt lat="${pt[1]}" lon="${pt[0]}"></trkpt>`;
+            });
+            gpx += `
+    </trkseg>
+  </trk>`;
+        } else if (feature.geometry.type === 'Polygon') {
+            // Polygon -> Track (Closed Loop)
+            // GeoJSON Polygon coordinates are array of rings (usually just one)
+            // Ring[0] is the outer boundary
+            if (coords.length > 0) {
+                gpx += `
+  <trk>
+    <name>${name} (면)</name>
+    <desc>Converted from Polygon</desc>
+    <trkseg>`;
+                coords[0].forEach(pt => {
+                    gpx += `
+      <trkpt lat="${pt[1]}" lon="${pt[0]}"></trkpt>`;
+                });
+                gpx += `
+    </trkseg>
+  </trk>`;
+            }
+        }
+    });
+
+    gpx += `
+</gpx>`;
+    return gpx;
+}
+
+function gpxToGeoJson(gpxText) {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(gpxText, "text/xml");
+    const features = [];
+
+    // Waypoints -> Point
+    const wpts = xmlDoc.getElementsByTagName("wpt");
+    for (let i = 0; i < wpts.length; i++) {
+        const lat = parseFloat(wpts[i].getAttribute("lat"));
+        const lon = parseFloat(wpts[i].getAttribute("lon"));
+        const name = wpts[i].getElementsByTagName("name")[0]?.textContent || "GPX Point";
+
+        features.push({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [lon, lat] },
+            properties: { id: Date.now() + i, memo: name, customColor: '#FF0000', isHidden: false }
+        });
+    }
+
+    // Tracks -> LineString
+    const trks = xmlDoc.getElementsByTagName("trk");
+    for (let i = 0; i < trks.length; i++) {
+        const name = trks[i].getElementsByTagName("name")[0]?.textContent || "GPX Track";
+        const trkpts = trks[i].getElementsByTagName("trkpt");
+        const coords = [];
+
+        for (let j = 0; j < trkpts.length; j++) {
+            const lat = parseFloat(trkpts[j].getAttribute("lat"));
+            const lon = parseFloat(trkpts[j].getAttribute("lon"));
+            coords.push([lon, lat]);
+        }
+
+        if (coords.length > 1) {
+            features.push({
+                type: "Feature",
+                geometry: { type: "LineString", coordinates: coords },
+                properties: { id: Date.now() + 1000 + i, memo: name, customColor: '#0040ff', isHidden: false }
+            });
+        }
+    }
+
+    // Routes -> LineString (혹시 모를 지원)
+    const rtes = xmlDoc.getElementsByTagName("rte");
+    for (let i = 0; i < rtes.length; i++) {
+        const name = rtes[i].getElementsByTagName("name")[0]?.textContent || "GPX Route";
+        const rtepts = rtes[i].getElementsByTagName("rtept");
+        const coords = [];
+
+        for (let j = 0; j < rtepts.length; j++) {
+            const lat = parseFloat(rtepts[j].getAttribute("lat"));
+            const lon = parseFloat(rtepts[j].getAttribute("lon"));
+            coords.push([lon, lat]);
+        }
+
+        if (coords.length > 1) {
+            features.push({
+                type: "Feature",
+                geometry: { type: "LineString", coordinates: coords },
+                properties: { id: Date.now() + 2000 + i, memo: name, customColor: '#0040ff', isHidden: false }
+            });
+        }
+    }
+
+    return { type: "FeatureCollection", features: features };
+}
 
 function saveOrShareFile(content, fileName) {
     // 모바일 공유 기능(Navigator Share API) 지원 시 시도
@@ -2286,19 +2477,22 @@ window.zoomToLayer = function (id) {
 };
 
 function triggerFileInput() { document.getElementById('geoJsonInput').click(); }
+// function triggerFileInput() { document.getElementById('geoJsonInput').click(); } // 기존 함수 유지
 function handleFileSelect(input) {
     const file = input.files[0];
     if (!file) return;
 
-    /**
-     * [파일 읽기]
-     * FileReader API를 사용하여 사용자가 선택한 로컬 파일을 읽어옵니다.
-     * 비동기적으로 동작하므로 onload 이벤트 핸들러에서 다 읽은 후의 로직을 처리합니다.
-     */
     const r = new FileReader();
     r.onload = function (e) {
         try {
-            const json = JSON.parse(e.target.result);
+            let json;
+            // GPX 파일 감지 및 변환
+            if (file.name.toLowerCase().endsWith('.gpx')) {
+                json = gpxToGeoJson(e.target.result);
+                // GPX 불러오기는 병합 모드로 동작하도록 유도하거나, 아래에서 통합 처리
+            } else {
+                json = JSON.parse(e.target.result);
+            }
 
             // 스마트 불러오기: 프로젝트 파일 감지
             if (json.isProjectExport && json.projectName) {

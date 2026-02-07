@@ -551,7 +551,7 @@
             padding: 0 15px;
         }
 
-        .btn-close-sidebar {
+        .btn-sidebar-action {
             border: none;
             background: #f0f2f5;
             border-radius: 50%;
@@ -562,12 +562,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: background 0.2s;
         }
 
-        .sidebar-title {
-            font-size: 18px;
-            font-weight: 800;
-            color: #1a1a1a;
+        .btn-sidebar-action:active {
+            background: #e4e6eb;
         }
 
         /* 사이드바 탭 */
@@ -1376,8 +1375,8 @@
             </svg>
         </button>
 
-        <!-- 중앙 주소 및 좌표 표시 (클릭 시 좌표 모달 열림) -->
-        <div class="top-info-container" onclick="openCoordModal()">
+        <!-- 중앙 주소 및 좌표 표시 (클릭 시 위치 액션 모달 열림) -->
+        <div class="top-info-container" onclick="openLocationActionModal()">
             <div id="address-display">주소 확인 중...</div>
             <div id="coord-display">좌표 수신중...</div>
         </div>
@@ -1543,10 +1542,15 @@
     <div id="sidebar-overlay" class="sidebar-overlay" onclick="if(event.target === this) closeSidebar()">
         <div class="sidebar-content">
             <div class="sidebar-header">
-                <div class="sidebar-title">F-Field</div>
-                <button class="btn-close-sidebar" onclick="closeSidebar()">
+                <button class="btn-sidebar-action" onclick="closeSidebar()">
                     <svg class="svg-icon" viewBox="0 0 24 24">
                         <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                    </svg>
+                </button>
+                <button class="btn-sidebar-action" onclick="openSettingsModal()">
+                    <svg class="svg-icon" viewBox="0 0 24 24">
+                        <path
+                            d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
                     </svg>
                 </button>
             </div>
@@ -1807,30 +1811,75 @@
         </div>
     </div>
 
-    <!-- 좌표 설정 및 공유 모달 -->
-    <div id="coord-modal-overlay" class="nav-modal-overlay" onclick="closeCoordModal()">
+    <!-- 위치 액션 모달 (주소 클릭 시) -->
+    <div id="location-action-modal-overlay" class="nav-modal-overlay" onclick="closeLocationActionModal()">
         <div class="nav-modal-content" onclick="event.stopPropagation()">
             <div class="nav-modal-header"
-                style="font-size:18px; font-weight:bold; margin-bottom:20px; text-align:center;">좌표 표시 형식</div>
+                style="font-size:18px; font-weight:bold; margin-bottom:20px; text-align:center;">현재 위치 작업</div>
             <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
-                <label style="padding:12px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
-                    <input type="radio" name="coord-mode-select" value="0" onclick="setCoordMode(0)"
-                        style="margin-right:10px;"> 도분초 (DMS)
-                </label>
-                <label style="padding:12px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
-                    <input type="radio" name="coord-mode-select" value="1" onclick="setCoordMode(1)"
-                        style="margin-right:10px;"> 소수점 (Decimal)
-                </label>
-                <label style="padding:12px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
-                    <input type="radio" name="coord-mode-select" value="2" onclick="setCoordMode(2)"
-                        style="margin-right:10px;"> TM 좌표 (X, Y)
-                </label>
+                <button onclick="copyCurrentAddress()" class="mono-btn" style="padding:14px; justify-content:center;">
+                    주소 복사하기
+                </button>
+                <button onclick="copyCurrentCoords()" class="mono-btn" style="padding:14px; justify-content:center;">
+                    좌표 복사하기
+                </button>
+                <button onclick="shareMyLocation()" class="mono-btn" style="padding:14px; justify-content:center;">
+                    내 위치 공유하기
+                </button>
             </div>
-            <button onclick="shareMyLocation()"
-                style="width:100%; padding:14px; background:#3B82F6; color:white; border:none; border-radius:12px; font-weight:bold; margin-bottom:10px;">내
-                위치 공유하기</button>
-            <button onclick="closeCoordModal()"
+            <button onclick="closeLocationActionModal()"
                 style="width:100%; padding:14px; background:#f5f5f5; border:none; border-radius:12px; font-weight:bold; color:#666;">취소</button>
+        </div>
+    </div>
+
+    <!-- 설정 모달 -->
+    <div id="settings-modal-overlay" class="nav-modal-overlay" onclick="closeSettingsModal()">
+        <div class="nav-modal-content" onclick="event.stopPropagation()">
+            <div class="nav-modal-header"
+                style="font-size:18px; font-weight:bold; margin-bottom:20px; text-align:center;">설정</div>
+
+            <div style="margin-bottom:20px;">
+                <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">좌표 표시 방식</div>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <label
+                        style="padding:10px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
+                        <input type="radio" name="coord-mode-select" value="0" onclick="setCoordMode(0)"
+                            style="margin-right:10px;"> 도분초 (DMS)
+                    </label>
+                    <label
+                        style="padding:10px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
+                        <input type="radio" name="coord-mode-select" value="1" onclick="setCoordMode(1)"
+                            style="margin-right:10px;"> 소수점 (Decimal)
+                    </label>
+                    <label
+                        style="padding:10px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
+                        <input type="radio" name="coord-mode-select" value="2" onclick="setCoordMode(2)"
+                            style="margin-right:10px;"> TM 좌표 (X, Y)
+                    </label>
+                </div>
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">내보내기 파일 형식</div>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <label
+                        style="padding:10px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
+                        <input type="radio" name="export-format-select" value="geojson"
+                            onclick="setExportFormat('geojson')" style="margin-right:10px;"> GeoJSON (기본)
+                    </label>
+                    <label
+                        style="padding:10px; background:#f8f9fa; border-radius:8px; display:flex; align-items:center;">
+                        <input type="radio" name="export-format-select" value="gpx" onclick="setExportFormat('gpx')"
+                            style="margin-right:10px;"> GPX (GPS 교환 포맷)
+                    </label>
+                    <div style="font-size:11px; color:#888; padding:0 5px;">
+                        ※ GPX로 저장 시 면(Polygon)은 선(Track)으로 변환됩니다.
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="closeSettingsModal()"
+                style="width:100%; padding:14px; background:#f5f5f5; border:none; border-radius:12px; font-weight:bold; color:#666;">닫기</button>
         </div>
     </div>
 
@@ -1853,10 +1902,10 @@
 
     <!-- 파일 입력 (숨김) -->
     <input type="file" id="geoJsonInput" style="display:none" onchange="handleFileSelect(this)"
-        accept=".geojson, .json">
+        accept=".geojson, .json, .gpx">
 
     <!-- 메인 스크립트 연결 -->
-    <script src="script.js?v=1.5.2"></script>
+    <script src="script.js?v=1.6.0"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {
