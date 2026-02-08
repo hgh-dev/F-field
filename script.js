@@ -99,9 +99,7 @@ const SVG_ICONS = {
     folder_move: `<svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h11v-2H4V8h16v4h2V8c0-1.1-.9-2-2-2z"/><path d="M14 13v-3l7 4.5-7 4.5v-3H9v-3h5z"/></svg>`
 };
 
-/* [패치] Leaflet 라이브러리의 터치 오류 방지 */
-// 선 그리기 도구 사용 시 모바일에서 터치가 튀는 문제를 해결합니다.
-L.Draw.Polyline.prototype._onTouch = function (e) { return; };
+
 
 
 
@@ -156,11 +154,6 @@ map.getPane('nasGukPane').style.pointerEvents = 'none';
 proj4.defs("EPSG:5186", "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs");
 
 
-
-/* --------------------------------------------------------------------------
-   5. 레이어 관리 (Layer Management)
-   -------------------------------------------------------------------------- */
-// VWorld에서 제공하는 지도 타일들입니다.
 
 /* --------------------------------------------------------------------------
    5. 레이어 관리 (Layer Management)
@@ -482,11 +475,6 @@ map.on('moveend', function () {
 });
 
 
-
-/* --------------------------------------------------------------------------
-   6. UI 컨트롤러 (UI Controller)
-   -------------------------------------------------------------------------- */
-// 사이드바, 모달창, 탭 등 화면의 UI를 제어하는 함수들입니다.
 
 /* --------------------------------------------------------------------------
    6. UI 컨트롤러 (UI Controller)
@@ -1094,6 +1082,11 @@ function updatePopupLandEumButton(pnu) {
    -------------------------------------------------------------------------- */
 // 지도 위에 점, 선, 면을 그리고 수정하는 기능입니다.
 
+/* [패치] Leaflet 라이브러리의 터치 오류 방지 */
+// 선 그리기 도구 사용 시 모바일에서 터치가 튀는 문제를 해결합니다.
+L.Draw.Polyline.prototype._onTouch = function (e) { return; };
+
+
 const drawnItems = new L.FeatureGroup(); // 그려진 도형들을 담을 그룹
 map.addLayer(drawnItems);
 
@@ -1606,7 +1599,6 @@ window.switchProject = function (id) {
     renderProjectSelector(); // 개수 업데이트 등을 위해 다시 렌더링
 };
 
-// 새 프로젝트 생성
 // 새 프로젝트 생성
 window.createNewProject = function (initialName) {
     let defaultName = initialName || ("새 프로젝트 " + (projects.length + 1));
