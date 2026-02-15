@@ -1411,10 +1411,13 @@ function updateLayerInfo(layer) {
     const btnDeleteStyle = "flex:1; background:#fff; color:#ef4444; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
 
     popupContent += `<div style="margin-top:10px; display:flex; gap:5px;">
-        <input type="file" id="photo-input-${id}" accept="image/*" multiple style="display:none;" onchange="processPhotoFiles(this, ${id})">
+        <!-- 카메라용 (capture=environment) -->
+        <input type="file" id="input-cam-${id}" accept="image/*" capture="environment" style="display:none;" onchange="processPhotoFiles(this, ${id})">
+        <!-- 갤러리용 (multiple) -->
+        <input type="file" id="input-gal-${id}" accept="image/*" multiple style="display:none;" onchange="processPhotoFiles(this, ${id})">
         
-        <!-- 사진 추가 버튼 -->
-        <button onclick="handlePhotoAdd(${id})" class="popup-btn" style="${btnPhotoStyle}">
+        <!-- 사진 추가 버튼 (메뉴 열기) -->
+        <button onclick="openPhotoSelectMenu(event, ${id})" class="popup-btn" style="${btnPhotoStyle}">
             <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:#555;"><path d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z"/></svg>
             사진
         </button>
@@ -2822,10 +2825,63 @@ window.addEventListener('click', function (event) {
    15. 기능: 사진 첨부 (Feature: Photo Attachment)
    -------------------------------------------------------------------------- */
 
-// 사진 추가 버튼 클릭 핸들러
-window.handlePhotoAdd = function (layerId) {
-    const fileInput = document.getElementById('photo-input-' + layerId);
-    if (fileInput) fileInput.click();
+// 사진 선택 메뉴 관련 변수 및 함수
+// 사진 선택 메뉴 관련 변수 및 함수
+let currentPhotoLayerId = null;
+
+window.openPhotoSelectMenu = function (e, id) {
+    e.stopPropagation();
+    e.preventDefault();
+
+    currentPhotoLayerId = id;
+
+    const overlay = document.getElementById('photo-modal-overlay');
+    const container = document.getElementById('photo-modal-container');
+
+    if (overlay && container) {
+        overlay.style.display = 'flex';
+        container.style.display = 'flex';
+
+        requestAnimationFrame(() => {
+            overlay.classList.add('visible');
+            container.classList.add('visible');
+        });
+    }
+};
+
+window.closePhotoSelectMenu = function () {
+    const overlay = document.getElementById('photo-modal-overlay');
+    const container = document.getElementById('photo-modal-container');
+
+    if (overlay && container) {
+        overlay.classList.remove('visible');
+        container.classList.remove('visible');
+
+        setTimeout(() => {
+            if (!overlay.classList.contains('visible')) {
+                overlay.style.display = 'none';
+                container.style.display = 'none';
+            }
+        }, 200);
+    }
+    currentPhotoLayerId = null;
+};
+
+window.handlePhotoMenuAction = function (type) {
+    if (!currentPhotoLayerId) return;
+
+    const targetId = currentPhotoLayerId; // ID 백업
+    closePhotoSelectMenu();
+
+    setTimeout(() => {
+        if (type === 'camera') {
+            const input = document.getElementById(`input-cam-${targetId}`);
+            if (input) input.click();
+        } else if (type === 'gallery') {
+            const input = document.getElementById(`input-gal-${targetId}`);
+            if (input) input.click();
+        }
+    }, 100); // 터치 반응 시간 고려
 };
 
 // 파일 선택 시 처리
@@ -2856,7 +2912,7 @@ window.processPhotoFiles = function (input, layerId) {
             const reader = new FileReader();
             reader.onload = function (e) {
                 // 이미지 리사이징
-                resizeImage(e.target.result, 600, 0.6).then(resizedBase64 => {
+                resizeImage(e.target.result, 640, 0.7).then(resizedBase64 => {
                     resolve(resizedBase64);
                 });
             };
@@ -2886,7 +2942,7 @@ window.processPhotoFiles = function (input, layerId) {
 };
 
 // 이미지 리사이징 (Canvas 사용)
-function resizeImage(base64Str, maxWidth = 600, quality = 0.6) {
+function resizeImage(base64Str, maxWidth = 640, quality = 0.8) {
     return new Promise((resolve) => {
         const img = new Image();
         img.src = base64Str;
