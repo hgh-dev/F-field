@@ -4,7 +4,11 @@
 
 이 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.0.0/)를 따릅니다.
 
-## [1.7.1] - 2026-02-16
+## [1.7.2] - 2026-02-15
+### 수정 (Fixed)
+- 저장방식을 localStorage에서 indexedDB로 변경
+
+## [1.7.1] - 2026-02-15
 ### 수정 (Fixed)
 - 사진 추가 오류 수정
 

@@ -28,13 +28,13 @@ const SEARCH_SETTING_KEY = 'my_search_setting_enabled';
 /* --------------------------------------------------------------------------
    2. 전역 상태 변수 (Global State)
    -------------------------------------------------------------------------- */
-// 앱 실행 중에 계속 변하는 값들을 저장하는 변수들입니다.
-// 이 값들은 함수들 사이에서 공유되며, 앱의 현재 상황(Conext)을 나타냅니다.
+// [교육용] 전역 변수는 앱의 현재 상태(Context)를 저장하며, 어디서든 접근 가능합니다.
+// 리액트 같은 프레임워크에서는 useState, Redux 등을 사용하지만, 바닐라 JS에서는 이 방식이 직관적입니다.
 
 // [좌표계 설정]
-// 0: 도분초 (DMS, 예: 37° 14' 20")
-// 1: 십진수 (Decimal, 예: 37.2388)
-// 2: TM 좌표 (Transverse Mercator, 예: X 200000, Y 600000)
+// 0: DMS (도분초 - 37° 14' 20")
+// 1: Decimal (십진수 - 37.2388)
+// 2: TM (Transverse Mercator - EPSG:5186, 중부원점)
 let coordMode = 0;
 
 // [위치 추적 상태]
@@ -108,13 +108,9 @@ const SVG_ICONS = {
    -------------------------------------------------------------------------- */
 /**
  * Leaflet Map 생성
- * L.map('id')를 통해 HTML의 <div id="map"> 요소에 지도를 연결합니다.
- * 
- * [주요 옵션 설명]
- * - zoomControl: false -> 기본 줌 버튼(+/-)을 끕니다. (우리가 원하는 위치에 따로 만들기 위해)
- * - attributionControl: false -> 우측 하단 Leaflet 로고를 숨깁니다.
- * - tap: false -> 모바일에서 터치 반응이 느리거나 두 번 클릭되는 문제를 방지합니다.
- * - maxZoom: 22 -> 지도를 얼마나 가까이(상세하게) 확대할 수 있는지 설정합니다.
+ * - zoomControl: false (기본 줌 버튼 숨김 -> 커스텀 버튼 사용)
+ * - tap: false (모바일 터치 더블 클릭 이슈 방지)
+ * - maxZoom: 22 (최대 확대 레벨)
  */
 const map = L.map('map', {
     zoomControl: false,
@@ -132,11 +128,9 @@ L.control.scale({ imperial: false, metric: true }).addTo(map);
 
 /**
  * [커스텀 Pane 생성]
- * Leaflet은 기본적으로 타일(Tile), 오버레이(Overlay), 마커(Marker), 팝업(Popup) 등의 층(Pane) 순서가 정해져 있습니다.
- * 특정 레이어(여기서는 국유림 레이어)를 다른 레이어보다 항상 위에, 혹은 아래에 표시하고 싶을 때 커스텀 Pane을 씁니다.
- * 
- * - zIndex: 350 -> 기본 TilePane(200)보다 높고, OverlayPane(400)보다 낮게 설정
- * - pointerEvents: 'none' -> 이 레이어가 마우스 클릭을 가로채지 않도록 설정 (지도 클릭 가능하게)
+ * 레이어의 z-index(쌓이는 순서)를 정밀하게 제어하기 위해 사용합니다.
+ * - zIndex: 350 (TilePane(200) < nasGukPane(350) < OverlayPane(400))
+ * - pointerEvents: 'none' (지도가 클릭 이벤트를 받을 수 있도록 투과시킴)
  */
 map.createPane('nasGukPane');
 map.getPane('nasGukPane').style.zIndex = 350;
@@ -144,12 +138,11 @@ map.getPane('nasGukPane').style.pointerEvents = 'none';
 
 /**
  * [Proj4js 좌표계 정의]
- * 지도에서 사용하는 좌표계는 여러 종류가 있습니다.
- * - EPSG:4326 (WGS84): 위도, 경도 (GPS에서 사용)
- * - EPSG:3857 (Web Mercator): 구글지도, 브이월드 등 웹 지도에서 사용
- * - EPSG:5186 (Korea Central Belt 2010): 한국 국토지리정보원 표준 (TM 좌표)
+ * - EPSG:4326 (WGS84): GPS 기본 좌표 (위도, 경도)
+ * - EPSG:5186 (Korea 2010): 한국 국토지리정보원 표준 (TM, 중부원점)
+ * - EPSG:3857 (Web Mercator): 구글/네이버 등 웹 지도 표준
  * 
- * 아래 코드는 TM 좌표(EPSG:5186)를 변환하기 위한 수식을 정의하는 것입니다.
+ * VWorld나 공공데이터는 다양한 좌표계를 쓰므로 변환이 필수적입니다.
  */
 proj4.defs("EPSG:5186", "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs");
 
@@ -207,13 +200,9 @@ const esriSatelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/r
 });
 
 /**
- * [WMS Layer] (Web Map Service)
- * 타일 형태가 아니라, 클라이언트가 요청하는 영역(BBOX)에 맞춰 서버가 이미지를 생성해서 보내주는 방식입니다.
- * (Leaflet에서는 TileLayer.WMS를 통해 타일 방식처럼 쓸 수도 있습니다)
- * 
- * - transparent: true -> 배경을 투명하게 해서 밑에 있는 지도가 보이게 함
- * - format: 'image/png' -> 투명도를 지원하는 이미지 포맷 사용
- * - layers: 서버에서 요청할 레이어의 이름
+ * [WMS (Web Map Service)]
+ * 서버가 요청받은 영역(Bounding Box)만큼 이미지를 '생성'해서 보내주는 방식입니다.
+ * - 지적도처럼 투명 배경이 필요한 레이어에 적합합니다.
  */
 
 // 4. 지적도 (LX, 편집도)
@@ -426,7 +415,8 @@ function toggleOverlay(type, isChecked) {
 
 
 
-// 산림보호구역 데이터 가져오기 (VWorld Data API)
+// 산림보호구역 데이터 가져오기 (JSONP 방식)
+// [교육용] CORS 문제 해결을 위해 JSONP를 사용합니다. (script 태그는 교차 출처 허용)
 function fetchForestData() {
     if (!isForestActive || !forestDataLayer) return;
 
@@ -484,9 +474,8 @@ map.on('moveend', function () {
 
 /**
  * [사이드바 열기]
- * 1. UI 동기화: 현재 지도 설정에 맞춰 사이드바의 체크박스 상태를 업데이트합니다.
- * 2. 리스트 렌더링: 저장된 기록 목록을 최신화합니다.
- * 3. 애니메이션: display: 'block'으로 공간을 차지하게 한 뒤, 'visible' 클래스를 추가하여 슬라이드 효과를 줍니다.
+ * - display: 'block' 직후에 class를 추가해야 CSS transition이 작동합니다.
+ * - 브라우저가 DOM 변경을 인지할 시간을 주기 위해 setTimeout(10ms)을 사용합니다.
  */
 function openSidebar() {
     syncSidebarUI(); // 현재 지도 상태와 버튼 동기화
@@ -620,13 +609,9 @@ document.addEventListener('mousedown', function (e) {
 });
 
 /**
- * [VWorld 검색 API 호출]
- * 브라우저의 보안 정책(CORS)으로 인해, 일반적인 AJAX(fetch) 요청 대신 JSONP 방식을 사용합니다.
- * 
- * - JSONP(JSON with Padding): 
- *   `<script>` 태그는 다른 도메인의 파일을 불러오는 데 제한이 없다는 점을 이용합니다.
- *   서버에 요청할 때 callback 함수의 이름을 파라미터로 넘기고,
- *   서버는 그 함수를 실행하는 자바스크립트 코드를 응답으로 보내줍니다.
+ * [VWorld 검색 API 호출 (JSONP)]
+ * - 브라우저 보안(CORS)으로 인해 직접 호출이 불가하여 script 태그를 활용합니다.
+ * - 콜백 함수를 전역(window)에 등록하고, 서버가 그 함수를 실행하는 코드를 응답으로 줍니다.
  */
 function callVworldSearchApi(query, type, callback) {
     // 1. 유니크한 콜백 함수 이름 생성 (동시에 여러 요청이 올 수 있으므로 랜덤값 사용)
@@ -680,7 +665,11 @@ function executeSearch(keyword) {
     document.getElementById('history-panel').style.display = 'none';
     document.getElementById('search-input').value = query;
 
-    // 단계별 검색: 주소(ADDRESS) -> 장소(PLACE) -> 도로명(ROAD) -> 지번(PARCEL)
+    // 단계별 검색 전략 (Fallback Strategy)
+    // 1. 주소(ADDRESS) 검색 -> 실패 시
+    // 2. 장소(PLACE) 검색 -> 실패 시
+    // 3. 도로명(ROAD) 좌표 조회 -> 실패 시
+    // 4. 지번(PARCEL) 좌표 조회
     callVworldSearchApi(query, 'ADDRESS', function (addrResults) {
         if (addrResults && addrResults.length > 0) {
             handleSearchResults(addrResults);
@@ -960,6 +949,8 @@ map.on('click', function (e) {
 });
 
 // 텍스트 복사 헬퍼 함수
+// [교육용] 최신 브라우저는 navigator.clipboard를 지원하지만, 
+// 구형 환경이나 비보안 컨텍스트(HTTP) 호환성을 위해 execCommand Fallback을 사용합니다.
 function copyText(text, silent = false, itemLabel = "주소") {
     const msg = `${itemLabel}가 복사되었습니다.`;
 
@@ -1088,6 +1079,8 @@ L.Draw.Polyline.prototype._onTouch = function (e) { return; };
 
 
 const drawnItems = new L.FeatureGroup(); // 그려진 도형들을 담을 그룹
+// [교육용] FeatureGroup은 LayerGroup을 확장한 것으로, 
+// bindPopup 등의 메소드를 그룹 전체에 일괄 적용하거나 이벤트를 전파받을 수 있습니다.
 map.addLayer(drawnItems);
 
 // 기본 아이콘 설정 (파란색)
@@ -1255,6 +1248,8 @@ window.enableSingleLayerEdit = function (id) {
 
 // 그리기 완료 이벤트 (도형 생성 시)
 map.on(L.Draw.Event.CREATED, function (event) {
+    // [교육용] 도형이 다 그려지면 이 이벤트가 발생합니다.
+    // 생성된 레이어에 고유 ID와 커스텀 속성(feature)을 추가하여 관리합니다.
     const layer = event.layer;
     let memo = prompt("기록명 입력:", getTimestampString());
     if (memo === null) return; // 취소 시 무시
@@ -1440,20 +1435,25 @@ function updateLayerInfo(layer) {
 
 // 데이터 저장 (프로젝트 구조 반영)
 /**
- * [LocalStorage 저장]
- * 웹 브라우저의 로컬 저장소를 사용하여 데이터를 영구적으로 보관합니다.
- * 
- * - 중요: LocalStorage는 '문자열'만 저장할 수 있습니다.
- * - 따라서 JavaScript 객체(Object)를 JSON.stringify()를 사용하여 JSON 문자열로 변환해야 합니다.
+ * [localForage 저장 (IndexedDB)]
+ * - 브라우저의 IndexedDB를 사용하여 대용량 데이터를 비동기로 저장합니다.
+ * - 객체(Object)를 직접 저장할 수 있습니다.
  */
-function saveToStorage() {
+async function saveToStorage() {
     if (!currentProjectId) return; // 초기화 전이면 중단
 
     // 현재 프로젝트 찾기
-    const project = projects.find(p => p.id === parseInt(currentProjectId));
-    if (project) {
-        project.features = drawnItems.toGeoJSON(); // 현재 그려진 내용을 프로젝트 데이터로 업데이트
-        project.updatedAt = new Date().toISOString();
+    const projectIndex = projects.findIndex(p => p.id === parseInt(currentProjectId));
+    if (projectIndex !== -1) {
+        // [중요] 현재 그려진 레이어 상태를 프로젝트 객체에 반영
+        projects[projectIndex].features = drawnItems.toGeoJSON();
+        projects[projectIndex].updatedAt = new Date().toISOString();
+
+        // 프로젝트 이름 동기화 (선택 버튼의 텍스트가 변경되었을 수 있음)
+        const nameBtn = document.getElementById('project-select-btn');
+        if (nameBtn) {
+            projects[projectIndex].name = nameBtn.textContent;
+        }
     }
 
     const storageData = {
@@ -1462,31 +1462,53 @@ function saveToStorage() {
         projects: projects
     };
 
-    // 객체 -> JSON 문자열 변환 후 저장
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(storageData));
+    // 객체 그대로 저장 (비동기)
+    try {
+        await localforage.setItem(STORAGE_KEY, storageData);
+    } catch (err) {
+        console.error("Storage save failed:", err);
+        alert("데이터 저장 실패: " + err);
+    }
 }
 
 // 데이터 로드 (마이그레이션 포함)
-function loadFromStorage() {
+async function loadFromStorage() {
     try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (!saved) {
+        // [1] 마이그레이션: 구 버전(LocalStorage) 확인
+        const oldData = localStorage.getItem(STORAGE_KEY);
+        if (oldData) {
+            console.log("Migrating from LocalStorage to localForage...");
+            try {
+                const parsedOld = JSON.parse(oldData);
+                // 새 저장소(IndexedDB)로 이동
+                await localforage.setItem(STORAGE_KEY, parsedOld);
+                // 구 저장소(LocalStorage) 삭제
+                localStorage.removeItem(STORAGE_KEY);
+                console.log("Migration successful.");
+            } catch (e) {
+                console.error("Migration failed:", e);
+            }
+        }
+
+        // [2] 데이터 불러오기 (IndexedDB)
+        const savedData = await localforage.getItem(STORAGE_KEY);
+
+        if (!savedData) {
             // 데이터가 아예 없으면 기본 프로젝트 생성
             initDefaultProject();
             return;
         }
 
         /**
-         * [JSON 파싱]
-         * 저장된 문자열을 다시 JavaScript 객체로 변환하려면 JSON.parse()를 사용합니다.
-         * 만약 형식이 잘못되어 있으면 에러가 발생하므로 try-catch 문으로 감싸는 것이 안전합니다.
+         * [데이터 복원]
+         * 저장된 객체를 전역 변수에 할당하고 UI를 갱신합니다.
          */
-        const parsed = JSON.parse(saved);
+        const parsed = savedData; // localForage는 객체를 반환함
 
-        // 구 버전 데이터 감지 (배열이거나 FeatureCollection 인 경우)
+        // 데이터 버전 체크 및 복구
         if (Array.isArray(parsed) || (parsed.type === "FeatureCollection")) {
             console.log("Legacy data detected. Migrating...");
-            migrateLegacyData(parsed);
+            await migrateLegacyData(parsed);
         } else if (parsed.version === "2.0") {
             // 신규 버전 데이터 로드
             projects = parsed.projects || [];
@@ -1504,7 +1526,7 @@ function loadFromStorage() {
                 loadCurrentProjectFeatures();
             }
         } else {
-            // 알 수 없는 형식이면 초기화
+            // [호환성] 버전 정보가 없거나 알 수 없는 형식이면 초기화
             initDefaultProject();
         }
     } catch (e) {
@@ -1530,28 +1552,24 @@ function initDefaultProject() {
 }
 
 // 레거시 데이터 마이그레이션
-function migrateLegacyData(legacyData) {
-    // GeoJSON 형식 맞추기
+async function migrateLegacyData(legacyData) {
+    // 구 버전 데이터 변환
     let featureCollection = legacyData;
     if (Array.isArray(legacyData)) {
-        // 혹시 단순 배열로 저장된 경우 (아주 아주 옛날 버전?)
-        // (현재 코드는 FeatureCollection을 저장하므로 이 케이스는 드물겠지만 안전장치)
         featureCollection = { type: "FeatureCollection", features: legacyData };
     }
-
     const migratedProject = {
         id: Date.now(),
         name: "기본 프로젝트",
         features: featureCollection,
         createdAt: new Date().toISOString()
     };
-
     projects = [migratedProject];
     currentProjectId = migratedProject.id;
 
-    saveToStorage();
     renderProjectSelector();
-    loadCurrentProjectFeatures();
+    loadCurrentProjectFeatures(); // 1. 먼저 그려진 레이어를 복원하고
+    await saveToStorage(); // 2. 그 상태를 저장해야 함 (순서 중요!)
 
 }
 
@@ -1683,7 +1701,7 @@ window.createNewProject = function (initialName) {
     alert(`'${name}' 프로젝트가 생성되었습니다.`);
 };
 
-// 프로젝트 이름 변경
+// [프로젝트 이름 변경] - 기본 프로젝트는 보호됩니다.
 window.editProjectName = function () {
     // 기본 프로젝트 보호 (첫 번째 프로젝트)
     if (projects.length > 0 && parseInt(currentProjectId) === projects[0].id) {
@@ -1842,6 +1860,9 @@ function executeMoveProject(targetProjectId) {
    11. 기능: 위치 추적 (Feature: Geolocation)
    -------------------------------------------------------------------------- */
 // GPS를 이용해 내 위치를 지도에 표시합니다.
+// [교육용] HTML5 Geolocation API 사용
+// - getCurrentPosition: 현재 위치 1회 수신
+// - watchPosition: 위치가 변경될 때마다 지속적으로 수신 (배터리 소모 주의)
 
 function onTrackSuccess(pos) {
     updateLocationMarker(pos);
@@ -1942,6 +1963,9 @@ function findMe() {
 /* --------------------------------------------------------------------------
    12. 기능: 길찾기 (Feature: Navigation)
    -------------------------------------------------------------------------- */
+// [교육용] URL Scheme을 이용한 앱 연동
+// - tmap://, nmap:// 등의 스킴을 호출하면 해당 앱이 실행됩니다.
+// - 모바일 OS(Android/iOS)가 해당 스킴을 인식하고 앱을 실행합니다.
 let navTarget = { name: '', lat: 0, lng: 0 };
 
 function openNavModal(name, lat, lng) {
@@ -1975,8 +1999,10 @@ function executeNavigation(type) {
    13. 기타 유틸리티 (Utils)
    -------------------------------------------------------------------------- */
 
+// 타임스탬프 생성 (YYMMDD_HHMMSS 형식)
 function getTimestampString() {
     const now = new Date();
+    // [교육용] ISOString은 '2023-10-05T14:30:00.000Z' 형식이므로, 필요한 부분만 잘라서 사용합니다.
     return now.toISOString().slice(2, 10).replace(/-/g, "") + "_" + now.toTimeString().slice(0, 8).replace(/:/g, "");
 }
 
@@ -2027,19 +2053,34 @@ function convertToDms(val, type) {
 
 
 
-/* --------------------------------------------------------------------------
-   14. 이벤트 리스너 및 초기화 (Events & Initialization)
-   -------------------------------------------------------------------------- */
 
 // 우클릭(컨텍스트 메뉴) 방지 - 앱 전체 적용
+// [교육용] 기본 메뉴를 막고 커스텀 메뉴를 사용하기 위해 preventDefault()를 호출합니다.
 document.addEventListener('contextmenu', function (e) {
     e.preventDefault();
     e.stopPropagation();
     return false;
 }, { passive: false });
 
+// 초기화 (DOM 로드 후)
+document.addEventListener('DOMContentLoaded', async function () {
+    // 1. 저장된 데이터 로드 (비동기 대기)
+    await loadFromStorage();
+
+    // 2. 딥링크 처리
+    await handleDeepLink();
+
+    // 3. UI 동기화
+    updateLayerOrder();
+    syncSidebarUI();
+    renderSearchResultList(JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]'));
+});
+
 // 시작 시 데이터 로드 및 GPS 연결
-loadFromStorage();
+// 시작 시 데이터 로드 및 GPS 연결
+// [교육용] 비동기 데이터 로드를 기다린 후 초기화를 진행하기 위해 async IIFE를 사용하지 않고, 
+// DOMContentLoaded 이벤트 리스너를 async로 변경하여 처리합니다.
+// loadFromStorage(); -> 아래 이벤트 리스너로 이동
 
 if (navigator.geolocation) {
     navigator.geolocation.watchPosition(onTrackSuccess, null, { enableHighAccuracy: true });
@@ -2054,7 +2095,9 @@ if (navigator.geolocation) {
 }
 
 // 딥링크 처리 (URL 파라미터로 위치 받기)
-(function handleDeepLink() {
+// [교육용] IIFE (즉시 실행 함수) 패턴을 사용하여 변수(lat, lng) 오염을 방지합니다.
+// URLSearchParams는 '?key=value' 쿼리 문자열을 쉽게 파싱해줍니다.
+async function handleDeepLink() { // async로 변경
     const params = new URLSearchParams(window.location.search);
     const lat = parseFloat(params.get('lat'));
     const lng = parseFloat(params.get('lng'));
@@ -2066,7 +2109,7 @@ if (navigator.geolocation) {
             fetchAndHighlightBoundary(lng, lat);
         }, 500);
     }
-})();
+}
 
 // 일부 빠진 버튼 이벤트 핸들러들
 function resetButtonStyles() { document.querySelectorAll('.bottom-btn').forEach(btn => btn.classList.remove('active-btn')); }
