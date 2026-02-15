@@ -1384,10 +1384,52 @@ function updateLayerInfo(layer) {
     if (infoText) popupContent += `<div style="font-size:12px; color:#666;">${infoText}</div>`;
 
     const id = layer.feature.properties.id;
-    // 수정/삭제 버튼 추가
-    popupContent += `<div style="margin-top:8px; padding-top:8px; display:flex; gap:5px;">
-        <button class="popup-btn" style="flex:1; background:#f0f0f0; color:#333;" onclick="enableSingleLayerEdit(${id})">수정</button>
-        <button class="popup-btn" style="flex:1; background:#ffebee; color:#d32f2f;" onclick="deleteLayerById(${id})">삭제</button>
+
+    // [사진 썸네일 영역]
+    const photos = layer.feature.properties.photos || [];
+    if (photos.length > 0) {
+        popupContent += `<div class="photo-container" style="margin-top:10px; margin-bottom:10px;">`;
+        photos.forEach((photo, index) => {
+            popupContent += `
+                <div class="photo-thumbnail-wrapper" style="width:60px; height:60px;">
+                    <img src="${photo}" class="photo-thumbnail" style="border-radius:4px;" onclick="openPhotoModal(${id}, ${index})">
+                    <button class="btn-delete-photo" onclick="deletePhoto(${id}, ${index})">✕</button>
+                </div>
+            `;
+        });
+        popupContent += `</div>`;
+    }
+
+    // [버튼 그룹 (사진추가, 수정, 삭제)]
+    // 공유/네비 버튼과 동일한 스타일 (흰색 배경, 회색 테두리), 삭제만 빨간 글씨
+
+    // 1. 사진 추가 (Monochrome)
+    const btnPhotoStyle = "flex:1; background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
+    // 2. 수정 (Monochrome)
+    const btnEditStyle = "flex:1; background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
+    // 3. 삭제 (Red Text)
+    const btnDeleteStyle = "flex:1; background:#fff; color:#ef4444; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
+
+    popupContent += `<div style="margin-top:10px; display:flex; gap:5px;">
+        <input type="file" id="photo-input-${id}" accept="image/*" multiple style="display:none;" onchange="processPhotoFiles(this, ${id})">
+        
+        <!-- 사진 추가 버튼 -->
+        <button onclick="handlePhotoAdd(${id})" class="popup-btn" style="${btnPhotoStyle}">
+            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:#555;"><path d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z"/></svg>
+            사진
+        </button>
+
+        <!-- 수정 버튼 -->
+        <button onclick="enableSingleLayerEdit(${id})" class="popup-btn" style="${btnEditStyle}">
+            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:#555;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            수정
+        </button>
+
+        <!-- 삭제 버튼 -->
+        <button onclick="deleteLayerById(${id})" class="popup-btn" style="${btnDeleteStyle}">
+            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:#ef4444;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            삭제
+        </button>
     </div>`;
 
     layer.bindPopup(popupContent);
@@ -2774,3 +2816,208 @@ function closeAllDropdowns() {
 window.addEventListener('click', function (event) {
     closeAllDropdowns();
 });
+
+
+/* --------------------------------------------------------------------------
+   15. 기능: 사진 첨부 (Feature: Photo Attachment)
+   -------------------------------------------------------------------------- */
+
+// 사진 추가 버튼 클릭 핸들러
+window.handlePhotoAdd = function (layerId) {
+    const fileInput = document.getElementById('photo-input-' + layerId);
+    if (fileInput) fileInput.click();
+};
+
+// 파일 선택 시 처리
+window.processPhotoFiles = function (input, layerId) {
+    const files = input.files;
+    if (!files || files.length === 0) return;
+
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === layerId);
+    if (!layer) return;
+
+    // 기존 사진 배열 초기화
+    if (!layer.feature.properties.photos) {
+        layer.feature.properties.photos = [];
+    }
+
+    const currentCount = layer.feature.properties.photos.length;
+    const newCount = files.length;
+
+    if (currentCount + newCount > 3) {
+        alert(`사진은 최대 3장까지만 저장할 수 있습니다.\n(현재: ${currentCount}장, 추가 시도: ${newCount}장)`);
+        input.value = ''; // 초기화
+        return;
+    }
+
+    // 파일 처리 (Promise.all로 병렬 처리)
+    const promises = Array.from(files).map(file => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                // 이미지 리사이징
+                resizeImage(e.target.result, 600, 0.6).then(resizedBase64 => {
+                    resolve(resizedBase64);
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+
+    Promise.all(promises).then(results => {
+        // 결과 저장
+        results.forEach(base64 => {
+            layer.feature.properties.photos.push(base64);
+        });
+
+        // 저장 및 UI 갱신
+        saveToStorage();
+        updateLayerInfo(layer);
+
+        // 팝업 내용 갱신을 위해 닫았다가 다시 열기 (위치 유지)
+        const popup = layer.getPopup();
+        if (popup && popup.isOpen()) {
+            layer.closePopup();
+            layer.openPopup();
+        }
+
+        input.value = ''; // 입력 초기화
+    });
+};
+
+// 이미지 리사이징 (Canvas 사용)
+function resizeImage(base64Str, maxWidth = 600, quality = 0.6) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.src = base64Str;
+        img.onload = function () {
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxWidth) {
+                height *= maxWidth / width;
+                width = maxWidth;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+    });
+}
+
+// 사진 삭제
+window.deletePhoto = function (layerId, index) {
+    if (!confirm("이 사진을 삭제하시겠습니까?")) return;
+
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === layerId);
+    if (layer && layer.feature.properties.photos) {
+        layer.feature.properties.photos.splice(index, 1);
+        saveToStorage();
+        updateLayerInfo(layer);
+
+        // 팝업 갱신 (닫지 않고 다시 열어서 내용 갱신)
+        const popup = layer.getPopup();
+        if (popup && popup.isOpen()) {
+            layer.closePopup();
+            layer.openPopup();
+        }
+    }
+};
+
+// 사진 모달 관련 전역 변수
+let currentPhotoList = [];
+let currentPhotoIndex = 0;
+
+// 사진 모달 열기 (갤러리 뷰어)
+window.openPhotoModal = function (layerId, index) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === layerId);
+    if (!layer || !layer.feature.properties.photos) return;
+
+    currentPhotoList = layer.feature.properties.photos;
+    currentPhotoIndex = index;
+
+    updateModalImage();
+
+    const modal = document.getElementById('photo-modal');
+    modal.style.display = 'flex';
+    setTimeout(() => { modal.classList.add('visible'); }, 10);
+};
+
+// 모달 이미지 및 UI 업데이트
+function updateModalImage() {
+    const img = document.getElementById('photo-modal-img');
+    const prevBtn = document.getElementById('photo-prev-btn');
+    const nextBtn = document.getElementById('photo-next-btn');
+    const counter = document.getElementById('photo-counter');
+
+    // 이미지 설정
+    if (currentPhotoList.length > 0) {
+        img.src = currentPhotoList[currentPhotoIndex];
+    }
+
+    // 네비게이션 버튼 표시 여부
+    if (currentPhotoList.length > 1) {
+        prevBtn.style.display = 'block';
+        nextBtn.style.display = 'block';
+    } else {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+    }
+
+    // 카운터 업데이트
+    counter.innerText = `${currentPhotoIndex + 1} / ${currentPhotoList.length}`;
+}
+
+// 다음 사진
+window.nextPhoto = function () {
+    if (currentPhotoList.length <= 1) return;
+    currentPhotoIndex = (currentPhotoIndex + 1) % currentPhotoList.length;
+    updateModalImage();
+};
+
+// 이전 사진
+window.prevPhoto = function () {
+    if (currentPhotoList.length <= 1) return;
+    currentPhotoIndex = (currentPhotoIndex - 1 + currentPhotoList.length) % currentPhotoList.length;
+    updateModalImage();
+};
+
+// 현재 사진 다운로드
+window.downloadCurrentPhoto = function () {
+    if (currentPhotoList.length === 0) return;
+
+    const base64Str = currentPhotoList[currentPhotoIndex];
+    const link = document.createElement('a');
+
+    // 파일명 생성
+    const now = new Date();
+    const timestamp = now.getFullYear().toString().slice(2) +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0') + "_" +
+        String(now.getHours()).padStart(2, '0') +
+        String(now.getMinutes()).padStart(2, '0') +
+        String(now.getSeconds()).padStart(2, '0');
+
+    link.download = `photo_${timestamp}.jpg`;
+    link.href = base64Str;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+
+// 사진 모달 닫기
+window.closePhotoModal = function () {
+    const modal = document.getElementById('photo-modal');
+    modal.classList.remove('visible');
+    setTimeout(() => {
+        modal.style.display = 'none';
+        // 메모리 해제 등 필요시 처리
+        document.getElementById('photo-modal-img').src = "";
+    }, 300);
+};
