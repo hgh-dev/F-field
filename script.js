@@ -832,9 +832,28 @@ function renderHistoryList() {
 
 
 /* --------------------------------------------------------------------------
-   8. 기능: 정보 팝업 (Feature: Popup & Info)
+   8. 기능: 정보 팝업 / 바텀 시트 (Feature: Popup & Info / Bottom Sheet)
    -------------------------------------------------------------------------- */
-// 지도 클릭 시 주소와 좌표 정보를 보여주는 팝업 기능입니다.
+// 지도 클릭 시 주소와 좌표 정보를 바텀 시트로 표시합니다.
+
+/**
+ * [바텀 시트 열기]
+ * 화면 하단에서 슬라이드 업되는 정보 패널을 열고 내용을 채웁니다.
+ * @param {string} title - (사용 안 함)
+ * @param {string} bodyHtml - 내용 영역에 삽입할 HTML 문자열
+ */
+function openBottomSheet(title, bodyHtml) {
+    document.getElementById('bottom-sheet-body').innerHTML = bodyHtml;
+    document.getElementById('bottom-sheet').classList.add('open');
+}
+
+/**
+ * [바텀 시트 닫기]
+ * 바텀 시트를 화면 아래로 슬라이드 다운합니다.
+ */
+function closeBottomSheet() {
+    document.getElementById('bottom-sheet').classList.remove('open');
+}
 
 // 정보 팝업 표시
 function showInfoPopup(lat, lng) {
@@ -918,7 +937,8 @@ function showInfoPopup(lat, lng) {
                             </div>
                         </div>`;
 
-        currentSearchMarker.bindPopup(content).openPopup();
+        // Leaflet 팝업 대신 바텀 시트에 표시
+        openBottomSheet(parcelAddr, content);
 
         delete window[callbackName];
         document.getElementById(callbackName)?.remove();
@@ -932,12 +952,18 @@ function showInfoPopup(lat, lng) {
 
 // 지도 더블 클릭 시 이벤트
 map.on('dblclick', function (e) {
+    // 더블클릭한 지점을 화면 중앙으로 이동
+    map.panTo(e.latlng, { animate: true, duration: 0.3 });
     showInfoPopup(e.latlng.lat, e.latlng.lng);
     fetchAndHighlightBoundary(e.latlng.lng, e.latlng.lat);
 });
 
-// 지도 클릭(바탕) 시 선택 해제
+let isLayerClicked = false;
+
+// 지도 클릭(바탕) 시 선택 해제 및 바텀 시트 닫기
 map.on('click', function (e) {
+    if (isLayerClicked) return; // 레이어(선/면 등) 클릭 직후면 지도를 클릭한 것으로 취급하지 않음
+
     if (currentBoundaryLayer) {
         map.removeLayer(currentBoundaryLayer);
         currentBoundaryLayer = null;
@@ -946,6 +972,8 @@ map.on('click', function (e) {
         map.removeLayer(currentSearchMarker);
         currentSearchMarker = null;
     }
+    // 바텀 시트도 함께 닫기
+    closeBottomSheet();
 });
 
 // 텍스트 복사 헬퍼 함수
@@ -1280,8 +1308,8 @@ window.completeSingleEdit = function () {
     editLayerOriginalLatLng = null;
     currentEditLayerId = null;
 
-    // 수정한 레이어의 팝업 다시 열기
-    layer.openPopup();
+    // 수정한 레이어의 바텀 시트 다시 열기
+    layer.fire('click');
 };
 
 /**
@@ -1553,7 +1581,43 @@ function updateLayerInfo(layer) {
         </button>
     </div>`;
 
-    layer.bindPopup(popupContent);
+    // SVG path 인 경우 (선, 면) 강제로 이벤트 수신이 확실하도록 style 지정
+    if (layer._path) {
+        layer._path.style.pointerEvents = 'visiblePainted';
+    }
+
+    // 팝업 대신 레이어 클릭 시 바텀 시트 열기 (클릭 및 터치 이벤트 모두 지원)
+    layer.off('click').on('click', function (e) {
+        // 레이어가 클릭되었음을 표시 (지도 바탕 클릭 핸들러 동작 방지)
+        isLayerClicked = true;
+        setTimeout(() => { isLayerClicked = false; }, 50);
+
+        // 이벤트 버블링 차단 시도
+        if (e && e.originalEvent) {
+            L.DomEvent.stopPropagation(e.originalEvent);
+        }
+
+        // 클릭한 레이어가 화면 중앙에 나타나도록 지도 이동
+        if (layer instanceof L.Marker) {
+            map.flyTo(layer.getLatLng(), Math.max(map.getZoom(), 17), { duration: 0.5 });
+        } else {
+            map.fitBounds(layer.getBounds(), { padding: [60, 60], maxZoom: 19 });
+        }
+
+        openBottomSheet(layer.feature.properties.memo || '측량 기록', popupContent);
+    });
+
+    // 기존 layer.openPopup()을 사용하던 다른 위치에서 바텀 시트가 열리도록 함수 덮어쓰기
+    layer.openPopup = function () {
+        openBottomSheet(layer.feature.properties.memo || '측량 기록', popupContent);
+        return this;
+    };
+
+    // 안전 장치: closePopup 호출 시 바텀 시트 닫기
+    layer.closePopup = function () {
+        closeBottomSheet();
+        return this;
+    };
 }
 
 /**
@@ -1618,9 +1682,8 @@ window.saveMemoAction = function () {
     saveToStorage();
     renderSurveyList();
 
-    // 팝업 내용 갱신 (닫고 다시 열기)
-    layer.closePopup();
-    layer.openPopup();
+    // 바텀 시트 내용 갱신 (클릭 이벤트 트리거)
+    layer.fire('click');
 
     // 모달 닫기
     closeMemoModal();
@@ -1648,9 +1711,8 @@ window.editLayerMemo = function (id) {
     saveToStorage();
     renderSurveyList();
 
-    // 팝업 내용 갱신 (닫고 다시 열기)
-    layer.closePopup();
-    layer.openPopup();
+    // 바텀 시트 내용 갱신 (클릭 이벤트 트리거)
+    layer.fire('click');
 };
 
 // 데이터 저장 (프로젝트 구조 반영)
@@ -2571,7 +2633,8 @@ window.toggleLayerVisibility = function (id) {
                 fillOpacity: 0.2,
                 stroke: true
             });
-            if (layer._path) layer._path.style.pointerEvents = 'auto';
+            // SVG path의 경우 'auto' 대신 'visiblePainted'를 사용해야 투명 영역 처리와 함께 클릭 이벤트가 정확히 동작합니다.
+            if (layer._path) layer._path.style.pointerEvents = 'visiblePainted';
         }
         saveToStorage();
         renderSurveyList();
@@ -2601,7 +2664,7 @@ window.toggleAllLayers = function (isChecked) {
                 fillOpacity: 0.2,
                 stroke: true
             });
-            if (layer._path) layer._path.style.pointerEvents = 'auto';
+            if (layer._path) layer._path.style.pointerEvents = 'visiblePainted';
         }
     });
     saveToStorage();
@@ -3198,12 +3261,8 @@ window.processPhotoFiles = function (input, layerId) {
         saveToStorage();
         updateLayerInfo(layer);
 
-        // 팝업 내용 갱신을 위해 닫았다가 다시 열기 (위치 유지)
-        const popup = layer.getPopup();
-        if (popup && popup.isOpen()) {
-            layer.closePopup();
-            layer.openPopup();
-        }
+        // 바텀 시트 내용 즉시 갱신
+        layer.fire('click');
 
         input.value = ''; // 입력 초기화
     });
@@ -3244,12 +3303,8 @@ window.deletePhoto = function (layerId, index) {
         saveToStorage();
         updateLayerInfo(layer);
 
-        // 팝업 갱신 (닫지 않고 다시 열어서 내용 갱신)
-        const popup = layer.getPopup();
-        if (popup && popup.isOpen()) {
-            layer.closePopup();
-            layer.openPopup();
-        }
+        // 사진 삭제 후 바텀 시트 내용 즉시 갱신
+        layer.fire('click');
     }
 };
 

@@ -1641,6 +1641,81 @@
             color: #111;
             margin-bottom: 10px;
         }
+
+        /* 바텀 시트 메인 컨테이너 */
+        #bottom-sheet {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            width: 100%;
+            max-width: 500px;
+            background: #fff;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            z-index: 4000;
+            transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            /* 기본적으로 화면 아래로 숨김 상태 (-50%는 가로축 중앙정렬용) */
+            transform: translate(-50%, 100%);
+            /* 하단 여백 추가 (최소 24px + 노치 영역) */
+            padding: 0 16px calc(24px + env(safe-area-inset-bottom));
+            box-sizing: border-box;
+            max-height: 72vh;
+            overflow-y: auto;
+            /* 스크롤 시 배경이 보이지 않도록 */
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #bottom-sheet.open {
+            transform: translate(-50%, 0);
+        }
+
+        /* 드래그 핸들 */
+        #bottom-sheet-handle {
+            width: 40px;
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            margin: 8px auto 8px;
+            /* 위아래 여백 축소 */
+            flex-shrink: 0;
+        }
+
+        /* 더 이상 사용하지 않는 헤더 박스 숨김 */
+        #bottom-sheet-header {
+            display: none;
+        }
+
+        #bottom-sheet-close {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            z-index: 10;
+            background: #f0f0f0;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            font-size: 14px;
+            color: #666;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+
+        #bottom-sheet-close:active {
+            background: #ddd;
+        }
+
+        /* 컨텐츠 영역 */
+        #bottom-sheet-body {
+            /* 기존 padding-bottom: 4px 대신 하단 여백은 상위 부모에서 조절함 */
+            max-width: 500px;
+            margin: 0 auto;
+        }
     </style>
 </head>
 
@@ -1746,6 +1821,21 @@
     화면 전체를 차지하도록 CSS가 설정되어 있습니다.
     ==========================================================================
     -->
+
+    <!-- 
+    ==========================================================================
+    [구조 3-1] 바텀 시트 (Bottom Sheet)
+    지도 위 정보(주소, 좌표, 기록 상세)를 하단 슬라이드 패널로 표시합니다.
+    기존 Leaflet bindPopup 말풍선을 대체합니다.
+    ==========================================================================
+    -->
+    <div id="bottom-sheet">
+        <div id="bottom-sheet-handle"></div>
+        <!-- 닫기 버튼은 컨테이너 내에서 우측 상단 절대 위치 -->
+        <button id="bottom-sheet-close" onclick="closeBottomSheet()">✕</button>
+        <div id="bottom-sheet-body"></div>
+    </div>
+
     <div id="map"></div>
 
     <!-- 
@@ -2284,7 +2374,7 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script src="script.js?v=1.8.0"></script>
+    <script src="script.js?v=1.8.1"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {
