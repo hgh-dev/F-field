@@ -35,7 +35,7 @@ const SEARCH_SETTING_KEY = 'my_search_setting_enabled';
 // 0: DMS (도분초 - 37° 14' 20")
 // 1: Decimal (십진수 - 37.2388)
 // 2: TM (Transverse Mercator - EPSG:5186, 중부원점)
-let coordMode = 0;
+let coordMode = parseInt(localStorage.getItem('setting_coord_mode')) || 0; // 좌표 표시 방식 (0: DMS, 1: Decimal, 2: TM)
 
 // [위치 추적 상태]
 let isFollowing = false; // '내 위치 따라가기' 버튼이 켜져 있는지 여부
@@ -62,7 +62,7 @@ let lastForestRequestId = 0;  // 비동기 요청 순서 꼬임 방지용 시퀀
 // [프로젝트 관리]
 let projects = [];             // 모든 프로젝트와 그 안의 기록들을 담고 있는 배열
 let currentProjectId = null;   // 현재 작업 중인 프로젝트의 ID (projects 배열 내 객체의 id)
-let exportFormat = 'geojson';  // 내보내기 파일 형식 ('geojson' | 'gpx')
+let exportFormat = localStorage.getItem('setting_export_format') || 'geojson';  // 내보내기 파일 형식 ('geojson' | 'gpx')
 
 
 
@@ -1083,6 +1083,39 @@ const drawnItems = new L.FeatureGroup(); // 그려진 도형들을 담을 그룹
 // bindPopup 등의 메소드를 그룹 전체에 일괄 적용하거나 이벤트를 전파받을 수 있습니다.
 map.addLayer(drawnItems);
 
+// Leaflet.draw 가상 버텍스(중간점) 아이콘 커스터마이징
+// _createMiddleMarker 오버라이드: 실제 버텍스보다 작고 반투명하게 표시
+(function () {
+    if (L.Edit && L.Edit.PolyVerticesEdit) {
+        const origCreateMiddleMarker = L.Edit.PolyVerticesEdit.prototype._createMiddleMarker;
+        L.Edit.PolyVerticesEdit.prototype._createMiddleMarker = function (marker1, marker2) {
+            origCreateMiddleMarker.call(this, marker1, marker2);
+            // Leaflet.draw 1.0.x 버전에서는 marker1._middleRight에 생성된 객체가 할당됨
+            const middleMarker = marker1._middleRight;
+            if (middleMarker) {
+                // 기존의 일반(네모) 버텍스 아이콘 정보를 저장
+                const origIcon = middleMarker.options.icon || new L.DivIcon({ iconSize: new L.Point(10, 10), className: 'leaflet-div-icon leaflet-editing-icon' });
+
+                middleMarker.setIcon(L.divIcon({
+                    html: '+',
+                    iconSize: new L.Point(14, 14),
+                    className: 'leaflet-div-icon leaflet-editing-icon leaflet-middle-icon'
+                }));
+                // CSS 설정이 적용되도록 0.6 투명도 재할당
+                middleMarker.setOpacity(1);
+
+                // 가상 버텍스(+)를 클릭하거나 끌어서(Drag) 실제 버텍스로 전환할 때
+                // 아이콘을 다시 원래의 네모 버텍스로 롤백합니다.
+                middleMarker.once('mousedown touchstart click dragstart', function () {
+                    this.setIcon(origIcon);
+                    this.setOpacity(1); // 실제 버텍스이므로 완전 불투명하게
+                });
+            }
+        };
+    }
+})();
+
+
 // 기본 아이콘 설정 (파란색)
 const defaultSurveyIcon = createColoredMarkerIcon('#0040ff');
 
@@ -1104,7 +1137,6 @@ const actionToolbar = document.getElementById('action-toolbar');
 
 function startDraw(type) {
     if (currentDrawer) currentDrawer.disable();
-    stopEditMode();
 
     const options = { touchIcon: null, showLength: true, allowIntersection: true };
 
@@ -1159,29 +1191,6 @@ function resetDrawingState() {
     resetButtonStyles();
 }
 
-// 편집 모드 시작
-const editHandler = new L.EditToolbar.Edit(map, { featureGroup: drawnItems });
-
-function startEditMode() {
-    if (currentDrawer) cancelDrawing();
-    editHandler.enable();
-    highlightButton('btn-edit');
-    alert("수정 모드: 도형을 드래그하거나 점을 움직이세요.\n완료하려면 지도를 터치하세요.");
-
-    map.once('click', function () {
-        editHandler.save();
-        editHandler.disable();
-        resetButtonStyles();
-        alert("수정 완료");
-    });
-}
-
-function stopEditMode() {
-    if (editHandler.enabled()) {
-        editHandler.disable();
-        resetButtonStyles();
-    }
-}
 
 // GPS 좌표로 점 추가 (그리기 도중)
 function addGpsVertex() {
@@ -1216,6 +1225,8 @@ window.enableSingleLayerEdit = function (id) {
     if (!layer) return;
 
     if (layer instanceof L.Marker) {
+        // 되돌리기를 위해 원래 위치 저장
+        editLayerOriginalLatLng = layer.getLatLng();
         layer.dragging.enable();
     } else {
         if (!layer.editing) {
@@ -1225,25 +1236,109 @@ window.enableSingleLayerEdit = function (id) {
         }
         if (layer.editing) layer.editing.enable();
         else { alert("수정 불가 도형"); return; }
+        // 되돌리기를 위해 원래 좌표 백업 (JSON 직렬화로 불변 복사본 생성)
+        editLayerOriginalLatLng = JSON.parse(JSON.stringify(layer.getLatLngs()));
     }
 
     layer.closePopup();
-    alert("수정 모드입니다. 완료하려면 지도 바탕을 터치하세요.");
-    document.body.classList.add('recording-mode');
+    alert("측량한 기록의 버텍스를 수정합니다. 수정이 완료되면 하단의 [수정 완료] 버튼을 누르세요.");
+    document.body.classList.add('recording-mode'); // 파란 비네팅 유지
 
-    // 클릭으로 편집 종료
-    setTimeout(() => {
-        map.once('click', function () {
-            if (layer instanceof L.Marker) layer.dragging.disable();
-            else if (layer.editing) layer.editing.disable();
+    // 현재 편집 레이어 저장 및 하단 완료 버튼 표시
+    currentEditLayerId = id;
+    document.getElementById('edit-action-toolbar').style.display = 'flex';
+};
 
-            updateLayerInfo(layer);
-            saveToStorage();
-            renderSurveyList();
-            document.body.classList.remove('recording-mode');
-            alert("수정 완료");
-        });
-    }, 100);
+/**
+ * [수정 완료]
+ * 하단 [수정 완료] 버튼 클릭 시 호출됩니다.
+ * 편집을 종료하고 저장, UI를 갱신합니다.
+ */
+window.completeSingleEdit = function () {
+    if (currentEditLayerId === null) return;
+
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === currentEditLayerId);
+    if (!layer) {
+        document.getElementById('edit-action-toolbar').style.display = 'none';
+        document.body.classList.remove('recording-mode');
+        currentEditLayerId = null;
+        return;
+    }
+
+    // 편집 종료
+    if (layer instanceof L.Marker) layer.dragging.disable();
+    else if (layer.editing) layer.editing.disable();
+
+    // 화면 및 저장소 갱신
+    updateLayerInfo(layer);
+    saveToStorage();
+    renderSurveyList();
+
+    // UI 상태 복원
+    document.body.classList.remove('recording-mode');
+    document.getElementById('edit-action-toolbar').style.display = 'none';
+    editLayerOriginalLatLng = null;
+    currentEditLayerId = null;
+
+    // 수정한 레이어의 팝업 다시 열기
+    layer.openPopup();
+};
+
+/**
+ * [되돌리기] - 편집 내용을 취소하고 편집 모드는 유지
+ */
+window.revertSingleEdit = function () {
+    if (currentEditLayerId === null) return;
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === currentEditLayerId);
+    if (!layer) return;
+
+    if (layer instanceof L.Marker) {
+        // 마커: 원래 위치로 복원 (편집 모드 유지)
+        if (editLayerOriginalLatLng) layer.setLatLng(editLayerOriginalLatLng);
+    } else if (editLayerOriginalLatLng) {
+        // 도형: disable() 후 setLatLngs 후 편집 핸들러를 새로 생성
+        // (disable()이 버텍스 위치를 _latlngs에 덮어쓰는 문제를 피하기 위해 새 인스턴스 사용)
+        if (layer.editing) layer.editing.disable();
+        layer.setLatLngs(editLayerOriginalLatLng); // 선 + _latlngs 원본으로 복원
+        layer.editing = new L.Edit.Poly(layer);    // 이전 상태 완전 초기화
+        layer.editing.enable();                    // 현재 _latlngs(원본)으로 버텍스 생성
+    }
+};
+
+/**
+ * [취소] - 편집 내용을 취소하고 편집 모드 종료
+ */
+window.cancelSingleEdit = function () {
+    if (currentEditLayerId === null) return;
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === currentEditLayerId);
+    if (!layer) {
+        document.getElementById('edit-action-toolbar').style.display = 'none';
+        document.body.classList.remove('recording-mode');
+        currentEditLayerId = null;
+        return;
+    }
+
+    if (layer instanceof L.Marker) {
+        // 마커: 원래 위치로 복원 후 드래깅 종료
+        if (editLayerOriginalLatLng) layer.setLatLng(editLayerOriginalLatLng);
+        layer.dragging.disable();
+    } else {
+        // 도형: 원본 좌표로 복원 후 편집 종료
+        if (layer.editing) layer.editing.disable();
+        if (editLayerOriginalLatLng) {
+            layer.setLatLngs(editLayerOriginalLatLng);
+            // 편집 핸들러 새로 생성하여 이전 상태 초기화
+            layer.editing = new L.Edit.Poly(layer);
+        }
+    }
+
+    // UI 상태 복원
+    document.body.classList.remove('recording-mode');
+    document.getElementById('edit-action-toolbar').style.display = 'none';
+    editLayerOriginalLatLng = null;
+    currentEditLayerId = null;
+
+    layer.openPopup();
 };
 
 // 그리기 완료 이벤트 (도형 생성 시)
@@ -1361,7 +1456,8 @@ function updateLayerInfo(layer) {
         } else if (coordMode === 1) {
             infoText = "N " + pos.lat.toFixed(4) + "° , E " + pos.lng.toFixed(4) + "°";
         } else {
-            infoText = convertToDms(pos.lat, 'lat') + "<br>" + convertToDms(pos.lng, 'lng');
+            // <br> 대신 쉼표로 연결하여 한 줄로 표시
+            infoText = convertToDms(pos.lat, 'lat') + ", " + convertToDms(pos.lng, 'lng');
         }
     } else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
         // 선 길이 계산 (km -> m 변환)
@@ -1373,12 +1469,31 @@ function updateLayerInfo(layer) {
         infoText = "<b>" + SVG_ICONS.polygon + " 면적:</b> " + areaM2.toFixed(2) + " ㎡ (" + areaPyeong.toFixed(2) + "평)";
     }
 
-    let popupContent = `<div style="font-size:14px; color:#3B82F6; font-weight:bold; margin-bottom:5px;">${memo}</div>`;
+    let popupContent = `<div style="display:flex; align-items:center; gap:6px; margin-bottom:5px;">
+        <span style="font-size:14px; color:#3B82F6; font-weight:bold;">${memo}</span>
+        <button onclick="editLayerMemo(${layer.feature.properties.id})" title="기록명 수정" style="background:none; border:none; padding:0; cursor:pointer; color:#3B82F6; opacity:0.7; display:flex; align-items:center;">
+            <svg viewBox="0 0 24 24" style="width:13px; height:13px; fill:#3B82F6;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        </button>
+    </div>`;
     popupContent += `<hr style="margin: 5px 0; border: none; border-top: 1px solid #f0f0f0;">`;
 
-    if (infoText) popupContent += `<div style="font-size:12px; color:#666;">${infoText}</div>`;
+    if (infoText) {
+        if (layer instanceof L.Marker) {
+            // 점: badge-coord 라벨과 좌표를 가로로 나란히 표시
+            popupContent += `<div style="display:flex; align-items:baseline; font-size: 12px; color: #555; margin-bottom: 5px;"><span class="badge-coord" style="flex-shrink:0; width:29px; display:inline-block; text-align:center;">좌표</span><div style="margin-left: 5px; line-height: 1.2;">${infoText}</div></div>`;
+        } else {
+            // 선/면: 거리·면적 정보만 단순 출력 (좌표 라벨 없음)
+            popupContent += `<div style="font-size:12px; color:#666;">${infoText}</div>`;
+        }
+    }
 
     const id = layer.feature.properties.id;
+
+    // [상세 메모 표시 영역]
+    const description = layer.feature.properties.description || "";
+    if (description) {
+        popupContent += `<div style="background:#f8f9fa; padding:8px; border-radius:6px; white-space:pre-wrap; font-size:13px; color:#333; margin-bottom:8px;">${description}</div>`;
+    }
 
     // [사진 썸네일 영역]
     const photos = layer.feature.properties.photos || [];
@@ -1395,22 +1510,30 @@ function updateLayerInfo(layer) {
         popupContent += `</div>`;
     }
 
-    // [버튼 그룹 (사진추가, 수정, 삭제)]
+    // [버튼 그룹 (사진추가, 수정, 삭제, 메모)] - 2x2 그리드 배치
     // 공유/네비 버튼과 동일한 스타일 (흰색 배경, 회색 테두리), 삭제만 빨간 글씨
 
     // 1. 사진 추가 (Monochrome)
-    const btnPhotoStyle = "flex:1; background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
+    const btnPhotoStyle = "background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
     // 2. 수정 (Monochrome)
-    const btnEditStyle = "flex:1; background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
+    const btnEditStyle = "background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
     // 3. 삭제 (Red Text)
-    const btnDeleteStyle = "flex:1; background:#fff; color:#ef4444; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
+    const btnDeleteStyle = "background:#fff; color:#ef4444; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
+    // 4. 메모 (Monochrome)
+    const btnMemoStyle = "background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
 
-    popupContent += `<div style="margin-top:10px; display:flex; gap:5px;">
+    popupContent += `<div style="margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:5px;">
         <!-- 카메라용 (capture=environment) -->
         <input type="file" id="input-cam-${id}" accept="image/*" capture="environment" style="display:none;" onchange="processPhotoFiles(this, ${id})">
         <!-- 갤러리용 (multiple) -->
         <input type="file" id="input-gal-${id}" accept="image/*" multiple style="display:none;" onchange="processPhotoFiles(this, ${id})">
         
+        <!-- 메모 버튼 -->
+        <button onclick="editLayerDescription(${id})" class="popup-btn" style="${btnMemoStyle}">
+            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:#555;"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+            메모
+        </button>
+
         <!-- 사진 추가 버튼 (메뉴 열기) -->
         <button onclick="openPhotoSelectMenu(event, ${id})" class="popup-btn" style="${btnPhotoStyle}">
             <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:#555;"><path d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z"/></svg>
@@ -1432,6 +1555,103 @@ function updateLayerInfo(layer) {
 
     layer.bindPopup(popupContent);
 }
+
+/**
+ * [상세 메모 편집 - 커스텀 모달]
+ * 팝업에서 [메모] 버튼 클릭 시 호출되어 textarea 모달을 띄웁니다.
+ * 모바일에서도 줄바꿈(엔터)이 자유롭게 가능합니다.
+ */
+window.editLayerDescription = function (id) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+    if (!layer) return;
+
+    // 현재 편집 대상 레이어 ID 저장
+    currentMemoLayerId = id;
+
+    // 기존 메모 값을 textarea에 채워넣기
+    const existing = layer.feature.properties.description || "";
+    document.getElementById('memo-input-textarea').value = existing;
+
+    // 모달 표시 (display: flex → visible 클래스로 애니메이션)
+    const overlay = document.getElementById('memo-modal-overlay');
+    const container = document.getElementById('memo-modal-container');
+    overlay.style.display = 'flex';
+    container.style.display = 'flex';
+    setTimeout(() => {
+        overlay.classList.add('visible');
+        container.classList.add('visible');
+        // textarea에 자동 포커스
+        document.getElementById('memo-input-textarea').focus();
+    }, 10);
+};
+
+/**
+ * [메모 모달 닫기]
+ */
+window.closeMemoModal = function () {
+    const overlay = document.getElementById('memo-modal-overlay');
+    const container = document.getElementById('memo-modal-container');
+    overlay.classList.remove('visible');
+    container.classList.remove('visible');
+    setTimeout(() => {
+        overlay.style.display = 'none';
+        container.style.display = 'none';
+    }, 200);
+    currentMemoLayerId = null;
+};
+
+/**
+ * [메모 모달 저장]
+ * 저장 버튼 클릭 시 textarea 값을 레이어에 반영하고 모달을 닫습니다.
+ */
+window.saveMemoAction = function () {
+    if (currentMemoLayerId === null) return;
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === currentMemoLayerId);
+    if (!layer) { closeMemoModal(); return; }
+
+    // textarea 값 저장 (빈 문자열도 허용 - 메모 삭제 용도)
+    const input = document.getElementById('memo-input-textarea').value;
+    layer.feature.properties.description = input;
+
+    // 화면 및 저장소 갱신
+    updateLayerInfo(layer);
+    saveToStorage();
+    renderSurveyList();
+
+    // 팝업 내용 갱신 (닫고 다시 열기)
+    layer.closePopup();
+    layer.openPopup();
+
+    // 모달 닫기
+    closeMemoModal();
+};
+
+/**
+ * [기록명 편집]
+ * 팝업 기록명 옆 연필 아이콘 클릭 시 호출되어 기록명(memo)을 수정하는 함수입니다.
+ */
+window.editLayerMemo = function (id) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+    if (!layer) return;
+
+    const existing = layer.feature.properties.memo || "";
+    const input = prompt("기록명을 입력하세요:", existing);
+
+    // 취소(null) 또는 빈 값이면 변경하지 않음
+    if (input === null || input.trim() === "") return;
+
+    // 기록명 저장
+    layer.feature.properties.memo = input.trim();
+
+    // 화면 및 저장소 갱신
+    updateLayerInfo(layer);
+    saveToStorage();
+    renderSurveyList();
+
+    // 팝업 내용 갱신 (닫고 다시 열기)
+    layer.closePopup();
+    layer.openPopup();
+};
 
 // 데이터 저장 (프로젝트 구조 반영)
 /**
@@ -1753,6 +1973,9 @@ window.deleteCurrentProject = function () {
 // --- 프로젝트 이동 기능 ---
 
 let moveTargetLayerIds = []; // 이동할 레이어 ID 목록
+let currentMemoLayerId = null; // 현재 메모 편집 중인 레이어 ID
+let currentEditLayerId = null;  // 현재 수정 모드 중인 레이어 ID
+let editLayerOriginalLatLng = null; // 마커 수정 전 원래 위치 (되돌리기/취소용)
 
 window.openMoveProjectModal = function (layerId) {
     // 이동 대상 설정
@@ -2132,14 +2355,35 @@ function saveCurrentBoundary(addressName) {
     if (!currentBoundaryLayer) { alert("영역이 선택되지 않았습니다."); return; }
     let shortName = getShortAddress(addressName);
 
+    let addedCount = 0;
+
     currentBoundaryLayer.eachLayer(function (layer) {
         const feature = layer.feature;
-        const newLayer = L.geoJSON(feature, { style: { color: '#FF0000', weight: 4, opacity: 0.8, fillColor: '#FF0000', fillOpacity: 0.2 } });
-        newLayer.eachLayer(innerLayer => {
-            innerLayer.feature = innerLayer.feature || {};
-            innerLayer.feature.properties = { id: Date.now(), memo: shortName || "지적 영역", customColor: '#FF0000', isHidden: false };
-            updateLayerInfo(innerLayer);
-            drawnItems.addLayer(innerLayer);
+
+        // MultiPolygon을 단일 Polygon 배열로 분리
+        // turf.flatten: MultiPolygon -> { type: "FeatureCollection", features: [Polygon, ...] }
+        const flattened = turf.flatten(feature);
+
+        flattened.features.forEach(function (singleFeature, index) {
+            // 고유 ID 부여 (Date.now + 순번으로 중복 방지)
+            const uniqueId = Date.now() + addedCount;
+            addedCount++;
+
+            const newLayer = L.geoJSON(singleFeature, {
+                style: { color: '#FF0000', weight: 4, opacity: 0.8, fillColor: '#FF0000', fillOpacity: 0.2 }
+            });
+
+            newLayer.eachLayer(function (innerLayer) {
+                innerLayer.feature = innerLayer.feature || {};
+                innerLayer.feature.properties = {
+                    id: uniqueId,
+                    memo: shortName || "지적 영역",
+                    customColor: '#FF0000',
+                    isHidden: false
+                };
+                updateLayerInfo(innerLayer);
+                drawnItems.addLayer(innerLayer);
+            });
         });
     });
 
@@ -2150,8 +2394,6 @@ function saveCurrentBoundary(addressName) {
     switchSidebarTab('record');
 }
 
-// 좌표 표시 업데이트, 모달 제어 등은 생략된 구현들을 포함해야 함...
-// (이전 코드에서 필요한 나머지 조각들: updateCoordDisplay, openCoordModal 등)
 let lastAddressCall = 0;
 function getAddressFromCoords(lat, lng) {
     const now = Date.now();
@@ -2269,12 +2511,14 @@ function closeSettingsModal() {
 
 function setCoordMode(mode) {
     coordMode = parseInt(mode);
+    localStorage.setItem('setting_coord_mode', mode); // 설정 기기에 저장
     updateCoordDisplay();
     // 설정 모달은 닫지 않음 (사용자가 다른 설정도 바꿀 수 있으므로)
 }
 
 function setExportFormat(format) {
     exportFormat = format;
+    localStorage.setItem('setting_export_format', format); // 설정 기기에 저장
 }
 
 // 초기 좌표 표시
@@ -2297,25 +2541,6 @@ window.deleteLayerById = function (id) {
     }
 };
 
-window.editLayerMemo = function (id) {
-    // -----------------------------------------------------------
-    // [교육용] editLayerMemo
-    // 기록의 이름(메모)을 수정하는 함수입니다.
-    // prompt 창을 띄워 사용자 입력을 받고, 입력된 값이 있으면
-    // 해당 레이어의 속성(properties.memo)을 업데이트합니다.
-    // * updateLayerInfo()를 호출하여 팝업 내용도 갱신해야 합니다.
-    // -----------------------------------------------------------
-    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
-    if (!layer) return;
-
-    const newMemo = prompt("수정할 메모:", layer.feature.properties.memo);
-    if (newMemo) {
-        layer.feature.properties.memo = newMemo;
-        updateLayerInfo(layer);
-        saveToStorage();
-        renderSurveyList();
-    }
-};
 
 window.toggleLayerVisibility = function (id) {
     // -----------------------------------------------------------
@@ -2955,7 +3180,7 @@ window.processPhotoFiles = function (input, layerId) {
             const reader = new FileReader();
             reader.onload = function (e) {
                 // 이미지 리사이징
-                resizeImage(e.target.result, 640, 0.7).then(resizedBase64 => {
+                resizeImage(e.target.result, 1024, 0.8).then(resizedBase64 => {
                     resolve(resizedBase64);
                 });
             };
@@ -2985,7 +3210,7 @@ window.processPhotoFiles = function (input, layerId) {
 };
 
 // 이미지 리사이징 (Canvas 사용)
-function resizeImage(base64Str, maxWidth = 640, quality = 0.8) {
+function resizeImage(base64Str, maxWidth = 1024, quality = 0.8) {
     return new Promise((resolve) => {
         const img = new Image();
         img.src = base64Str;
