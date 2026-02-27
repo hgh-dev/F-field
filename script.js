@@ -117,7 +117,8 @@ const map = L.map('map', {
     attributionControl: false,
     tap: false,
     maxZoom: 22,
-    doubleClickZoom: false // 더블 클릭 시 확대되는 기본 기능을 막고, '정보 팝업'을 띄우는 기능으로 대신 사용함
+    doubleClickZoom: false, // 더블 클릭 시 확대되는 기본 기능을 막고, '정보 팝업'을 띄우는 기능으로 대신 사용함
+    renderer: L.canvas({ padding: 0.5, tolerance: 15 }) // 모바일 터치 히트박스 확대 (15px 이내 빈 공간도 터치 인식)
 }).setView([37.245911, 126.960302], 17); // 초기 중심 좌표(수원)와 줌 레벨(17)
 
 // 줌 컨트롤(확대/축소 버튼)을 왼쪽 아래에 추가
@@ -895,18 +896,18 @@ function showInfoPopup(lat, lng) {
         const content = `<div style="min-width: 210px;">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <div style="display:flex; align-items:center; gap:5px;">
-                                    <b onclick="copyText(this.innerText, false, '지번 주소')" style="color:#3B82F6; font-size: 14px; line-height: 1.2; word-break: keep-all; cursor: pointer;">${parcelAddr}</b>
+                                    <b onclick="copyText(this.innerText, false, '지번 주소')" style="color:#3B82F6; font-size: 16px; line-height: 1.2; word-break: keep-all; cursor: pointer;">${parcelAddr}</b>
                                 </div>
                             </div>
-                            <hr style="margin: 10px 0; border: none; border-top: 1px solid #f0f0f0;">
+                            <hr style="margin: 12px 0; border: none; border-top: 1px solid #f0f0f0;">
                             ${roadAddr ? `
-                            <div style="display:flex; align-items:baseline; font-size: 12px; color: #555; margin-bottom: 5px;">
+                            <div style="display:flex; align-items:baseline; font-size: 14px; color: #555; margin-bottom: 8px;">
                                 <span class="badge-road" style="flex-shrink:0; width:29px; display:inline-block; text-align:center;">도로명</span>
-                                <span onclick="copyText(this.innerText, false, '도로명 주소')" style="margin-left: 5px; line-height: 1.2; word-break: keep-all; cursor: pointer;">${roadAddr}</span>
+                                <span onclick="copyText(this.innerText, false, '도로명 주소')" style="margin-left: 5px; line-height: 1.5; word-break: keep-all; cursor: pointer;">${roadAddr}</span>
                             </div>` : ''}
-                            <div style="display:flex; align-items:baseline; font-size: 12px; color: #555; margin-bottom: 20px;">
+                            <div style="display:flex; align-items:baseline; font-size: 14px; color: #555; margin-bottom: 30px;">
                                 <span class="badge-coord" style="flex-shrink:0; width:29px; display:inline-block; text-align:center;">좌표</span>
-                                <div onclick="copyText(this.innerText, false, '좌표')" style="margin-left: 5px; line-height: 1.2; cursor: pointer;">${infoText}</div>
+                                <div onclick="copyText(this.innerText, false, '좌표')" style="margin-left: 5px; line-height: 1.5; cursor: pointer;">${infoText}</div>
                             </div>
                         </div>
 
@@ -1498,20 +1499,20 @@ function updateLayerInfo(layer) {
     }
 
     let popupContent = `<div style="display:flex; align-items:center; gap:6px; margin-bottom:5px;">
-        <span style="font-size:14px; color:#3B82F6; font-weight:bold;">${memo}</span>
+        <span style="font-size:16px; color:#3B82F6; font-weight:bold;">${memo}</span>
         <button onclick="editLayerMemo(${layer.feature.properties.id})" title="기록명 수정" style="background:none; border:none; padding:0; cursor:pointer; color:#3B82F6; opacity:0.7; display:flex; align-items:center;">
-            <svg viewBox="0 0 24 24" style="width:13px; height:13px; fill:#3B82F6;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill:#3B82F6;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
         </button>
     </div>`;
-    popupContent += `<hr style="margin: 5px 0; border: none; border-top: 1px solid #f0f0f0;">`;
+    popupContent += `<hr style="margin: 12px 0; border: none; border-top: 1px solid #f0f0f0;">`;
 
     if (infoText) {
         if (layer instanceof L.Marker) {
             // 점: badge-coord 라벨과 좌표를 가로로 나란히 표시
-            popupContent += `<div style="display:flex; align-items:baseline; font-size: 12px; color: #555; margin-bottom: 5px;"><span class="badge-coord" style="flex-shrink:0; width:29px; display:inline-block; text-align:center;">좌표</span><div style="margin-left: 5px; line-height: 1.2;">${infoText}</div></div>`;
+            popupContent += `<div style="display:flex; align-items:baseline; font-size: 14px; color: #555; margin-bottom: 15px;"><span class="badge-coord" style="flex-shrink:0; width:29px; display:inline-block; text-align:center;">좌표</span><div style="margin-left: 5px; line-height: 1.5;">${infoText}</div></div>`;
         } else {
             // 선/면: 거리·면적 정보만 단순 출력 (좌표 라벨 없음)
-            popupContent += `<div style="font-size:12px; color:#666;">${infoText}</div>`;
+            popupContent += `<div style="font-size:14px; color:#666; line-height:1.5; margin-bottom:15px;">${infoText}</div>`;
         }
     }
 
@@ -1520,7 +1521,7 @@ function updateLayerInfo(layer) {
     // [상세 메모 표시 영역]
     const description = layer.feature.properties.description || "";
     if (description) {
-        popupContent += `<div style="background:#f8f9fa; padding:8px; border-radius:6px; white-space:pre-wrap; font-size:13px; color:#333; margin-bottom:8px;">${description}</div>`;
+        popupContent += `<div style="background:#f8f9fa; padding:8px; border-radius:6px; white-space:pre-wrap; font-size:14px; color:#333; line-height:1.5; margin: 15px 0;">${description}</div>`;
     }
 
     // [사진 썸네일 영역]
@@ -1529,7 +1530,7 @@ function updateLayerInfo(layer) {
         popupContent += `<div class="photo-container" style="margin-top:10px; margin-bottom:10px;">`;
         photos.forEach((photo, index) => {
             popupContent += `
-                <div class="photo-thumbnail-wrapper" style="width:60px; height:60px;">
+                <div class="photo-thumbnail-wrapper" style="width:85px; height:85px;">
                     <img src="${photo}" class="photo-thumbnail" style="border-radius:4px;" onclick="openPhotoModal(${id}, ${index})">
                     <button class="btn-delete-photo" onclick="deletePhoto(${id}, ${index})">✕</button>
                 </div>
@@ -2600,6 +2601,7 @@ window.deleteLayerById = function (id) {
         if (layer) drawnItems.removeLayer(layer);
         saveToStorage();
         renderSurveyList();
+        closeBottomSheet(); // 삭제 후 바텀시트 닫기
     }
 };
 
@@ -3231,8 +3233,8 @@ window.processPhotoFiles = function (input, layerId) {
     const currentCount = layer.feature.properties.photos.length;
     const newCount = files.length;
 
-    if (currentCount + newCount > 3) {
-        alert(`사진은 최대 3장까지만 저장할 수 있습니다.\n(현재: ${currentCount}장, 추가 시도: ${newCount}장)`);
+    if (currentCount + newCount > 5) {
+        alert(`사진은 최대 5장까지만 저장할 수 있습니다.`);
         input.value = ''; // 초기화
         return;
     }
@@ -3243,7 +3245,7 @@ window.processPhotoFiles = function (input, layerId) {
             const reader = new FileReader();
             reader.onload = function (e) {
                 // 이미지 리사이징
-                resizeImage(e.target.result, 1024, 0.8).then(resizedBase64 => {
+                resizeImage(e.target.result, 800, 0.8).then(resizedBase64 => {
                     resolve(resizedBase64);
                 });
             };
