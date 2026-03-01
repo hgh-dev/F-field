@@ -2881,7 +2881,8 @@ function addTrackPhotoPoint(event) {
         properties: {
             id: markerId,
             memo: '트랙 사진',
-            isHidden: false
+            isHidden: false,
+            customColor: '#3388ff' // 기본 파란색 유지
         }
     };
 
