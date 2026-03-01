@@ -64,6 +64,12 @@ let projects = [];             // 모든 프로젝트와 그 안의 기록들을
 let currentProjectId = null;   // 현재 작업 중인 프로젝트의 ID (projects 배열 내 객체의 id)
 let exportFormat = localStorage.getItem('setting_export_format') || 'geojson';  // 내보내기 파일 형식 ('geojson' | 'gpx')
 
+// [트랙 기록 모드 상태]
+let trackInterval = parseInt(localStorage.getItem('setting_track_interval')) || 10; // 트랙 기록 간격 (단위: m)
+let trackWatchId = null;      // GPS watchPosition 피드 시구체 ID
+let trackPolyline = null;     // 트랙 모드에서 김고 있는 임시 polyline 레이어
+let lastTrackLatLng = null;   // 마지막으로 기록된 좌표 (거리 계산 기준점)
+
 
 
 /* --------------------------------------------------------------------------
@@ -95,6 +101,8 @@ const SVG_ICONS = {
     unlock: `<svg viewBox="0 0 24 24"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c.55 0 1 .45 1 1s-.45 1-1 1H7c-1.66 0-3 1.34-3 3v2H3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/></svg>`,
     // 더보기(점 3개) 아이콘
     more: `<svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`,
+    // 트랙(달리기) 아이콘
+    track: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>`,
     // 폴더 이동 아이콘 (커스텀: 큰 화살표)
     folder_move: `<svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h11v-2H4V8h16v4h2V8c0-1.1-.9-2-2-2z"/><path d="M14 13v-3l7 4.5-7 4.5v-3H9v-3h5z"/></svg>`
 };
@@ -479,6 +487,7 @@ map.on('moveend', function () {
  * - 브라우저가 DOM 변경을 인지할 시간을 주기 위해 setTimeout(10ms)을 사용합니다.
  */
 function openSidebar() {
+    if (currentDrawer || currentEditLayerId !== null) return; // 측량/수정 모드 중 동작 차단
     syncSidebarUI(); // 현재 지도 상태와 버튼 동기화
     renderSurveyList(); // 저장된 기록 목록 표시
     const overlay = document.getElementById('sidebar-overlay');
@@ -591,6 +600,7 @@ let isSearchHistoryEnabled = true;
 
 // 검색창 열고 닫기
 function toggleSearchBox() {
+    if (currentDrawer || currentEditLayerId !== null) return; // 측량/수정 모드 중 동작 차단
     const box = document.getElementById('search-container');
     if (box.style.display === 'flex') {
         box.style.display = 'none';
@@ -843,8 +853,12 @@ function renderHistoryList() {
  * @param {string} title - (사용 안 함)
  * @param {string} bodyHtml - 내용 영역에 삽입할 HTML 문자열
  */
+let currentBottomSheetLayerId = null; // 바텀 시트에 표시 중인 레이어 ID
+
 function openBottomSheet(title, bodyHtml) {
     document.getElementById('bottom-sheet-body').innerHTML = bodyHtml;
+    // 항상 처음에 반열림(half-open) 상태로 열리도록 설정. full-open 클래스는 제거합니다.
+    document.getElementById('bottom-sheet').classList.remove('full-open');
     document.getElementById('bottom-sheet').classList.add('open');
 }
 
@@ -854,7 +868,144 @@ function openBottomSheet(title, bodyHtml) {
  */
 function closeBottomSheet() {
     document.getElementById('bottom-sheet').classList.remove('open');
+    document.getElementById('bottom-sheet').classList.remove('full-open');
+    const moreMenu = document.getElementById('bottom-sheet-more-menu');
+    if (moreMenu) {
+        moreMenu.style.display = 'none';
+        moreMenu.classList.remove('visible');
+    }
+    currentBottomSheetLayerId = null;
 }
+
+// 바텀시트 더보기 메뉴 토글
+window.toggleBottomSheetMoreMenu = function (event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    const menu = document.getElementById('bottom-sheet-more-menu');
+    if (!menu) return;
+
+    if (menu.style.display === 'none' || menu.style.display === '') {
+        menu.style.display = 'flex';
+        setTimeout(() => menu.classList.add('visible'), 10);
+    } else {
+        menu.classList.remove('visible');
+        setTimeout(() => menu.style.display = 'none', 100);
+    }
+};
+
+window.handleBottomSheetEdit = function () {
+    // closeBottomSheet()가 내부에서 currentBottomSheetLayerId를 null로 초기화하므로
+    // 먼저 ID를 임시 변수에 저장해둡니다.
+    const layerId = currentBottomSheetLayerId;
+    closeBottomSheet();
+    if (layerId !== null) {
+        enableSingleLayerEdit(layerId);
+    }
+};
+
+window.handleBottomSheetDelete = function () {
+    if (currentBottomSheetLayerId !== null) {
+        deleteLayerById(currentBottomSheetLayerId);
+    } else {
+        closeBottomSheet();
+    }
+};
+
+// 화면 터치 시 더보기 메뉴 닫기
+document.addEventListener('click', function (event) {
+    const moreMenu = document.getElementById('bottom-sheet-more-menu');
+    const moreBtn = document.getElementById('bottom-sheet-more-btn');
+    if (moreMenu && moreMenu.classList.contains('visible')) {
+        if (!moreMenu.contains(event.target) && (!moreBtn || !moreBtn.contains(event.target))) {
+            moreMenu.classList.remove('visible');
+            setTimeout(() => moreMenu.style.display = 'none', 100);
+        }
+    }
+});
+
+// --- 바텀시트 스와이프 드래그 닫기 기능 ---
+document.addEventListener('DOMContentLoaded', () => {
+    const bottomSheet = document.getElementById('bottom-sheet');
+    if (!bottomSheet) return;
+
+    let startY = 0;
+    let isDragging = false;
+    let isScrollTop = true;
+
+    function onDragStart(e) {
+        if (!bottomSheet.classList.contains('open')) return;
+
+        // 스크롤이 맨 위에 있을 때만 드래그 시작으로 간주
+        isScrollTop = bottomSheet.scrollTop <= 0;
+        if (!isScrollTop) return;
+
+        startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+        isDragging = true;
+
+        // 드래그 중 부드러운 이동을 위해 CSS transition 해제
+        bottomSheet.style.transition = 'none';
+    }
+
+    function onDragMove(e) {
+        if (!isDragging || !isScrollTop) return;
+        let clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+        let deltaY = clientY - startY;
+
+        // 아래로만 드래그 허용
+        if (deltaY > 0) {
+            // 브라우저 기본 스크롤 동작 방지 (터치 무브)
+            if (e.cancelable) e.preventDefault();
+            bottomSheet.style.transform = `translate(-50%, ${deltaY}px)`;
+        } else {
+            bottomSheet.style.transform = `translate(-50%, 0px)`;
+        }
+    }
+
+    function onDragEnd(e) {
+        if (!isDragging) return;
+        isDragging = false;
+
+        // transition 복원
+        bottomSheet.style.transition = '';
+
+        let clientY = e.type.includes('mouse') ? e.clientY : (e.changedTouches ? e.changedTouches[0].clientY : startY);
+        let deltaY = clientY - startY;
+
+        const isFullOpen = bottomSheet.classList.contains('full-open');
+
+        if (deltaY < -50) {
+            // 위로 드래그 (반열림 -> 완전열림)
+            if (!isFullOpen) {
+                bottomSheet.classList.add('full-open');
+            }
+            bottomSheet.style.transform = '';
+        } else if (deltaY > 50 && isFullOpen) {
+            // 아래로 드래그 (완전열림 -> 반열림)
+            bottomSheet.classList.remove('full-open');
+            bottomSheet.style.transform = '';
+        } else if (deltaY > 100 && !isFullOpen) {
+            // 반열림 상태에서 아래로 크게 드래그 -> 닫기
+            closeBottomSheet();
+            // 닫힘 애니메이션 후 transform 속성 초기화
+            setTimeout(() => {
+                bottomSheet.style.transform = '';
+            }, 300);
+        } else {
+            // 원위치로 복귀
+            bottomSheet.style.transform = '';
+        }
+    }
+
+    bottomSheet.addEventListener('touchstart', onDragStart, { passive: true });
+    bottomSheet.addEventListener('touchmove', onDragMove, { passive: false });
+    bottomSheet.addEventListener('touchend', onDragEnd);
+    bottomSheet.addEventListener('touchcancel', onDragEnd);
+
+    bottomSheet.addEventListener('mousedown', onDragStart);
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('mouseup', onDragEnd);
+});
 
 // 정보 팝업 표시
 function showInfoPopup(lat, lng) {
@@ -939,6 +1090,9 @@ function showInfoPopup(lat, lng) {
                         </div>`;
 
         // Leaflet 팝업 대신 바텀 시트에 표시
+        if (document.getElementById('bottom-sheet-more-btn')) {
+            document.getElementById('bottom-sheet-more-btn').style.display = 'none';
+        }
         openBottomSheet(parcelAddr, content);
 
         delete window[callbackName];
@@ -953,6 +1107,8 @@ function showInfoPopup(lat, lng) {
 
 // 지도 더블 클릭 시 이벤트
 map.on('dblclick', function (e) {
+    // 측량/수정 모드 중에는 더블클릭 동작을 무시합니다.
+    if (currentDrawer || currentEditLayerId !== null) return;
     // 더블클릭한 지점을 화면 중앙으로 이동
     map.panTo(e.latlng, { animate: true, duration: 0.3 });
     showInfoPopup(e.latlng.lat, e.latlng.lng);
@@ -963,6 +1119,8 @@ let isLayerClicked = false;
 
 // 지도 클릭(바탕) 시 선택 해제 및 바텀 시트 닫기
 map.on('click', function (e) {
+    // 측량/수정 모드 중에는 지도 배경 클릭을 무시합니다.
+    if (currentDrawer || currentEditLayerId !== null) return;
     if (isLayerClicked) return; // 레이어(선/면 등) 클릭 직후면 지도를 클릭한 것으로 취급하지 않음
 
     if (currentBoundaryLayer) {
@@ -1165,7 +1323,7 @@ map.addControl(drawControl);
 const actionToolbar = document.getElementById('action-toolbar');
 
 function startDraw(type) {
-    if (currentDrawer) currentDrawer.disable();
+    if (currentDrawer || currentEditLayerId !== null) return; // 측량/수정 모드 중 중복 시작 차단
 
     const options = { touchIcon: null, showLength: true, allowIntersection: true };
 
@@ -1444,7 +1602,21 @@ function renderSurveyList() {
         const props = layer.feature.properties || {};
         const isHidden = props.isHidden === true;
         // 타입에 따른 아이콘 결정
-        const typeIcon = (layer instanceof L.Marker) ? SVG_ICONS.marker : (layer instanceof L.Polygon ? SVG_ICONS.polygon : SVG_ICONS.ruler);
+        const typeIcon = (layer instanceof L.Marker)
+            ? SVG_ICONS.marker
+            : (layer instanceof L.Polygon
+                ? SVG_ICONS.polygon
+                : (props.isTrack ? SVG_ICONS.track : SVG_ICONS.ruler));
+
+        // 표시할 날짜 형식 생성
+        let dateStr = "";
+        if (props.id) {
+            const d = new Date(props.id);
+            // 유효한 날짜이고 구조상 밀리초 타임스탬프로 사용된 경우
+            if (!isNaN(d.getTime()) && d.getFullYear() > 2000) {
+                dateStr = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            }
+        }
 
         const div = document.createElement('div');
         div.className = 'survey-item';
@@ -1453,8 +1625,10 @@ function renderSurveyList() {
         <div class="survey-check-area">
             <input type="checkbox" class="survey-checkbox" ${!isHidden ? "checked" : ""} onchange="toggleLayerVisibility(${props.id})">
         </div>
+        <div style="display:flex; align-items:center; padding-left:8px; color:#666;">${typeIcon}</div>
         <div class="survey-info" onclick="zoomToLayer(${props.id})">
-            <div class="survey-name">${typeIcon} ${props.memo}</div>
+            <div class="survey-name">${props.memo}</div>
+            ${dateStr ? `<div style="font-size: 11px; color: #999; margin-top: 2px;">${dateStr}</div>` : ''}
         </div>
         <div class="survey-actions">
             <input type="color" class="color-picker-input" value="${props.customColor || '#3388ff'}" onchange="updateLayerColor(${props.id}, this.value)" style="margin-right:2px;">
@@ -1518,6 +1692,9 @@ function updateLayerInfo(layer) {
 
     const id = layer.feature.properties.id;
 
+    // [확장 래퍼 시작]
+    popupContent += `<div class="bottom-sheet-extra"><div class="extra-inner">`;
+
     // [상세 메모 표시 영역]
     const description = layer.feature.properties.description || "";
     if (description) {
@@ -1539,16 +1716,10 @@ function updateLayerInfo(layer) {
         popupContent += `</div>`;
     }
 
-    // [버튼 그룹 (사진추가, 수정, 삭제, 메모)] - 2x2 그리드 배치
-    // 공유/네비 버튼과 동일한 스타일 (흰색 배경, 회색 테두리), 삭제만 빨간 글씨
-
+    // [버튼 그룹 (사진추가, 메모)] - 2개 버튼 그리드 배치
     // 1. 사진 추가 (Monochrome)
     const btnPhotoStyle = "background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
-    // 2. 수정 (Monochrome)
-    const btnEditStyle = "background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
-    // 3. 삭제 (Red Text)
-    const btnDeleteStyle = "background:#fff; color:#ef4444; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
-    // 4. 메모 (Monochrome)
+    // 2. 메모 (Monochrome)
     const btnMemoStyle = "background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;";
 
     popupContent += `<div style="margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:5px;">
@@ -1568,19 +1739,8 @@ function updateLayerInfo(layer) {
             <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:#555;"><path d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z"/></svg>
             사진
         </button>
-
-        <!-- 수정 버튼 -->
-        <button onclick="enableSingleLayerEdit(${id})" class="popup-btn" style="${btnEditStyle}">
-            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:#555;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-            수정
-        </button>
-
-        <!-- 삭제 버튼 -->
-        <button onclick="deleteLayerById(${id})" class="popup-btn" style="${btnDeleteStyle}">
-            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:#ef4444;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-            삭제
-        </button>
-    </div>`;
+    </div>
+    </div></div>`; // [확장 래퍼 종료]
 
     // SVG path 인 경우 (선, 면) 강제로 이벤트 수신이 확실하도록 style 지정
     if (layer._path) {
@@ -1589,6 +1749,9 @@ function updateLayerInfo(layer) {
 
     // 팝업 대신 레이어 클릭 시 바텀 시트 열기 (클릭 및 터치 이벤트 모두 지원)
     layer.off('click').on('click', function (e) {
+        // 측량/수정 모드 중에는 도형 클릭을 무시합니다.
+        if (currentDrawer || currentEditLayerId !== null) return;
+
         // 레이어가 클릭되었음을 표시 (지도 바탕 클릭 핸들러 동작 방지)
         isLayerClicked = true;
         setTimeout(() => { isLayerClicked = false; }, 50);
@@ -1605,11 +1768,19 @@ function updateLayerInfo(layer) {
             map.fitBounds(layer.getBounds(), { padding: [60, 60], maxZoom: 19 });
         }
 
+        currentBottomSheetLayerId = layer.feature.properties.id;
+        if (document.getElementById('bottom-sheet-more-btn')) {
+            document.getElementById('bottom-sheet-more-btn').style.display = 'flex';
+        }
         openBottomSheet(layer.feature.properties.memo || '측량 기록', popupContent);
     });
 
     // 기존 layer.openPopup()을 사용하던 다른 위치에서 바텀 시트가 열리도록 함수 덮어쓰기
     layer.openPopup = function () {
+        currentBottomSheetLayerId = layer.feature.properties.id;
+        if (document.getElementById('bottom-sheet-more-btn')) {
+            document.getElementById('bottom-sheet-more-btn').style.display = 'flex';
+        }
         openBottomSheet(layer.feature.properties.memo || '측량 기록', popupContent);
         return this;
     };
@@ -2238,10 +2409,11 @@ window.deleteSelectedLayers = function () {
     }
 };
 function findMe() {
-    if (!navigator.geolocation) { alert("GPS 미지원"); return; }
+    if (currentDrawer || currentEditLayerId !== null) return; // 측량/수정 모드 중 동작 차단
+    if (!navigator.geolocation) { alert("지역 위치 서비스가 지원되지 않는 디바이스입니다."); return; }
     navigator.geolocation.getCurrentPosition(function (pos) {
         map.setView([pos.coords.latitude, pos.coords.longitude], 19);
-    }, function () { alert("위치 실패"); }, { enableHighAccuracy: true });
+    }, function () { alert("위치 정보를 가져오는 데 실패했습니다."); }, { enableHighAccuracy: true });
 }
 
 
@@ -2490,6 +2662,7 @@ function updateCoordDisplay() {
 
 // [위치 액션 모달] (주소 클릭 시)
 function openLocationActionModal() {
+    if (currentDrawer || currentEditLayerId !== null) return; // 측량/수정 모드 중 동작 차단
     const overlay = document.getElementById('location-action-modal-overlay');
     overlay.style.display = 'flex';
     setTimeout(() => { overlay.classList.add('visible'); }, 10);
@@ -2560,6 +2733,7 @@ function openSettingsModal() {
     // 현재 설정값 UI 반영
     document.getElementsByName('coord-mode-select').forEach(r => { if (parseInt(r.value) === coordMode) r.checked = true; });
     document.getElementsByName('export-format-select').forEach(r => { if (r.value === exportFormat) r.checked = true; });
+    document.getElementsByName('track-interval-select').forEach(r => { if (parseInt(r.value) === trackInterval) r.checked = true; });
 
     const overlay = document.getElementById('settings-modal-overlay');
     overlay.style.display = 'flex';
@@ -2582,6 +2756,126 @@ function setCoordMode(mode) {
 function setExportFormat(format) {
     exportFormat = format;
     localStorage.setItem('setting_export_format', format); // 설정 기기에 저장
+}
+
+function setTrackInterval(value) {
+    trackInterval = parseInt(value);
+    localStorage.setItem('setting_track_interval', value); // 설정 기기에 저장
+}
+
+/* --------------------------------------------------------------------------
+   트랙 기록 모드
+   GPS watchPosition으로 위치를 연속 수신하여
+   설정한 거리 간격마다 선에 좌표를 추가합니다.
+   -------------------------------------------------------------------------- */
+function startTrackRecording() {
+    if (currentDrawer || currentEditLayerId !== null) return;
+    if (!navigator.geolocation) { alert('그리기 GPS가 지원되지 않는 기기입니다.'); return; }
+
+    // currentDrawer를 'track' sentinel로 설정하여 기존 차단 로직에 활용
+    currentDrawer = 'track';
+    document.body.classList.add('recording-mode');
+    lastTrackLatLng = null;
+
+    // 임시 레이어 생성 (주황색+반투명 선)
+    const randomColor = getRandomColor();
+    trackPolyline = L.polyline([], {
+        color: randomColor,
+        weight: 4,
+        opacity: 0.85
+    }).addTo(map);
+
+    // 트랙 액션 툴바 표시
+    document.getElementById('track-action-toolbar').style.display = 'flex';
+
+    // GPS 추적 시작
+    trackWatchId = navigator.geolocation.watchPosition(
+        function (pos) {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const newLatLng = L.latLng(lat, lng);
+
+            if (!lastTrackLatLng) {
+                // 첫 번째 좌표는 시작점으로 바로 추가
+                trackPolyline.addLatLng(newLatLng);
+                lastTrackLatLng = newLatLng;
+                map.panTo(newLatLng);
+                return;
+            }
+
+            // turf.distance로 이전 좌표와의 거리 계산 (km → m)
+            const from = turf.point([lastTrackLatLng.lng, lastTrackLatLng.lat]);
+            const to = turf.point([lng, lat]);
+            const distM = turf.distance(from, to, { units: 'kilometers' }) * 1000;
+
+            if (distM >= trackInterval) {
+                trackPolyline.addLatLng(newLatLng);
+                lastTrackLatLng = newLatLng;
+                map.panTo(newLatLng);
+            }
+        },
+        function () { alert('GPS 수신 실패. 울외로 이동 시 다시 시도하세요.'); },
+        { enableHighAccuracy: true, maximumAge: 0 }
+    );
+}
+
+function completeTrackRecording() {
+    if (trackWatchId !== null) {
+        navigator.geolocation.clearWatch(trackWatchId);
+        trackWatchId = null;
+    }
+
+    const latlngs = trackPolyline ? trackPolyline.getLatLngs() : [];
+
+    if (latlngs.length < 2) {
+        alert('트랙에 좌표가 2개 미만입니다. 이동 후 다시 시도하세요.');
+        // 실패 시에도 UI를 정리하고 취소
+        cancelTrackRecording();
+        return;
+    }
+
+    // 임시 선 제거
+    if (trackPolyline) { map.removeLayer(trackPolyline); trackPolyline = null; }
+
+    const memo = prompt('기록명 입력:', '트랙_' + getTimestampString());
+    if (memo === null) {
+        // 취소 시 - 상태만 복원
+        _resetTrackUI();
+        return;
+    }
+
+    // Leaflet polyline 다시 생성하여 drawnItems에 등록
+    const randomColor = getRandomColor();
+    const layer = L.polyline(latlngs, { color: randomColor, weight: 4 });
+    layer.feature = {
+        type: 'Feature',
+        properties: { memo: memo || getTimestampString(), id: Date.now(), isHidden: false, customColor: randomColor, isTrack: true }
+    };
+
+    updateLayerInfo(layer);
+    drawnItems.addLayer(layer);
+    saveToStorage();
+    renderSurveyList();
+    switchSidebarTab('record');
+
+    _resetTrackUI();
+}
+
+function cancelTrackRecording() {
+    if (trackWatchId !== null) {
+        navigator.geolocation.clearWatch(trackWatchId);
+        trackWatchId = null;
+    }
+    if (trackPolyline) { map.removeLayer(trackPolyline); trackPolyline = null; }
+    _resetTrackUI();
+}
+
+function _resetTrackUI() {
+    currentDrawer = null;
+    lastTrackLatLng = null;
+    document.body.classList.remove('recording-mode');
+    document.getElementById('track-action-toolbar').style.display = 'none';
+    resetButtonStyles();
 }
 
 // 초기 좌표 표시
