@@ -104,7 +104,9 @@ const SVG_ICONS = {
     // 트랙(달리기) 아이콘
     track: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>`,
     // 폴더 이동 아이콘 (커스텀: 큰 화살표)
-    folder_move: `<svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h11v-2H4V8h16v4h2V8c0-1.1-.9-2-2-2z"/><path d="M14 13v-3l7 4.5-7 4.5v-3H9v-3h5z"/></svg>`
+    folder_move: `<svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h11v-2H4V8h16v4h2V8c0-1.1-.9-2-2-2z"/><path d="M14 13v-3l7 4.5-7 4.5v-3H9v-3h5z"/></svg>`,
+    // 카메라 아이콘
+    camera: `<svg class="svg-inline" viewBox="0 0 24 24"><path d="M4 4h3l2-2h6l2 2h3c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zm8 3c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z"/></svg>`
 };
 
 
@@ -2814,9 +2816,46 @@ function startTrackRecording() {
                 map.panTo(newLatLng);
             }
         },
-        function () { alert('GPS 수신 실패. 울외로 이동 시 다시 시도하세요.'); },
+        function () { alert('GPS 수신 실패. 실외로 이동 후 다시 시도하세요.'); },
         { enableHighAccuracy: true, maximumAge: 0 }
     );
+}
+
+function addTrackPhotoPoint(event) {
+    if (!lastTrackLatLng) {
+        alert('아직 GPS 위치가 수신되지 않아 사진을 추가할 수 없습니다.');
+        return;
+    }
+
+    const iconHtml = `<div style="width:24px; height:24px; color:#333; background:white; border-radius:50%; padding:2px; box-shadow:0 2px 4px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center;">${SVG_ICONS.camera}</div>`;
+    const cameraIcon = L.divIcon({
+        className: 'custom-div-icon',
+        html: iconHtml,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+    });
+
+    const markerId = Date.now();
+    const marker = L.marker(lastTrackLatLng, { icon: cameraIcon });
+
+    marker.feature = {
+        type: 'Feature',
+        properties: {
+            id: markerId,
+            memo: '트랙 사진',
+            isHidden: false
+        }
+    };
+
+    drawnItems.addLayer(marker);
+    updateLayerInfo(marker);
+    saveToStorage();
+    renderSurveyList();
+
+    // 사진 선택 메뉴 띄우기
+    if (window.openPhotoSelectMenu) {
+        window.openPhotoSelectMenu(event, markerId);
+    }
 }
 
 function completeTrackRecording() {
@@ -2828,7 +2867,7 @@ function completeTrackRecording() {
     const latlngs = trackPolyline ? trackPolyline.getLatLngs() : [];
 
     if (latlngs.length < 2) {
-        alert('트랙에 좌표가 2개 미만입니다. 이동 후 다시 시도하세요.');
+        alert('트랙에 기록된 좌표가 2개 미만이므로 저장할 수 없습니다.');
         // 실패 시에도 UI를 정리하고 취소
         cancelTrackRecording();
         return;
