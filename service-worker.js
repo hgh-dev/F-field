@@ -1,6 +1,6 @@
 // service-worker.js (하이브리드 전략)
 
-const CACHE_NAME = 'F-field-v1.9.0';
+const CACHE_NAME = 'F-field-v1.9.1';
 
 // 1. 설치: 기본 뼈대만 캐싱 (라이브러리 등 변하지 않는 것들)
 const STATIC_URLS = [

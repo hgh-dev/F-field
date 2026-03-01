@@ -70,6 +70,14 @@ let trackWatchId = null;      // GPS watchPosition 피드 시구체 ID
 let trackPolyline = null;     // 트랙 모드에서 김고 있는 임시 polyline 레이어
 let lastTrackLatLng = null;   // 마지막으로 기록된 좌표 (거리 계산 기준점)
 
+// [절전 모드 및 화면 꺼짐 방지]
+let wakeLock = null;
+let sleepSliderThumb = null;
+let isDraggingSleepSlider = false;
+let sleepStartX = 0;
+let sleepCurrentX = 0;
+let sleepMaxDragX = 0;
+
 
 
 /* --------------------------------------------------------------------------
@@ -878,6 +886,14 @@ function closeBottomSheet() {
     }
     currentBottomSheetLayerId = null;
 }
+
+// 바텀시트 반열림/완전열림 토글 함수
+window.toggleBottomSheetState = function () {
+    const bottomSheet = document.getElementById('bottom-sheet');
+    if (bottomSheet.classList.contains('open')) {
+        bottomSheet.classList.toggle('full-open');
+    }
+};
 
 // 바텀시트 더보기 메뉴 토글
 window.toggleBottomSheetMoreMenu = function (event) {
@@ -2478,13 +2494,30 @@ function createColoredMarkerIcon(color) {
         className: '',
         html: `<svg viewBox="0 0 24 24" width="36" height="36" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" 
-                      fill="${color}" stroke="white" stroke-width="1.5"/>
+                      fill="${color}" stroke="white" stroke-width="0.8"/>
                </svg>`,
         iconSize: [36, 36],
         iconAnchor: [18, 36],
         popupAnchor: [0, -36]
     });
 }
+
+// 브라우저 전체화면 토글 함수
+window.toggleFullscreen = function () {
+    if (!document.fullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.log(`전체화면 요청 실패: ${err.message}`);
+            });
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen().catch(err => {
+                console.log(`전체화면 해제 실패: ${err.message}`);
+            });
+        }
+    }
+};
 
 function getShortAddress(addressName) {
     if (!addressName) return "";
@@ -2534,6 +2567,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     updateLayerOrder();
     syncSidebarUI();
     renderSearchResultList(JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]'));
+
+    // 4. 절전 슬라이더 초기화
+    initSleepSlider();
 });
 
 // 시작 시 데이터 로드 및 GPS 연결
@@ -2774,6 +2810,10 @@ function startTrackRecording() {
     if (currentDrawer || currentEditLayerId !== null) return;
     if (!navigator.geolocation) { alert('그리기 GPS가 지원되지 않는 기기입니다.'); return; }
 
+    const confirmMsg = "트랙 기록을 시작합니다.\n\n1. 화면을 끄거나 다른 앱을 실행하면 GPS가 중단되어 트랙 기록이 끊어집니다. 이를 방지하기 위해 기록 중에는 화면이 자동으로 꺼지지 않습니다.\n\n2. 배터리 소모를 최소화하려면 하단의 [절전] 버튼을 눌러주세요. 화면이 까맣게 변하며, '오른쪽으로 밀어서 해제'로 돌아올 수 있습니다.\n\n3. 기록 중 [사진 추가] 버튼을 누르면 해당 위치에 독립적인 '점'이 생성되어 촬영한 사진이나 갤러리의 사진을 기록으로 추가할 수 있습니다.\n\n계속하시겠습니까?";
+
+    if (!confirm(confirmMsg)) return;
+
     // currentDrawer를 'track' sentinel로 설정하여 기존 차단 로직에 활용
     currentDrawer = 'track';
     document.body.classList.add('recording-mode');
@@ -2789,6 +2829,9 @@ function startTrackRecording() {
 
     // 트랙 액션 툴바 표시
     document.getElementById('track-action-toolbar').style.display = 'flex';
+
+    // 화면 꺼짐 방지 시작
+    requestWakeLock();
 
     // GPS 추적 시작
     trackWatchId = navigator.geolocation.watchPosition(
@@ -2827,16 +2870,11 @@ function addTrackPhotoPoint(event) {
         return;
     }
 
-    const iconHtml = `<div style="width:24px; height:24px; color:#333; background:white; border-radius:50%; padding:2px; box-shadow:0 2px 4px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center;">${SVG_ICONS.camera}</div>`;
-    const cameraIcon = L.divIcon({
-        className: 'custom-div-icon',
-        html: iconHtml,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
-    });
-
     const markerId = Date.now();
-    const marker = L.marker(lastTrackLatLng, { icon: cameraIcon });
+
+    // 점 기록과 동일한 파란색 기본 마커 아이콘 사용
+    const markerIcon = createColoredMarkerIcon('#3388ff');
+    const marker = L.marker(lastTrackLatLng, { icon: markerIcon });
 
     marker.feature = {
         type: 'Feature',
@@ -2927,7 +2965,120 @@ function _resetTrackUI() {
     document.body.classList.remove('recording-mode');
     document.getElementById('track-action-toolbar').style.display = 'none';
     resetButtonStyles();
+
+    // 절전/화면 꺼짐 방지 해제
+    releaseWakeLock();
+    unlockSleepMode();
 }
+
+// --- 절전 모드 & Wake Lock API 로직 ---
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => {
+                console.log('Wake Lock was released');
+            });
+            console.log('Wake Lock is active');
+        }
+    } catch (err) {
+        console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+    }
+}
+
+function releaseWakeLock() {
+    if (wakeLock !== null) {
+        wakeLock.release().then(() => {
+            wakeLock = null;
+            console.log('Wake Lock released manually');
+        });
+    }
+}
+
+// 다른 앱으로 넘어갔다가 돌아올 때 Wake Lock 재요청
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        requestWakeLock();
+    }
+});
+
+function initSleepSlider() {
+    sleepSliderThumb = document.getElementById('sleep-slider-thumb');
+    if (!sleepSliderThumb) return;
+
+    sleepSliderThumb.addEventListener('touchstart', onSleepSliderTouchStart, { passive: false });
+    document.addEventListener('touchmove', onSleepSliderTouchMove, { passive: false });
+    document.addEventListener('touchend', onSleepSliderTouchEnd);
+}
+
+function onSleepSliderTouchStart(e) {
+    const overlay = document.getElementById('sleep-mode-overlay');
+    if (!overlay || overlay.style.display === 'none') return;
+
+    isDraggingSleepSlider = true;
+    sleepStartX = e.touches[0].clientX;
+    sleepSliderThumb.classList.add('dragging');
+
+    const containerWidth = sleepSliderThumb.parentElement.offsetWidth;
+    sleepMaxDragX = containerWidth - 60; // 썸 크기 + 여백
+}
+
+function onSleepSliderTouchMove(e) {
+    if (!isDraggingSleepSlider) return;
+    e.preventDefault(); // 기본 스크롤 동작 방지
+
+    sleepCurrentX = e.touches[0].clientX - sleepStartX;
+    if (sleepCurrentX < 0) sleepCurrentX = 0;
+    if (sleepCurrentX > sleepMaxDragX) sleepCurrentX = sleepMaxDragX;
+
+    sleepSliderThumb.style.transform = `translateX(${sleepCurrentX}px)`;
+}
+
+function onSleepSliderTouchEnd(e) {
+    if (!isDraggingSleepSlider) return;
+    isDraggingSleepSlider = false;
+    sleepSliderThumb.classList.remove('dragging');
+
+    // 85% 이상 밀면 절전 해제, 그렇지 않으면 원위치
+    if (sleepCurrentX >= sleepMaxDragX * 0.85) {
+        unlockSleepMode();
+    } else {
+        sleepSliderThumb.style.transform = `translateX(0px)`;
+    }
+}
+
+window.startSleepMode = function () {
+    const overlay = document.getElementById('sleep-mode-overlay');
+    if (overlay) {
+        overlay.style.display = 'flex';
+        if (sleepSliderThumb) {
+            sleepSliderThumb.style.transform = `translateX(0px)`;
+        }
+    }
+    // 전체화면 모드 시작
+    if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(err => {
+            console.log(`전체화면 요청 실패: ${err.message}`);
+        });
+    }
+};
+
+window.unlockSleepMode = function () {
+    const overlay = document.getElementById('sleep-mode-overlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+        if (sleepSliderThumb) {
+            sleepSliderThumb.style.transform = `translateX(0px)`;
+        }
+    }
+    // 전체화면 모드 해제
+    if (document.fullscreenElement) {
+        document.exitFullscreen().catch(err => {
+            console.log(`전체화면 해제 실패: ${err.message}`);
+        });
+    }
+};
+
 
 // 초기 좌표 표시
 updateCoordDisplay();
