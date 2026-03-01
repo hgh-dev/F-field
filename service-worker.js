@@ -1,6 +1,7 @@
 // service-worker.js (하이브리드 전략)
 
-const CACHE_NAME = 'F-field-v1.9.1';
+const STATIC_CACHE_NAME = 'F-field-static-v1.9.2';
+const MAP_CACHE_NAME = 'F-field-map-v1';
 
 // 1. 설치: 기본 뼈대만 캐싱 (라이브러리 등 변하지 않는 것들)
 const STATIC_URLS = [
@@ -18,16 +19,30 @@ const STATIC_URLS = [
 self.addEventListener('install', (event) => {
     self.skipWaiting(); // 대기 없이 즉시 활성화
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_URLS))
+        caches.open(STATIC_CACHE_NAME).then((cache) => cache.addAll(STATIC_URLS))
     );
 });
 
+// 가장 오래된 캐시 지우기 함수
+function trimCache(cacheName, maxItems) {
+    caches.open(cacheName).then((cache) => {
+        cache.keys().then((keys) => {
+            if (keys.length > maxItems) {
+                cache.delete(keys[0]).then(() => {
+                    trimCache(cacheName, maxItems);
+                });
+            }
+        });
+    });
+}
+
 // 2. 활성화: 구버전 캐시 정리
 self.addEventListener('activate', (event) => {
+    const cacheWhitelist = [STATIC_CACHE_NAME, MAP_CACHE_NAME];
     event.waitUntil(
         caches.keys().then((keyList) => {
             return Promise.all(keyList.map((key) => {
-                if (key !== CACHE_NAME) {
+                if (!cacheWhitelist.includes(key)) {
                     return caches.delete(key);
                 }
             }));
@@ -43,14 +58,17 @@ self.addEventListener('fetch', (event) => {
     // 목적: 무조건 속도! 타일은 잘 안 바뀌니까 저장된 거 먼저 씀.
     if (url.includes('api.vworld.kr') || url.includes('arcgisonline.com') || url.includes('openstreetmap.org')) {
         event.respondWith(
-            caches.open(CACHE_NAME).then((cache) => {
+            caches.open(MAP_CACHE_NAME).then((cache) => {
                 return cache.match(event.request).then((cachedResponse) => {
                     // 캐시에 있으면 그거 줌 (0.01초)
                     if (cachedResponse) return cachedResponse;
 
                     // 없으면 인터넷에서 받아와서 저장 후 줌
                     return fetch(event.request).then((networkResponse) => {
-                        cache.put(event.request, networkResponse.clone());
+                        cache.put(event.request, networkResponse.clone()).then(() => {
+                            // 캐시 개수 제한 로직 실행
+                            trimCache(MAP_CACHE_NAME, 15000);
+                        });
                         return networkResponse;
                     });
                 });
@@ -65,7 +83,7 @@ self.addEventListener('fetch', (event) => {
         fetch(event.request)
             .then((networkResponse) => {
                 // 인터넷에서 잘 받아왔으면? -> 캐시도 최신으로 교체해두고, 브라우저에 줌
-                return caches.open(CACHE_NAME).then((cache) => {
+                return caches.open(STATIC_CACHE_NAME).then((cache) => {
                     cache.put(event.request, networkResponse.clone());
                     return networkResponse;
                 });
