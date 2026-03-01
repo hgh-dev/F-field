@@ -2852,6 +2852,18 @@ function addTrackPhotoPoint(event) {
     saveToStorage();
     renderSurveyList();
 
+    // 트랙 모드 중에는 바텀시트가 열리지 않아 input 태그가 DOM에 없으므로, 임시로 body에 추가합니다.
+    if (!document.getElementById(`input-cam-${markerId}`)) {
+        const tempContainer = document.createElement('div');
+        tempContainer.id = `temp-inputs-${markerId}`;
+        tempContainer.style.display = 'none';
+        tempContainer.innerHTML = `
+            <input type="file" id="input-cam-${markerId}" accept="image/*" capture="environment" onchange="processPhotoFiles(this, ${markerId})">
+            <input type="file" id="input-gal-${markerId}" accept="image/*" multiple onchange="processPhotoFiles(this, ${markerId})">
+        `;
+        document.body.appendChild(tempContainer);
+    }
+
     // 사진 선택 메뉴 띄우기
     if (window.openPhotoSelectMenu) {
         window.openPhotoSelectMenu(event, markerId);
@@ -3596,10 +3608,21 @@ window.processPhotoFiles = function (input, layerId) {
         saveToStorage();
         updateLayerInfo(layer);
 
-        // 바텀 시트 내용 즉시 갱신
-        layer.fire('click');
+        // 트랙 중 사진 추가로 만든 마커의 경우 바텀시트를 열지 않음
+        if (currentDrawer !== 'track') {
+            layer.fire('click');
+        } else {
+            // 트랙 기록 중에는 방금 저장한 사진 개수를 마커에 반영하기 위해 목록만 새로고침
+            renderSurveyList();
+        }
 
         input.value = ''; // 입력 초기화
+
+        // 임시로 추가된 input 태그 래퍼가 있다면 삭제 (트랙 기록 모드용)
+        const tempContainer = document.getElementById(`temp-inputs-${layerId}`);
+        if (tempContainer) {
+            tempContainer.remove();
+        }
     });
 };
 
