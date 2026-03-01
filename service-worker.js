@@ -23,14 +23,15 @@ self.addEventListener('install', (event) => {
     );
 });
 
-// 가장 오래된 캐시 지우기 함수
+// 가장 오래된 캐시 지우기 함수 (일괄 삭제 방식)
 function trimCache(cacheName, maxItems) {
     caches.open(cacheName).then((cache) => {
         cache.keys().then((keys) => {
             if (keys.length > maxItems) {
-                cache.delete(keys[0]).then(() => {
-                    trimCache(cacheName, maxItems);
-                });
+                // 초과한 개수만큼 잘라서 삭제 대상 배열 만들기
+                const keysToDelete = keys.slice(0, keys.length - maxItems);
+                Promise.all(keysToDelete.map(key => cache.delete(key)))
+                    .then(() => console.log(`[Service Worker] Deleted ${keysToDelete.length} old cache items from ${cacheName}.`));
             }
         });
     });
@@ -66,7 +67,6 @@ self.addEventListener('fetch', (event) => {
                     // 없으면 인터넷에서 받아와서 저장 후 줌
                     return fetch(event.request).then((networkResponse) => {
                         cache.put(event.request, networkResponse.clone()).then(() => {
-                            // 캐시 개수 제한 로직 실행
                             trimCache(MAP_CACHE_NAME, 15000);
                         });
                         return networkResponse;

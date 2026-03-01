@@ -185,7 +185,8 @@ const vworldBase = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{laye
     ext: 'png',
     attribution: 'VWorld',
     maxNativeZoom: 19, // 서버가 제공하는 최대 줌 레벨
-    maxZoom: 22        // 클라이언트에서 확대해서 보여줄 최대 레벨 (이미지가 깨질 수 있음)
+    maxZoom: 22,       // 클라이언트에서 확대해서 보여줄 최대 레벨 (이미지가 깨질 수 있음)
+    crossOrigin: true
 });
 
 // 2. VWorld 위성(영상) 지도
@@ -195,7 +196,8 @@ const vworldSatellite = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/
     ext: 'jpeg',
     attribution: 'VWorld',
     maxNativeZoom: 19,
-    maxZoom: 22
+    maxZoom: 22,
+    crossOrigin: true
 });
 
 // 3. VWorld 하이브리드 오버레이 (도로, 지명 등 투명 배경)
@@ -207,7 +209,8 @@ const vworldHybrid = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{la
     opacity: 1,
     attribution: 'VWorld',
     maxNativeZoom: 19,
-    maxZoom: 22
+    maxZoom: 22,
+    crossOrigin: true
 });
 
 // 8. Esri 위성지도 (World Imagery)
@@ -215,7 +218,8 @@ const vworldHybrid = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{la
 const esriSatelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'Esri World Imagery',
     maxNativeZoom: 19,
-    maxZoom: 22
+    maxZoom: 22,
+    crossOrigin: true
 });
 
 /**
@@ -238,7 +242,8 @@ const vworldLxLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     detectRetina: true,
     tileSize: 512, // 고해상도 처리를 위해 타일 크기 조정
     zoomOffset: 0,
-    className: 'cadastral-layer' // CSS로 스타일 제어를 위해 클래스 추가
+    className: 'cadastral-layer', // CSS로 스타일 제어를 위해 클래스 추가
+    crossOrigin: true
 });
 
 // 5. 연속 지적도 (실제 지적선)
@@ -255,7 +260,8 @@ const vworldContinuousLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     detectRetina: true,
     tileSize: 512,
     zoomOffset: 0,
-    className: 'cadastral-layer'
+    className: 'cadastral-layer',
+    crossOrigin: true
 });
 
 // 6. 국유림 레이어 (직접 호스팅하는 커스텀 타일)
@@ -267,7 +273,8 @@ const nasGukLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon/guk/{z
     tms: false, // TMS 방식(Y축 반전)이 아니므로 false
     pane: 'nasGukPane', // 아까 만든 커스텀 Pane에 배치하여 항상 위에 표시됨
     opacity: 1,
-    attribution: 'Suwon Guk'
+    attribution: 'Suwon Guk',
+    crossOrigin: true
 });
 
 // 7. 행정경계 레이어 (통합 WMS)
@@ -283,7 +290,8 @@ const mergedAdminLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     minZoom: 6, // 너무 넓은 지역(전국)에서는 데이터 양이 많아 렉이 걸리므로 줌 제한
     maxZoom: 22,
     maxNativeZoom: 18,
-    className: 'admin-layer'
+    className: 'admin-layer',
+    crossOrigin: true
 });
 
 
