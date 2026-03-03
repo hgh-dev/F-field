@@ -1,6 +1,6 @@
 // service-worker.js (하이브리드 전략)
 
-const STATIC_CACHE_NAME = 'F-field-static-v1.9.2';
+const STATIC_CACHE_NAME = 'F-field-v2.0.0';
 const MAP_CACHE_NAME = 'F-field-map-v1';
 
 // 1. 설치: 기본 뼈대만 캐싱 (라이브러리 등 변하지 않는 것들)
@@ -13,7 +13,16 @@ const STATIC_URLS = [
     'https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.4.4/proj4.js',
     'https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js',
     './icon.png',
-    './manifest.json'
+    './manifest.json',
+    './index.html',
+    './config.js',
+    './state.js',
+    './map.js',
+    './draw.js',
+    './data.js',
+    './ui.js',
+    './utils.js',
+    './script.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -54,6 +63,11 @@ self.addEventListener('activate', (event) => {
 // 3. 요청 처리 (여기가 핵심!)
 self.addEventListener('fetch', (event) => {
     const url = event.request.url;
+
+    // WMS 및 실시간 API 요청은 캐싱하지 않고 즉시 통과 (CORS 에러 및 뻥튀기 방지)
+    if (url.includes('/req/wms') || url.includes('/req/data') || url.includes('/req/search') || url.includes('/req/address')) {
+        return;
+    }
 
     // 전략 A: 지도 타일 이미지 (VWorld, Esri 등) -> "캐시 우선 (Cache First)"
     // 목적: 무조건 속도! 타일은 잘 안 바뀌니까 저장된 거 먼저 씀.

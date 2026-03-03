@@ -17,7 +17,8 @@
 
     <!-- PWA (웹앱) 설정: 홈 화면에 추가할 때 앱처럼 보이게 합니다. -->
     <link rel="manifest" href="manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes"> <!-- iOS 호환성을 위해 남겨둠 -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icon.png">
 
@@ -2651,7 +2652,7 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script src="script.js?v=1.9.2"></script>
+    <script type="module" src="script.js?v=2.0.0"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {

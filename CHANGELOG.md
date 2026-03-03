@@ -4,6 +4,10 @@
 
 이 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.0.0/)를 따릅니다.
 
+## [2.0.0] - 2026-03-03
+### 추가 (Added)
+- 리팩토링 : script.js가 비대해짐에 따라 ui.js, map.js, draw.js, state.js, data.js로 분리
+
 ## [1.9.2] - 2026-03-02
 ### 수정 (Fixed)
 - 지도 캐시 분리
