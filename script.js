@@ -397,5 +397,13 @@ window.toggleOverlay = toggleOverlay;
 window.toggleBaseLayer = toggleBaseLayer;
 window.changeCadastralMap = changeCadastralMap;
 window.changeBaseMap = changeBaseMap;
+window.startDraw = startDraw;
+window.completeDrawing = completeDrawing;
+window.cancelDrawing = cancelDrawing;
+window.addGpsVertex = addGpsVertex;
+window.deleteLastVertex = deleteLastVertex;
+window.completeSingleEdit = completeSingleEdit;
+window.revertSingleEdit = revertSingleEdit;
+window.cancelSingleEdit = cancelSingleEdit;
 
 
