@@ -405,5 +405,6 @@ window.deleteLastVertex = deleteLastVertex;
 window.completeSingleEdit = completeSingleEdit;
 window.revertSingleEdit = revertSingleEdit;
 window.cancelSingleEdit = cancelSingleEdit;
+window.handleFileSelect = handleFileSelect;
 
 
