@@ -43,7 +43,7 @@ import {
     createNewProject, editProjectName, deleteCurrentProject,
     openMoveProjectModal, openMoveSelectionModal, closeMoveProjectModal,
     highlightButton, resetButtonStyles, openNavModal, closeNavModal,
-    executeNavigation, toggleFullscreen, updateCoordDisplay,
+    executeNavigation, updateCoordDisplay,
     startSleepMode, unlockSleepMode, initSleepSlider, toggleAccordion,
     toggleMoreMenu, toggleProjectMenu, openPhotoSelectMenu,
     closePhotoSelectMenu, handlePhotoMenuAction, processPhotoFiles,
@@ -302,6 +302,54 @@ function completeTrackRecording() {
     resetTrackUI();
 }
 
+export function startPhotoPoint() {
+    if (AppState.currentDrawer || currentEditLayerId !== null) return;
+
+    const tempId = 'new-photo-point';
+    let div = document.getElementById(`temp-inputs-${tempId}`);
+    if (!div) {
+        div = document.createElement('div');
+        div.id = `temp-inputs-${tempId}`;
+        div.style.display = 'none';
+        div.innerHTML = `<input type="file" id="input-cam-${tempId}" accept="image/*" capture="environment" onchange="processPendingPhotoFiles(this)">
+                         <input type="file" id="input-gal-${tempId}" accept="image/*" multiple onchange="processPendingPhotoFiles(this)">`;
+        document.body.appendChild(div);
+    }
+    openPhotoSelectMenu(null, tempId);
+}
+
+export function processPendingPhotoFiles(input) {
+    const files = input.files;
+    if (!files || files.length === 0) return;
+    if (files.length > 5) {
+        alert('사진은 최대 5장까지만 저장할 수 있습니다.');
+        input.value = '';
+        return;
+    }
+
+    import('./utils.js').then(({ resizeImage }) => {
+        const promises = Array.from(files).map(file => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    resizeImage(e.target.result, 800, 0.8).then(resolve);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+        Promise.all(promises).then(results => {
+            AppState.pendingPhotos = results;
+            input.value = ''; // 초기화
+
+            const tempDiv = document.getElementById('temp-inputs-new-photo-point');
+            if (tempDiv) tempDiv.remove();
+
+            // 이미지 선택/촬영 후 마커 찍기 그리기 도구 실행
+            startDraw('marker');
+        });
+    });
+}
+
 function addTrackPhotoPoint(event) {
     if (!AppState.lastTrackLatLng) { alert('GPS 위치 수신 대기 중...'); return; }
     const trackColor = AppState.trackPolyline ? AppState.trackPolyline.options.color : '#3388ff';
@@ -362,6 +410,8 @@ window.startTrackRecording = startTrackRecording;
 window.completeTrackRecording = completeTrackRecording;
 window.cancelTrackRecording = cancelTrackRecording;
 window.addTrackPhotoPoint = addTrackPhotoPoint;
+window.startPhotoPoint = startPhotoPoint;
+window.processPendingPhotoFiles = processPendingPhotoFiles;
 window.saveCurrentPoint = saveCurrentPoint;
 window.saveCurrentBoundary = saveCurrentBoundary;
 window.triggerFileInput = () => document.getElementById('geoJsonInput').click();

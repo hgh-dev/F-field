@@ -86,7 +86,20 @@ const actionToolbar = document.getElementById('action-toolbar');
 export function startDraw(type) {
     if (AppState.currentDrawer || currentEditLayerId !== null) return; // 측량/수정 모드 중 중복 시작 차단
 
-    const options = { touchIcon: null, showLength: true, allowIntersection: true };
+    const randomColor = getRandomColor();
+    AppState.currentDrawColor = randomColor;
+
+    const options = {
+        touchIcon: null,
+        showLength: true,
+        allowIntersection: true,
+        shapeOptions: {
+            color: randomColor,
+            fillColor: randomColor,
+            weight: 4,
+            opacity: 0.85
+        }
+    };
 
     if (type === 'polygon') {
         AppState.currentDrawer = new L.Draw.Polygon(map, options);
@@ -95,7 +108,7 @@ export function startDraw(type) {
         AppState.currentDrawer = new L.Draw.Polyline(map, options);
         highlightButton('btn-line');
     } else if (type === 'marker') {
-        AppState.currentDrawer = new L.Draw.Marker(map, { icon: defaultSurveyIcon });
+        AppState.currentDrawer = new L.Draw.Marker(map, { icon: createColoredMarkerIcon(randomColor) });
         highlightButton('btn-point');
     }
 
@@ -137,6 +150,11 @@ function resetDrawingState() {
     document.body.classList.remove('recording-mode');
     actionToolbar.style.display = 'none';
     resetButtonStyles();
+
+    if (AppState.pendingPhotos) {
+        AppState.pendingPhotos = null;
+    }
+    AppState.currentDrawColor = null;
 }
 
 
@@ -153,7 +171,8 @@ export function addGpsVertex() {
         const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
 
         if (AppState.currentDrawer instanceof L.Draw.Marker) {
-            const marker = L.marker(latlng, { icon: defaultSurveyIcon });
+            const markerColor = AppState.currentDrawColor || '#0040ff';
+            const marker = L.marker(latlng, { icon: createColoredMarkerIcon(markerColor) });
             AppState.currentDrawer.disable();
             AppState.currentDrawer = null;
             map.fire(L.Draw.Event.CREATED, { layer: marker, layerType: 'marker' });
@@ -310,11 +329,17 @@ map.on(L.Draw.Event.CREATED, function (event) {
     if (memo === null) return; // 취소 시 무시
     if (!memo) memo = getTimestampString();
 
-    const randomColor = getRandomColor();
+    const randomColor = AppState.currentDrawColor || getRandomColor();
     layer.feature = {
         type: "Feature",
         properties: { memo: memo, id: Date.now(), isHidden: false, customColor: randomColor }
     };
+
+    // 사진 첨부 점 측량 (Pending Photos) 확인
+    if (AppState.pendingPhotos && AppState.pendingPhotos.length > 0) {
+        layer.feature.properties.photos = AppState.pendingPhotos;
+        AppState.pendingPhotos = null;
+    }
 
     if (event.layerType === 'marker') {
         layer.setIcon(createColoredMarkerIcon(randomColor));

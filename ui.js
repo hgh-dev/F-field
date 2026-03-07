@@ -6,7 +6,7 @@ import { VWORLD_API_KEY, SEARCH_HISTORY_KEY, SEARCH_SETTING_KEY, SVG_ICONS } fro
 import { AppState } from './state.js';
 import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, updateLayerOrder } from './map.js';
 import { drawnItems, startDraw, currentEditLayerId, completeDrawing, cancelDrawing, enableSingleLayerEdit } from './draw.js';
-import { getTimestampString, getRandomColor, createColoredMarkerIcon, copyText, getTmCoords, convertToDms, getShortAddress, resizeImage } from './utils.js';
+import { getTimestampString, getRandomColor, createColoredMarkerIcon, copyText, getTmCoords, convertToDms, getShortAddress, resizeImage, parseNationalPointNumber } from './utils.js';
 import { saveToStorage, loadCurrentProjectFeatures, exportSingleLayer } from './data.js';
 
 
@@ -179,6 +179,21 @@ export function executeSearch(keyword) {
     if (isSearchHistoryEnabled) { addToHistory(query); }
     document.getElementById('history-panel').style.display = 'none';
     document.getElementById('search-input').value = query;
+
+    // 국가지점번호 패턴 검사
+    if (/^[가-하]{2}\s*\d{4}\s*\d{4}$/.test(query)) {
+        const coords = parseNationalPointNumber(query);
+        if (coords) {
+            const result = {
+                point: { x: coords[0], y: coords[1] },
+                title: "국가지점번호",
+                address: { road: query, parcel: "" }
+            };
+            moveToSearchResult(result);
+            closeSearchResult();
+            return;
+        }
+    }
 
     callVworldSearchApi(query, 'ADDRESS', function (addrResults) {
         if (addrResults && addrResults.length > 0) {
@@ -604,22 +619,52 @@ export function openMoveProjectModal(layerId) {
 
     const list = document.getElementById('project-move-list');
     list.innerHTML = "";
+
+
+
+    let otherProjectsCount = 0;
     AppState.projects.forEach(p => {
         if (p.id === parseInt(AppState.currentProjectId)) return;
+        otherProjectsCount++;
         const btn = document.createElement('button');
-        btn.style.cssText = "padding:12px; background:white; border:1px solid #ddd; border-radius:8px; text-align:left; cursor:pointer; font-size:14px; color:#333;";
-        btn.innerHTML = `<b>${p.name}</b> <span style='color:#888; font-size:12px;'>(${p.features.features ? p.features.features.length : 0}개)</span>`;
+        btn.style.cssText = "padding:14px; background:white; border:1px solid #ddd; border-radius:12px; text-align:left; cursor:pointer; font-size:15px; color:#333;";
+        btn.innerHTML = `<b>${p.name}</b> <span style='color:#888; font-size:13px;'>(${p.features.features ? p.features.features.length : 0}개)</span>`;
         btn.onclick = () => executeMoveProject(p.id);
         list.appendChild(btn);
     });
 
-    if (list.children.length === 0) {
-        list.innerHTML = "<div style='text-align:center; padding:20px; color:#999;'>이동할 다른 프로젝트가 없습니다.</div>";
+    if (otherProjectsCount === 0) {
+        const emptyMsg = document.createElement('div');
+        emptyMsg.style.cssText = 'text-align:center; padding:10px; color:#999; font-size:13px;';
+        emptyMsg.innerText = "이동할 다른 프로젝트가 없습니다.";
+        list.appendChild(emptyMsg);
     }
 
     const overlay = document.getElementById('project-move-modal-overlay');
     overlay.style.display = 'flex';
     setTimeout(() => { overlay.classList.add('visible'); }, 10);
+}
+
+export function createNewProjectAndMove() {
+    let defaultName = "새 프로젝트 " + (AppState.projects.length + 1);
+    if (AppState.projects.some(p => p.name === defaultName)) {
+        let cnt = 1;
+        while (AppState.projects.some(p => p.name === `${defaultName} (${cnt})`)) cnt++;
+        defaultName = `${defaultName} (${cnt})`;
+    }
+    const name = prompt("새 프로젝트 이름을 입력하세요:", defaultName);
+    if (!name) return;
+
+    const newProject = {
+        id: Date.now(),
+        name: name,
+        features: { type: "FeatureCollection", features: [] },
+        createdAt: new Date().toISOString()
+    };
+    AppState.projects.push(newProject);
+    renderProjectSelector();
+
+    executeMoveProject(newProject.id);
 }
 
 function executeMoveProject(targetProjectId) {
@@ -643,6 +688,7 @@ function executeMoveProject(targetProjectId) {
         renderSurveyList();
         alert(`${movedCount}개의 기록이 '${targetProject.name}'으로 이동되었습니다.`);
         closeMoveProjectModal();
+        window.switchProject(targetProject.id); // 이동한 프로젝트로 자동 전환
     }
 }
 
@@ -728,24 +774,6 @@ export function highlightButton(btnId) {
    6. 기타 UI 요소 (Utility UI)
    -------------------------------------------------------------------------- */
 /* 6-1. 전체화면, 좌표 표시 및 절전 모드 */
-
-export function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-        if (document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen().catch(err => {
-                console.log(`전체화면 요청 실패: ${err.message}`);
-            });
-        }
-    } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen().catch(err => {
-                console.log(`전체화면 해제 실패: ${err.message}`);
-            });
-        }
-    }
-}
-
-/* 4-2. 내비게이션 모달 */
 
 export function updateCoordDisplay() {
     let lat = AppState.lastGpsLat;
@@ -1499,12 +1527,12 @@ window.closeMemoModal = closeMemoModal;
 window.saveMemoAction = saveMemoAction;
 window.editLayerMemo = editLayerMemo;
 window.createNewProject = createNewProject;
+window.createNewProjectAndMove = createNewProjectAndMove;
 window.editProjectName = editProjectName;
 window.deleteCurrentProject = deleteCurrentProject;
 window.openMoveProjectModal = openMoveProjectModal;
 window.openMoveSelectionModal = openMoveSelectionModal;
 window.closeMoveProjectModal = closeMoveProjectModal;
-window.toggleFullscreen = toggleFullscreen;
 window.startSleepMode = startSleepMode;
 window.unlockSleepMode = unlockSleepMode;
 window.toggleAccordion = toggleAccordion;

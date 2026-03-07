@@ -2,8 +2,8 @@
    [모듈] 지도 및 레이어 매니저 (map.js)
    [역할] Leaflet 지도 객체 생성 및 각종 배경/지적도/오버레이 레이어 관리
    ========================================================================== */
-import { VWORLD_API_KEY } from './config.js?v=2.0.0';
-import { AppState } from './state.js?v=2.0.0';
+import { VWORLD_API_KEY } from './config.js?v=2.0.2';
+import { AppState } from './state.js?v=2.0.2';
 
 /* --------------------------------------------------------------------------
    1. 지도 초기화 (Map Initialization)
@@ -52,6 +52,7 @@ map.getPane('nasGukPane').style.pointerEvents = 'none';
  * VWorld나 공공데이터는 다양한 좌표계를 쓰므로 변환이 필수적입니다.
  */
 proj4.defs("EPSG:5186", "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs");
+proj4.defs("EPSG:5179", "+proj=tmerc +lat_0=38 +lon_0=127.5 +k=0.9996 +x_0=1000000 +y_0=2000000 +ellps=GRS80 +units=m +no_defs");
 
 
 

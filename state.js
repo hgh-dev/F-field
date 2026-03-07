@@ -46,6 +46,7 @@ export const AppState = {
     sleepStartX: 0,
     sleepCurrentX: 0,
     sleepMaxDragX: 0,
-    isLayerClicked: false // 레이어 클릭 시 맵 클릭 이벤트 전파 방지용 플래그
+    isLayerClicked: false, // 레이어 클릭 시 맵 클릭 이벤트 전파 방지용 플래그
+    pendingPhotos: null // 사진 점 측량 시 임시 저장용 사진 배열
 };
 

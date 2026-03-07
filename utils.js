@@ -108,3 +108,31 @@ export function resizeImage(base64Str, maxWidth = 1024, quality = 0.8) {
         };
     });
 }
+
+// 국가지점번호 -> 위경도 변환 함수
+export function parseNationalPointNumber(text) {
+    const match = text.match(/^([가-하])([가-하])\s*(\d{4})\s*(\d{4})$/);
+    if (!match) return null;
+
+    const chars = ['가', '나', '다', '라', '마', '바', '사', '아', '자', '차', '카', '타', '파', '하'];
+    const char1 = match[1];
+    const char2 = match[2];
+    const num1 = parseInt(match[3], 10);
+    const num2 = parseInt(match[4], 10);
+
+    const index1 = chars.indexOf(char1);
+    const index2 = chars.indexOf(char2);
+
+    if (index1 === -1 || index2 === -1) return null;
+
+    const x = (index1 + 7) * 100000 + num1 * 10;
+    const y = (index2 + 13) * 100000 + num2 * 10;
+
+    try {
+        const coords = proj4("EPSG:5179", "EPSG:4326", [x, y]);
+        return coords; // [lng, lat] 배열 반환
+    } catch (e) {
+        console.error("좌표 변환 실패", e);
+        return null;
+    }
+}

@@ -1932,7 +1932,7 @@
     ==========================================================================
     -->
     <div id="search-container">
-        <input type="text" id="search-input" placeholder="주소 또는 장소명 (예: 산124)"
+        <input type="text" id="search-input" placeholder="지번, 도로명, 장소명 또는 국가지점번호를 입력하세요"
             onkeypress="if(event.key==='Enter') executeSearch()" onfocus="showHistoryPanel()">
         <button id="search-go-btn" onclick="executeSearch()">이동</button>
 
@@ -1983,7 +1983,7 @@
             </svg>
         </button>
     </div>
-    
+
 
     <!-- 
     ==========================================================================
@@ -2076,6 +2076,19 @@
                 </svg>
             </div>
             <span>트랙</span>
+        </button>
+        <button id="btn-photo-point" class="bottom-btn" onclick="startPhotoPoint()">
+            <div class="icon-box">
+                <!-- 점 아이콘과 카메라 아이콘 합성 -->
+                <svg class="svg-icon" viewBox="0 0 24 24">
+                    <path fill="currentColor" opacity="0.4"
+                        d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+                    <!-- 작게 축소된 카메라 아이콘 내장 -->
+                    <path fill="currentColor"
+                        d="M14 9h-1.5l-1-1h-3l-1 1H6c-.55 0-1 .45-1 1v5c0 .55.45 1 1 1h8c.55 0 1-.45 1-1v-5c0-.55-.45-1-1-1zm-4 5.5c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" />
+                </svg>
+            </div>
+            <span>사진</span>
         </button>
     </div>
 
@@ -2187,11 +2200,6 @@
                     </svg>
                 </button>
                 <div style="display:flex; gap:10px;">
-                    <button class="btn-sidebar-action" onclick="toggleFullscreen()">
-                        <svg class="svg-icon" viewBox="0 0 24 24">
-                            <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
-                        </svg>
-                    </button>
                     <button class="btn-sidebar-action" onclick="openSettingsModal()">
                         <svg class="svg-icon" viewBox="0 0 24 24">
                             <path
@@ -2560,8 +2568,12 @@
                 <!-- 프로젝트 목록 투입 -->
             </div>
 
+            <button onclick="createNewProjectAndMove()"
+                style="width:100%; padding:14px; background:#eff6ff; border:1px dashed #3b82f6; border-radius:12px; font-size:15px; font-weight:bold; color:#3b82f6; margin-bottom:8px;">➕
+                새 프로젝트 생성</button>
+
             <button onclick="closeMoveProjectModal()"
-                style="width:100%; padding:14px; background:#f5f5f5; border:none; border-radius:12px; font-weight:bold; color:#666;">취소</button>
+                style="width:100%; padding:14px; background:#f5f5f5; border:none; border-radius:12px; font-size:15px; font-weight:bold; color:#666;">취소</button>
         </div>
     </div>
 
@@ -2653,7 +2665,7 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script type="module" src="script.js?v=2.0.0"></script>
+    <script type="module" src="script.js?v=2.0.2"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {
