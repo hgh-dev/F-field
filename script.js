@@ -170,19 +170,42 @@ map.on('dblclick', function (e) {
 });
 
 // 트랙 기록 관련 래퍼 (AppState 의존성 때문)
+let noSleepVideo = null;
+
 export async function requestWakeLock() {
     try {
         if ('wakeLock' in navigator) {
             AppState.wakeLock = await navigator.wakeLock.request('screen');
         }
     } catch (err) { console.error(err); }
+
+    if (!noSleepVideo) {
+        noSleepVideo = document.createElement('video');
+        noSleepVideo.setAttribute('playsinline', '');
+        noSleepVideo.setAttribute('muted', '');
+        noSleepVideo.muted = true;
+        noSleepVideo.loop = true;
+        noSleepVideo.style.display = 'none';
+        noSleepVideo.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMQAAAAhmcmVlAAAAQG1kYXQhCAgEAAAAAAARAAABvQAQAQAAEgQA//4AAAAAABIAAAAB100AAAAABAAeIBAEAAABXAAAAAAB//4AAAAAABIAAAAAAEEAAAAB2AAAAAAEAAB+GZ0sAAAAAABAAAAABAAAAAB/AAABAAAAAQBBbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAABDcAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAzx0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAD6AAAAAAMAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAQAAAAEAAAAAACRlZHRzAAAAHGVsc3QAAAAAAAAAAQAAA+gAAAAAAAEAAAAAAIhtZGlhAAAAIG1kaGQAAAAAAAAAAAAAAAAAAAPoAAAEtwBQAAAAAAAZaGRscgAAAAAAAAAAdmlkZQAAAAAAAAAAAAAAAAAAAAAAO21pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAKRzdGJsAAAALnN0c2QAAAAAAAAAAQAAAB5hdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAABhzdHRzAAAAAAAAAAEAAAABAAAEtwAAABxzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAAAUc3RzegAAAAAAAAAAAAAAAQAAABQAAAAUc3RjbwAAAAAAAAABAAAALAAAAA==';
+        document.body.appendChild(noSleepVideo);
+    }
+    noSleepVideo.play().catch(e => console.error("NoSleep fallback failed", e));
 }
 
 export function releaseWakeLock() {
     if (AppState.wakeLock !== null) {
         AppState.wakeLock.release().then(() => { AppState.wakeLock = null; });
     }
+    if (noSleepVideo) {
+        noSleepVideo.pause();
+    }
 }
+
+document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && AppState.currentDrawer === 'track') {
+        requestWakeLock();
+    }
+});
 
 function startTrackRecording() {
     if (AppState.currentDrawer || currentEditLayerId !== null) return;
@@ -259,16 +282,16 @@ function completeTrackRecording() {
         cancelTrackRecording();
         return;
     }
+    const trackColor = AppState.trackPolyline ? AppState.trackPolyline.options.color : getRandomColor();
     if (AppState.trackPolyline) { map.removeLayer(AppState.trackPolyline); AppState.trackPolyline = null; }
 
     const memo = prompt('기록명 입력:', '트랙_' + getTimestampString());
     if (memo === null) { resetTrackUI(); return; }
 
-    const randomColor = getRandomColor();
-    const layer = L.polyline(latlngs, { color: randomColor, weight: 4 });
+    const layer = L.polyline(latlngs, { color: trackColor, weight: 4 });
     layer.feature = {
         type: 'Feature',
-        properties: { memo: memo || getTimestampString(), id: Date.now(), isHidden: false, customColor: randomColor, isTrack: true }
+        properties: { memo: memo || getTimestampString(), id: Date.now(), isHidden: false, customColor: trackColor, isTrack: true }
     };
 
     updateLayerInfo(layer);
@@ -281,11 +304,12 @@ function completeTrackRecording() {
 
 function addTrackPhotoPoint(event) {
     if (!AppState.lastTrackLatLng) { alert('GPS 위치 수신 대기 중...'); return; }
+    const trackColor = AppState.trackPolyline ? AppState.trackPolyline.options.color : '#3388ff';
     const markerId = Date.now();
-    const marker = L.marker(AppState.lastTrackLatLng, { icon: createColoredMarkerIcon('#3388ff') });
+    const marker = L.marker(AppState.lastTrackLatLng, { icon: createColoredMarkerIcon(trackColor) });
     marker.feature = {
         type: 'Feature',
-        properties: { id: markerId, memo: '트랙 사진', isHidden: false, customColor: '#3388ff' }
+        properties: { id: markerId, memo: '트랙 사진', isHidden: false, customColor: trackColor }
     };
     drawnItems.addLayer(marker);
     updateLayerInfo(marker);

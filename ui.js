@@ -1385,6 +1385,7 @@ export function updateLayerInfo(layer) {
         const moreBtn = document.getElementById('bottom-sheet-more-btn');
         if (moreBtn) moreBtn.style.display = 'flex';
         openBottomSheet(memo || '측량 기록', popupContent);
+        document.getElementById('bottom-sheet').classList.add('full-open');
     });
 
 
@@ -1393,6 +1394,7 @@ export function updateLayerInfo(layer) {
         const moreBtn = document.getElementById('bottom-sheet-more-btn');
         if (moreBtn) moreBtn.style.display = 'flex';
         openBottomSheet(memo || '측량 기록', popupContent);
+        document.getElementById('bottom-sheet').classList.add('full-open');
         return this;
     };
     layer.closePopup = function () { closeBottomSheet(); return this; };

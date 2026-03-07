@@ -4,6 +4,12 @@
 
 이 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.0.0/)를 따릅니다.
 
+## [2.0.1] - 2026-03-08
+### 수정 (Fixed)
+- 트랙 기록 선 색상 및 트랙 사진 색상 수정
+- 트랙 기록 중 화면이 꺼지는 현상 수정
+- 기록 바텀시트 기본값을 펼침으로 변경
+
 ## [2.0.0] - 2026-03-03
 ### 추가 (Added)
 - 리팩토링 : script.js가 비대해짐에 따라 ui.js, map.js, draw.js, state.js, data.js로 분리
