@@ -2,8 +2,8 @@
    [모듈] 지도 및 레이어 매니저 (map.js)
    [역할] Leaflet 지도 객체 생성 및 각종 배경/지적도/오버레이 레이어 관리
    ========================================================================== */
-import { VWORLD_API_KEY } from './config.js?v=2.0.2';
-import { AppState } from './state.js?v=2.0.2';
+import { VWORLD_API_KEY } from './config.js?v=2.0.3';
+import { AppState } from './state.js?v=2.0.3';
 
 /* --------------------------------------------------------------------------
    1. 지도 초기화 (Map Initialization)
@@ -42,6 +42,10 @@ L.control.scale({ imperial: false, metric: true }).addTo(map);
 map.createPane('nasGukPane');
 map.getPane('nasGukPane').style.zIndex = 350;
 map.getPane('nasGukPane').style.pointerEvents = 'none';
+
+map.createPane('nasImdoPane');
+map.getPane('nasImdoPane').style.zIndex = 360;
+map.getPane('nasImdoPane').style.pointerEvents = 'none';
 
 /**
  * [Proj4js 좌표계 정의]
@@ -159,6 +163,19 @@ export const nasGukLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon
     pane: 'nasGukPane', // 아까 만든 커스텀 Pane에 배치하여 항상 위에 표시됨
     opacity: 1,
     attribution: 'Suwon Guk',
+    crossOrigin: true,
+    errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+});
+
+// 6-1. 임도망도 레이어 (직접 호스팅하는 커스텀 타일)
+export const nasImdoLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon/imdo/{z}/{x}/{y}.png', {
+    minZoom: 1,
+    maxZoom: 22,
+    maxNativeZoom: 18,
+    tms: false,
+    pane: 'nasImdoPane',
+    opacity: 1,
+    attribution: 'Suwon Imdo',
     crossOrigin: true,
     errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
 });
@@ -287,6 +304,9 @@ export function toggleOverlay(type, isChecked) {
         // 범례 토글
         const legend = document.getElementById('nas-guk-legend');
         if (legend) legend.style.display = isChecked ? 'block' : 'none';
+
+    } else if (type === 'nasImdo') {
+        layer = nasImdoLayer;
 
     } else if (type === 'forest') {
         // 산림보호구역 API 처리

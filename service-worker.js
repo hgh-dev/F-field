@@ -1,6 +1,6 @@
 // service-worker.js (하이브리드 전략)
 
-const STATIC_CACHE_NAME = 'F-field-v2.0.2';
+const STATIC_CACHE_NAME = 'F-field-v2.0.3';
 const MAP_CACHE_NAME = 'F-field-map-v1';
 
 // 1. 설치: 기본 뼈대만 캐싱 (라이브러리 등 변하지 않는 것들)
