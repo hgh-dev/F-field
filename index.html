@@ -172,28 +172,92 @@
             top: calc(55px + env(safe-area-inset-top));
             left: 50%;
             transform: translateX(-50%);
-            /* 가운데 정렬 */
             width: 90%;
             max-width: 400px;
             background: white;
             padding: 10px;
             border-radius: 8px;
             display: none;
-            /* 기본값: 안보임 */
-            flex-direction: row;
+            flex-direction: column;
             gap: 5px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             z-index: 2000;
         }
 
-        #search-input {
+        .search-tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 5px;
+        }
+
+        .search-tab-btn {
+            flex: 1;
+            padding: 8px 0;
+            background: none;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            color: #888;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+
+        .search-tab-btn.active {
+            color: #007bff;
+            border-bottom: 2px solid #007bff;
+        }
+
+        .search-tab-content {
+            display: none;
+            flex-direction: row;
+            gap: 5px;
+        }
+
+        .search-tab-content.active {
+            display: flex;
+        }
+
+        .coord-input-container {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .coord-input-container input {
+            width: 100%;
+            padding: 8px 4px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        /* 숫자 입력 스피너 숨기기 */
+        .coord-input-container input[type="number"]::-webkit-outer-spin-button,
+        .coord-input-container input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .coord-input-container input[type="number"] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+            /* Firefox */
+        }
+
+        #search-input-address,
+        #search-input-national {
             flex: 1;
             padding: 8px;
             border: 1px solid #ccc;
             border-radius: 4px;
         }
 
-        #search-go-btn {
+        #search-go-btn,
+        #search-go-btn-national,
+        #search-go-btn-coord {
             padding: 0 15px;
             background: #007bff;
             color: white;
@@ -201,6 +265,9 @@
             border-radius: 4px;
             font-weight: bold;
             cursor: pointer;
+            min-width: 60px;
+            margin: 0;
+            box-sizing: border-box;
         }
 
         /* [검색 기록 & 결과 패널] */
@@ -1932,15 +1999,38 @@
     ==========================================================================
     -->
     <div id="search-container">
-        <input type="text" id="search-input" placeholder="지번, 도로명, 장소명 또는 국가지점번호를 입력하세요"
-            onkeypress="if(event.key==='Enter') executeSearch()" onfocus="showHistoryPanel()">
-        <button id="search-go-btn" onclick="executeSearch()">이동</button>
+        <div class="search-tabs">
+            <button class="search-tab-btn active" data-tab="address" onclick="switchSearchTab('address')">주소 및
+                장소</button>
+            <button class="search-tab-btn" data-tab="national" onclick="switchSearchTab('national')">국가지점번호</button>
+            <button class="search-tab-btn" data-tab="coord" onclick="switchSearchTab('coord')">좌표</button>
+        </div>
+
+        <div id="search-content-address" class="search-tab-content active">
+            <input type="text" id="search-input-address" placeholder="주소(지번, 도로명) 또는 장소명을 입력하세요"
+                onkeypress="if(event.key==='Enter') executeSearch('address')" onfocus="showHistoryPanel()">
+            <button id="search-go-btn" onclick="executeSearch('address')">이동</button>
+        </div>
+
+        <div id="search-content-national" class="search-tab-content">
+            <input type="text" id="search-input-national" placeholder="예: 가나 1234 5678"
+                onkeypress="if(event.key==='Enter') executeSearch('national')" onfocus="showHistoryPanel()">
+            <button id="search-go-btn-national" onclick="executeSearch('national')">이동</button>
+        </div>
+
+        <div id="search-content-coord" class="search-tab-content">
+            <div id="search-coord-inputs" class="coord-input-container">
+                <!-- Javascript에서 동적 렌더링 -->
+            </div>
+            <button id="search-go-btn-coord" onclick="executeSearch('coord')">이동</button>
+        </div>
 
         <!-- 검색 기록 -->
         <div id="history-panel">
             <div class="history-header">
                 <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
-                    <input type="checkbox" id="chk-history-save" onchange="toggleHistorySave(this.checked)"> 기록 저장
+                    <input type="checkbox" id="chk-history-save" onchange="toggleHistorySave(this.checked)" checked> 기록
+                    저장
                 </label>
                 <span class="btn-clear-history" onclick="clearHistoryAll()">전체 삭제</span>
             </div>
@@ -2670,7 +2760,7 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script type="module" src="script.js?v=2.0.3"></script>
+    <script type="module" src="script.js?v=2.1.0"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {

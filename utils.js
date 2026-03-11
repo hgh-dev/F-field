@@ -74,6 +74,12 @@ export function getTmCoords(lat, lng) {
     return { x: Math.round(xy[0]), y: Math.round(xy[1]) };
 }
 
+// 좌표 변환 (TM -> WGS84)
+export function getWgs84FromTm(x, y) {
+    const coords = proj4("EPSG:5186", "EPSG:4326", [x, y]);
+    return { lat: coords[1], lng: coords[0] };
+}
+
 // 도분초(DMS) 변환
 export function convertToDms(val, type) {
     const valAbs = Math.abs(val);
@@ -82,6 +88,15 @@ export function convertToDms(val, type) {
     const min = Math.floor(minFloat);
     const sec = ((minFloat - min) * 60).toFixed(2);
     return (val >= 0 ? (type === 'lat' ? "N" : "E") : (type === 'lat' ? "S" : "W")) + " " + deg + "° " + min + "' " + sec + "\"";
+}
+
+// 도분초 배열을 소수점(Decimal)으로 변환
+export function dmsToDecimal(deg, min, sec, type) {
+    let dec = parseFloat(deg) + parseFloat(min) / 60 + parseFloat(sec) / 3600;
+    if (type === 'S' || type === 'W') {
+        dec = dec * -1;
+    }
+    return dec;
 }
 
 // 이미지 리사이징 (Canvas 사용)

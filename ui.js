@@ -6,7 +6,7 @@ import { VWORLD_API_KEY, SEARCH_HISTORY_KEY, SEARCH_SETTING_KEY, SVG_ICONS } fro
 import { AppState } from './state.js';
 import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, updateLayerOrder } from './map.js';
 import { drawnItems, startDraw, currentEditLayerId, completeDrawing, cancelDrawing, enableSingleLayerEdit } from './draw.js';
-import { getTimestampString, getRandomColor, createColoredMarkerIcon, copyText, getTmCoords, convertToDms, getShortAddress, resizeImage, parseNationalPointNumber } from './utils.js';
+import { getTimestampString, getRandomColor, createColoredMarkerIcon, copyText, getTmCoords, getWgs84FromTm, convertToDms, dmsToDecimal, getShortAddress, resizeImage, parseNationalPointNumber } from './utils.js';
 import { saveToStorage, loadCurrentProjectFeatures, exportSingleLayer } from './data.js';
 
 
@@ -132,11 +132,102 @@ export function unlockHiddenLayers() {
 export function toggleSearchBox() {
     if (AppState.currentDrawer || currentEditLayerId !== null) return;
     const box = document.getElementById('search-container');
-    if (box.style.display === 'flex') {
+    if (box.style.display === 'flex' || box.style.display === 'block') { // index.html 수정을 위해 조건 완화
         box.style.display = 'none';
+        document.getElementById('history-panel').style.display = 'none';
+        const resultPanel = document.getElementById('search-result-panel');
+        if (resultPanel) resultPanel.style.display = 'none';
     } else {
-        box.style.display = 'flex';
-        document.getElementById('search-input').focus();
+        box.style.display = 'flex'; // 혹은 탭이 flex-direction: column
+        renderCoordSearchInputs();
+
+        // 기존 탭 상태에 맞춰 포커스 (기본 주소)
+        const activeTab = document.querySelector('.search-tab-btn.active');
+        if (activeTab && activeTab.dataset.tab === 'national') {
+            document.getElementById('search-input-national').focus();
+        } else if (activeTab && activeTab.dataset.tab === 'coord') {
+            // coord 내의 첫번째 input 포커스
+            const firstInput = document.querySelector('#search-coord-inputs input');
+            if (firstInput) firstInput.focus();
+        } else {
+            document.getElementById('search-input-address').focus();
+        }
+    }
+}
+
+export function switchSearchTab(tabId) {
+    document.querySelectorAll('.search-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.tab === tabId) btn.classList.add('active');
+    });
+
+    document.querySelectorAll('.search-tab-content').forEach(content => {
+        content.classList.remove('active');
+        content.style.display = 'none';
+    });
+    const targetContent = document.getElementById('search-content-' + tabId);
+    if (targetContent) {
+        targetContent.classList.add('active');
+        targetContent.style.display = 'flex';
+    }
+
+    if (tabId === 'address') {
+        const input = document.getElementById('search-input-address');
+        if (input) input.focus();
+        showHistoryPanel();
+    } else if (tabId === 'national') {
+        const input = document.getElementById('search-input-national');
+        if (input) input.focus();
+        document.getElementById('search-result-panel').style.display = 'none';
+        showHistoryPanel();
+    } else if (tabId === 'coord') {
+        renderCoordSearchInputs();
+        document.getElementById('history-panel').style.display = 'none';
+        document.getElementById('search-result-panel').style.display = 'none';
+    }
+}
+
+export function renderCoordSearchInputs() {
+    const container = document.getElementById('search-coord-inputs');
+    if (!container) return;
+    container.innerHTML = "";
+    if (AppState.coordMode === 0) { // DMS
+        container.innerHTML = `
+            <div style="display:flex; align-items:center; gap:5px; margin-bottom:5px;">
+                <span style="font-size:13px; font-weight:bold; white-space:nowrap; display:inline-block; width:45px; text-align:center;">위도(N)</span>
+                <input type="number" id="coord-lat-d" placeholder="37" style="flex:1;"><span style="font-size:13px; font-weight:bold;">°</span>
+                <input type="number" id="coord-lat-m" placeholder="14" style="flex:1;"><span style="font-size:13px; font-weight:bold;">'</span>
+                <input type="number" id="coord-lat-s" placeholder="44.80" style="flex:1;"><span style="font-size:13px; font-weight:bold;">"</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:5px;">
+                <span style="font-size:13px; font-weight:bold; white-space:nowrap; display:inline-block; width:45px; text-align:center;">경도(E)</span>
+                <input type="number" id="coord-lng-d" placeholder="126" style="flex:1;"><span style="font-size:13px; font-weight:bold;">°</span>
+                <input type="number" id="coord-lng-m" placeholder="57" style="flex:1;"><span style="font-size:13px; font-weight:bold;">'</span>
+                <input type="number" id="coord-lng-s" placeholder="35.45" style="flex:1;"><span style="font-size:13px; font-weight:bold;">"</span>
+            </div>
+        `;
+    } else if (AppState.coordMode === 1) { // Decimal
+        container.innerHTML = `
+            <div style="display:flex; align-items:center; gap:5px; margin-bottom:5px;">
+                <span style="font-size:13px; font-weight:bold; white-space:nowrap; display:inline-block; width:45px; text-align:center;">위도(N)</span>
+                <input type="number" step="any" id="coord-lat-dec" placeholder="37.245778" style="flex:1;">
+            </div>
+            <div style="display:flex; align-items:center; gap:5px;">
+                <span style="font-size:13px; font-weight:bold; white-space:nowrap; display:inline-block; width:45px; text-align:center;">경도(E)</span>
+                <input type="number" step="any" id="coord-lng-dec" placeholder="126.959847" style="flex:1;">
+            </div>
+        `;
+    } else if (AppState.coordMode === 2) { // TM
+        container.innerHTML = `
+            <div style="display:flex; align-items:center; gap:5px; margin-bottom:5px;">
+                <span style="font-size:13px; font-weight:bold; white-space:nowrap; display:inline-block; width:25px; text-align:center;">X</span>
+                <input type="number" step="any" id="coord-x-tm" placeholder="196437.47" style="flex:1;">
+            </div>
+            <div style="display:flex; align-items:center; gap:5px;">
+                <span style="font-size:13px; font-weight:bold; white-space:nowrap; display:inline-block; width:25px; text-align:center;">Y</span>
+                <input type="number" step="any" id="coord-y-tm" placeholder="516290.12" style="flex:1;">
+            </div>
+        `;
     }
 }
 
@@ -172,16 +263,14 @@ export function callVworldCoordApi(query, type, callback) {
     document.body.appendChild(script);
 }
 
-export function executeSearch(keyword) {
-    const query = keyword || document.getElementById('search-input').value;
-    if (!query) return;
+export function executeSearch(typeStr = 'address') {
+    if (typeStr === 'national') {
+        const query = document.getElementById('search-input-national').value;
+        if (!query) return;
 
-    if (isSearchHistoryEnabled) { addToHistory(query); }
-    document.getElementById('history-panel').style.display = 'none';
-    document.getElementById('search-input').value = query;
+        if (isSearchHistoryEnabled) { addToHistory(query); }
+        document.getElementById('history-panel').style.display = 'none';
 
-    // 국가지점번호 패턴 검사
-    if (/^[가-하]{2}\s*\d{4}\s*\d{4}$/.test(query)) {
         const coords = parseNationalPointNumber(query);
         if (coords) {
             const result = {
@@ -191,10 +280,56 @@ export function executeSearch(keyword) {
             };
             moveToSearchResult(result);
             closeSearchResult();
-            return;
+        } else {
+            alert("잘못된 국가지점번호 형식입니다.");
         }
+        return;
+    } else if (typeStr === 'coord') {
+        let lat, lng;
+        if (AppState.coordMode === 0) {
+            const latD = document.getElementById('coord-lat-d').value;
+            const latM = document.getElementById('coord-lat-m').value;
+            const latS = document.getElementById('coord-lat-s').value;
+            const lngD = document.getElementById('coord-lng-d').value;
+            const lngM = document.getElementById('coord-lng-m').value;
+            const lngS = document.getElementById('coord-lng-s').value;
+            if (!latD || !lngD) return alert("위도, 경도(도) 값을 입력해주세요.");
+            lat = dmsToDecimal(latD, latM || 0, latS || 0, 'N');
+            lng = dmsToDecimal(lngD, lngM || 0, lngS || 0, 'E');
+        } else if (AppState.coordMode === 1) {
+            lat = parseFloat(document.getElementById('coord-lat-dec').value);
+            lng = parseFloat(document.getElementById('coord-lng-dec').value);
+            if (isNaN(lat) || isNaN(lng)) return alert("위도, 경도 값을 입력해주세요.");
+        } else if (AppState.coordMode === 2) {
+            const x = parseFloat(document.getElementById('coord-x-tm').value);
+            const y = parseFloat(document.getElementById('coord-y-tm').value);
+            if (isNaN(x) || isNaN(y)) return alert("X, Y 좌표를 입력해주세요.");
+            const wgs = getWgs84FromTm(x, y);
+            lat = wgs.lat;
+            lng = wgs.lng;
+        }
+
+        const result = {
+            point: { x: lng, y: lat },
+            title: "입력 좌표",
+            address: { road: "", parcel: "" }
+        };
+        moveToSearchResult(result);
+        closeSearchResult();
+        return;
     }
 
+    // address type
+    const queryEl = document.getElementById('search-input-address');
+    let query = queryEl ? queryEl.value : "";
+
+    // (이전에 검색창에서 string을 넘겼을 때의 하위호환이었으나 제거 후 완전 분리)
+
+    if (!query) return;
+
+    if (isSearchHistoryEnabled) { addToHistory(query); }
+    document.getElementById('history-panel').style.display = 'none';
+    if (queryEl) queryEl.value = query;
     callVworldSearchApi(query, 'ADDRESS', function (addrResults) {
         if (addrResults && addrResults.length > 0) {
             handleSearchResults(addrResults);
@@ -266,8 +401,10 @@ export function renderSearchResultList(items) {
 }
 
 export function closeSearchResult() {
-    document.getElementById('search-result-panel').style.display = 'none';
-    document.getElementById('search-input').focus();
+    const panel = document.getElementById('search-result-panel');
+    if (panel) panel.style.display = 'none';
+    const input = document.getElementById('search-input-address');
+    if (input) input.focus();
 }
 
 function moveToSearchResult(result) {
@@ -278,8 +415,14 @@ function moveToSearchResult(result) {
 }
 
 /* 2-3. 검색 기록 관리 */
-export function getHistory() { const json = localStorage.getItem(SEARCH_HISTORY_KEY); return json ? JSON.parse(json) : []; }
-export function saveHistory(list) { localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(list)); }
+function getActiveHistoryKey() {
+    const activeTab = document.querySelector('.search-tab-btn.active');
+    const tabId = activeTab ? activeTab.dataset.tab : 'address';
+    return tabId === 'national' ? SEARCH_HISTORY_KEY + '_national' : SEARCH_HISTORY_KEY;
+}
+
+export function getHistory() { const json = localStorage.getItem(getActiveHistoryKey()); return json ? JSON.parse(json) : []; }
+export function saveHistory(list) { localStorage.setItem(getActiveHistoryKey(), JSON.stringify(list)); }
 
 export function addToHistory(keyword) {
     let list = getHistory();
@@ -292,7 +435,10 @@ export function addToHistory(keyword) {
 export function toggleHistorySave(checked) {
     isSearchHistoryEnabled = checked;
     localStorage.setItem(SEARCH_SETTING_KEY, checked);
-    if (!checked) document.getElementById('history-panel').style.display = 'none';
+    const list = document.getElementById('history-list');
+    const clearBtn = document.querySelector('.btn-clear-history');
+    if (list) list.style.display = checked ? 'block' : 'none';
+    if (clearBtn) clearBtn.style.display = checked ? 'inline-block' : 'none';
 }
 
 export function clearHistoryAll() {
@@ -310,7 +456,17 @@ export function deleteHistoryItem(index) {
 }
 
 export function showHistoryPanel() {
-    renderHistoryList();
+    const chk = document.getElementById('chk-history-save');
+    if (chk) chk.checked = isSearchHistoryEnabled;
+
+    const list = document.getElementById('history-list');
+    const clearBtn = document.querySelector('.btn-clear-history');
+    if (list) list.style.display = isSearchHistoryEnabled ? 'block' : 'none';
+    if (clearBtn) clearBtn.style.display = isSearchHistoryEnabled ? 'inline-block' : 'none';
+
+    if (isSearchHistoryEnabled) {
+        renderHistoryList();
+    }
     document.getElementById('history-panel').style.display = 'block';
 }
 
@@ -329,7 +485,13 @@ export function renderHistoryList() {
         const spanText = document.createElement('span');
         spanText.className = 'history-text';
         spanText.innerText = text;
-        spanText.onclick = () => executeSearch(text);
+        spanText.onclick = () => {
+            const activeTab = document.querySelector('.search-tab-btn.active');
+            const tabId = activeTab ? activeTab.dataset.tab : 'address';
+            const inputEl = document.getElementById(tabId === 'national' ? 'search-input-national' : 'search-input-address');
+            if (inputEl) inputEl.value = text;
+            executeSearch(tabId);
+        };
         const btnDel = document.createElement('span');
         btnDel.className = 'btn-del-history';
         btnDel.innerHTML = SVG_ICONS.close;
@@ -1508,6 +1670,8 @@ export function updateLayerColor(id, newColor) {
 /* --- 전역 바인딩 (UI 관련) --- */
 window.openSidebar = openSidebar;
 window.closeSidebar = closeSidebar;
+window.switchSearchTab = switchSearchTab;
+window.renderCoordSearchInputs = renderCoordSearchInputs;
 window.switchSidebarTab = switchSidebarTab;
 window.unlockHiddenLayers = unlockHiddenLayers;
 window.toggleSearchBox = toggleSearchBox;
