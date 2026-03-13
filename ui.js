@@ -231,39 +231,57 @@ export function renderCoordSearchInputs() {
     }
 }
 
-export function callVworldSearchApi(query, type, callback) {
-    const callbackName = 'vworld_search_' + type + '_' + Math.floor(Math.random() * 100000);
-    window[callbackName] = function (data) {
-        delete window[callbackName];
-        document.getElementById(callbackName)?.remove();
-        if (data.response.status === "OK" && data.response.result && data.response.result.items.length > 0)
-            callback(data.response.result.items);
-        else
-            callback(null);
-    };
-    const script = document.createElement('script');
-    script.id = callbackName;
-    script.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=50&page=1&query=${encodeURIComponent(query)}&type=${type}&format=json&errorformat=json&key=${VWORLD_API_KEY}&callback=${callbackName}`;
-    document.body.appendChild(script);
+export function callVworldSearchApi(query, type) {
+    return new Promise(resolve => {
+        const callbackName = 'vworld_search_' + type + '_' + Math.floor(Math.random() * 100000);
+        window[callbackName] = function (data) {
+            delete window[callbackName];
+            document.getElementById(callbackName)?.remove();
+            if (data.response.status === "OK" && data.response.result && data.response.result.items.length > 0) {
+                const items = data.response.result.items.map(item => ({ ...item, searchType: type }));
+                resolve(items);
+            } else {
+                resolve([]);
+            }
+        };
+        const script = document.createElement('script');
+        script.id = callbackName;
+        script.onerror = () => resolve([]);
+        script.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=50&page=1&query=${encodeURIComponent(query)}&type=${type}&format=json&errorformat=json&key=${VWORLD_API_KEY}&callback=${callbackName}`;
+        document.body.appendChild(script);
+    });
 }
 
-export function callVworldCoordApi(query, type, callback) {
-    const callbackName = 'vworld_coord_' + Math.floor(Math.random() * 100000);
-    window[callbackName] = function (data) {
-        delete window[callbackName];
-        document.getElementById(callbackName)?.remove();
-        if (data.response.status === "OK" && data.response.result)
-            callback(data.response.result);
-        else
-            callback(null);
-    };
-    const script = document.createElement('script');
-    script.id = callbackName;
-    script.src = `https://api.vworld.kr/req/address?service=address&request=getCoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(query)}&refine=true&simple=false&format=json&type=${type || 'PARCEL'}&key=${VWORLD_API_KEY}&callback=${callbackName}`;
-    document.body.appendChild(script);
+export function callVworldCoordApi(query, type) {
+    return new Promise(resolve => {
+        const callbackName = 'vworld_coord_' + Math.floor(Math.random() * 100000);
+        window[callbackName] = function (data) {
+            delete window[callbackName];
+            document.getElementById(callbackName)?.remove();
+            if (data.response.status === "OK" && data.response.result) {
+                const coordResult = data.response.result;
+                resolve([{
+                    point: coordResult.point,
+                    title: query,
+                    address: {
+                        road: (type === 'ROAD' && coordResult.refined) ? coordResult.refined.text : "",
+                        parcel: (type === 'PARCEL' && coordResult.refined) ? coordResult.refined.text : ""
+                    },
+                    searchType: type
+                }]);
+            } else {
+                resolve([]);
+            }
+        };
+        const script = document.createElement('script');
+        script.id = callbackName;
+        script.onerror = () => resolve([]);
+        script.src = `https://api.vworld.kr/req/address?service=address&request=getCoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(query)}&refine=true&simple=false&format=json&type=${type || 'PARCEL'}&key=${VWORLD_API_KEY}&callback=${callbackName}`;
+        document.body.appendChild(script);
+    });
 }
 
-export function executeSearch(typeStr = 'address') {
+export async function executeSearch(typeStr = 'address') {
     if (typeStr === 'national') {
         const query = document.getElementById('search-input-national').value;
         if (!query) return;
@@ -330,43 +348,59 @@ export function executeSearch(typeStr = 'address') {
     if (isSearchHistoryEnabled) { addToHistory(query); }
     document.getElementById('history-panel').style.display = 'none';
     if (queryEl) queryEl.value = query;
-    callVworldSearchApi(query, 'ADDRESS', function (addrResults) {
-        if (addrResults && addrResults.length > 0) {
-            handleSearchResults(addrResults);
-        } else {
-            callVworldSearchApi(query, 'PLACE', function (placeResults) {
-                if (placeResults && placeResults.length > 0) {
-                    handleSearchResults(placeResults);
-                } else {
-                    callVworldCoordApi(query, 'ROAD', function (roadResult) {
-                        if (roadResult) {
-                            handleSingleResult(roadResult, query, 'ROAD');
-                        } else {
-                            callVworldCoordApi(query, 'PARCEL', function (parcelResult) {
-                                if (parcelResult) {
-                                    handleSingleResult(parcelResult, query, 'PARCEL');
-                                } else {
-                                    alert("검색 결과가 없습니다.\n정확한 주소를 입력해보세요.");
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-        }
-    });
-}
 
-function handleSingleResult(coordResult, query, type) {
-    const finalResult = {
-        point: coordResult.point,
-        title: query,
-        address: {
-            road: (type === 'ROAD' && coordResult.refined) ? coordResult.refined.text : "",
-            parcel: (type === 'PARCEL' && coordResult.refined) ? coordResult.refined.text : ""
+    try {
+        const [addrResults, placeResults, roadResults, parcelResults] = await Promise.all([
+            callVworldSearchApi(query, 'ADDRESS'),
+            callVworldSearchApi(query, 'PLACE'),
+            callVworldCoordApi(query, 'ROAD'),
+            callVworldCoordApi(query, 'PARCEL')
+        ]);
+
+        const combined = [...addrResults, ...placeResults, ...roadResults, ...parcelResults];
+
+        // 중복 좌표 제거
+        const seen = new Set();
+        const uniqueItems = [];
+        for (const item of combined) {
+            const hash = `${Number(item.point.x).toFixed(6)},${Number(item.point.y).toFixed(6)}`;
+            if (!seen.has(hash)) {
+                seen.add(hash);
+                uniqueItems.push(item);
+            }
         }
-    };
-    moveToSearchResult(finalResult);
+
+        // 카테고리 우선순위 (1: 주소, 2: 지번, 3: 도로명, 4: 장소)
+        const typeOrder = { 'ADDRESS': 1, 'PARCEL': 2, 'ROAD': 3, 'PLACE': 4 };
+
+        // 우선순위에 따라 정렬하되, 동일 순위 내에서는 검색어가 포함된 항목을 상단으로 올림
+        uniqueItems.sort((a, b) => {
+            const orderA = typeOrder[a.searchType] || 99;
+            const orderB = typeOrder[b.searchType] || 99;
+
+            if (orderA !== orderB) {
+                return orderA - orderB;
+            }
+
+            const aParcel = a.address?.parcel || "";
+            const bParcel = b.address?.parcel || "";
+            const aRoad = a.address?.road || "";
+            const bRoad = b.address?.road || "";
+
+            const aMatch = aParcel.includes(query) || aRoad.includes(query) ? 1 : 0;
+            const bMatch = bParcel.includes(query) || bRoad.includes(query) ? 1 : 0;
+            return bMatch - aMatch;
+        });
+
+        if (uniqueItems.length > 0) {
+            handleSearchResults(uniqueItems);
+        } else {
+            alert("검색 결과가 없습니다.\n정확한 주소를 입력해보세요.");
+        }
+    } catch (e) {
+        console.error("검색 중 오류 발생:", e);
+        alert("검색 중 오류가 발생했습니다.");
+    }
 }
 
 function handleSearchResults(items) {
@@ -388,7 +422,17 @@ export function renderSearchResultList(items) {
         const roadAddr = item.address?.road || "";
         const parcelAddr = item.address?.parcel || "";
         const title = item.title || roadAddr || parcelAddr;
-        let html = `<div class="search-result-title">${title}</div>`;
+        let html = `<div class="search-result-title">`;
+        if (item.searchType === 'ADDRESS') {
+            html += `<span class="badge" style="background:#9c27b0;color:#fff;padding:2px 4px;border-radius:3px;font-size:11px;margin-right:4px;">주소</span>`;
+        } else if (item.searchType === 'ROAD') {
+            html += `<span class="badge" style="background:#2196f3;color:#fff;padding:2px 4px;border-radius:3px;font-size:11px;margin-right:4px;">도로명</span>`;
+        } else if (item.searchType === 'PLACE') {
+            html += `<span class="badge" style="background:#4caf50;color:#fff;padding:2px 4px;border-radius:3px;font-size:11px;margin-right:4px;">장소</span>`;
+        } else if (item.searchType === 'PARCEL') {
+            html += `<span class="badge" style="background:#ff9800;color:#fff;padding:2px 4px;border-radius:3px;font-size:11px;margin-right:4px;">지번</span>`;
+        }
+        html += `${title}</div>`;
         if (roadAddr) html += `<div class="search-result-addr"><span class="badge-road">도로명</span> ${roadAddr}</div>`;
         if (parcelAddr) html += `<div class="search-result-addr"><span class="badge-parcel">지번</span> ${parcelAddr}</div>`;
         li.innerHTML = html;
@@ -412,6 +456,16 @@ function moveToSearchResult(result) {
     map.flyTo([point.y, point.x], 16, { duration: 1.5 });
     showInfoPopup(point.y, point.x);
     fetchAndHighlightBoundary(point.x, point.y);
+
+    // 검색해서 목적지 이동 시, 열려있던 검색창과 패널들 자동으로 닫기
+    const box = document.getElementById('search-container');
+    if (box && (box.style.display === 'flex' || box.style.display === 'block')) {
+        box.style.display = 'none';
+        const historyPanel = document.getElementById('history-panel');
+        if (historyPanel) historyPanel.style.display = 'none';
+        const resultPanel = document.getElementById('search-result-panel');
+        if (resultPanel) resultPanel.style.display = 'none';
+    }
 }
 
 /* 2-3. 검색 기록 관리 */
