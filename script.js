@@ -428,6 +428,19 @@ window.setTrackInterval = (value) => {
     AppState.trackInterval = parseInt(value);
     localStorage.setItem('setting_track_interval', value);
 };
+window.setPolygonFill = (value) => {
+    const isFill = (value === 'true' || value === true);
+    AppState.isPolygonFill = isFill;
+    localStorage.setItem('setting_polygon_fill', isFill.toString());
+
+    drawnItems.getLayers().forEach(layer => {
+        // layer.feature.geometry는 새로 그린 직후엔 객체가 없습니다. (새로고침해야 생성됨)
+        // 따라서 L.Polygon 객체인지 여부로 다이렉트 확인합니다.
+        if (layer instanceof L.Polygon) {
+            layer.setStyle({ fillOpacity: isFill ? 0.2 : 0 });
+        }
+    });
+};
 window.copyCurrentAddress = () => {
     const text = document.getElementById('address-display').innerText;
     if (text && text !== "주소 확인 중...") copyText(text, false, "주소");
@@ -459,7 +472,15 @@ window.toggleAllLayers = (isChecked) => {
             layer.closePopup();
             if (layer._path) layer._path.style.pointerEvents = 'none';
         } else {
-            layer instanceof L.Marker ? layer.setOpacity(1) : layer.setStyle({ opacity: 1, fillOpacity: 0.2, stroke: true });
+            let fillOpq = 0.2;
+            if (layer instanceof L.Polygon && !AppState.isPolygonFill) {
+                fillOpq = 0;
+            }
+            if (layer instanceof L.Marker) {
+                layer.setOpacity(1);
+            } else {
+                layer.setStyle({ opacity: 1, fillOpacity: fillOpq, stroke: true });
+            }
             if (layer._path) layer._path.style.pointerEvents = 'visiblePainted';
         }
     });

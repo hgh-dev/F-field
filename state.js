@@ -5,6 +5,7 @@
 export const AppState = {
     // [기본 설정 상태]
     coordMode: parseInt(localStorage.getItem('setting_coord_mode')) || 0, // 좌표 표시 방식 (0: DMS, 1: Decimal, 2: TM)
+    isPolygonFill: localStorage.getItem('setting_polygon_fill') !== 'false', // 면 피처 채우기 여부 (기본값 true)
 
     // [지도 및 마커 상태]
     isFollowing: false, // '내 위치 따라가기' 버튼이 켜져 있는지 여부

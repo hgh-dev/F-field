@@ -2607,14 +2607,14 @@
 
             <div style="margin-bottom:20px;">
                 <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">내보내기 파일 형식</div>
-                <div style="display:flex; flex-direction:column; background:#f8f9fa; border-radius:12px; padding:4px;">
-                    <label style="padding:10px; display:flex; align-items:center;">
+                <div style="display:flex; flex-direction:row; background:#f8f9fa; border-radius:12px; padding:12px;">
+                    <label style="display:flex; align-items:center; flex:1;">
                         <input type="radio" name="export-format-select" value="geojson"
-                            onclick="setExportFormat('geojson')" style="margin-right:10px;"> GeoJSON
+                            onclick="setExportFormat('geojson')" style="margin-right:6px;"> GeoJSON
                     </label>
-                    <label style="padding:10px; display:flex; align-items:center;">
+                    <label style="display:flex; align-items:center; flex:1;">
                         <input type="radio" name="export-format-select" value="gpx" onclick="setExportFormat('gpx')"
-                            style="margin-right:10px;"> GPX
+                            style="margin-right:6px;"> GPX
                     </label>
                 </div>
                 <div style="font-size:11px; color:#888; padding:5px 5px 0 5px;">
@@ -2623,23 +2623,40 @@
             </div>
 
             <div style="margin-bottom:20px;">
+                <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">면 채우기 (투명도)</div>
+                <div style="display:flex; flex-direction:row; background:#f8f9fa; border-radius:12px; padding:12px;">
+                    <label style="display:flex; align-items:center; flex:1;">
+                        <input type="radio" name="polygon-fill-select" value="true" onclick="setPolygonFill(true)"
+                            style="margin-right:6px;"> 켜짐
+                    </label>
+                    <label style="display:flex; align-items:center; flex:1;">
+                        <input type="radio" name="polygon-fill-select" value="false" onclick="setPolygonFill(false)"
+                            style="margin-right:6px;"> 꺼짐
+                    </label>
+                </div>
+                <div style="font-size:11px; color:#888; padding:5px 5px 0 5px;">
+                    ※ 지도에 그려진 면(Polygon)의 내부 채우기 여부를 설정합니다.
+                </div>
+            </div>
+
+            <div style="margin-bottom:20px;">
                 <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">트랙 기록 간격</div>
-                <div style="display:flex; flex-direction:column; background:#f8f9fa; border-radius:12px; padding:4px;">
-                    <label style="padding:10px; display:flex; align-items:center;">
+                <div style="display:flex; flex-direction:row; background:#f8f9fa; border-radius:12px; padding:12px;">
+                    <label style="display:flex; align-items:center; flex:1;">
                         <input type="radio" name="track-interval-select" value="2" onclick="setTrackInterval(2)"
-                            style="margin-right:10px;"> 2m
+                            style="margin-right:6px;"> 2m
                     </label>
-                    <label style="padding:10px; display:flex; align-items:center;">
+                    <label style="display:flex; align-items:center; flex:1;">
                         <input type="radio" name="track-interval-select" value="5" onclick="setTrackInterval(5)"
-                            style="margin-right:10px;"> 5m
+                            style="margin-right:6px;"> 5m
                     </label>
-                    <label style="padding:10px; display:flex; align-items:center;">
+                    <label style="display:flex; align-items:center; flex:1;">
                         <input type="radio" name="track-interval-select" value="10" onclick="setTrackInterval(10)"
-                            style="margin-right:10px;"> 10m
+                            style="margin-right:6px;"> 10m
                     </label>
-                    <label style="padding:10px; display:flex; align-items:center;">
+                    <label style="display:flex; align-items:center; flex:1;">
                         <input type="radio" name="track-interval-select" value="20" onclick="setTrackInterval(20)"
-                            style="margin-right:10px;"> 20m
+                            style="margin-right:6px;"> 20m
                     </label>
                 </div>
                 <div style="font-size:11px; color:#888; padding:5px 5px 0 5px;">※ GPS 위치가 설정 거리 이상 이동했을 때 좌표를 기록합니다.
@@ -2760,7 +2777,7 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script type="module" src="script.js?v=2.1.1"></script>
+    <script type="module" src="script.js?v=2.1.2"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {

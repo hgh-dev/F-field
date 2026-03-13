@@ -97,7 +97,8 @@ export function startDraw(type) {
             color: randomColor,
             fillColor: randomColor,
             weight: 4,
-            opacity: 0.85
+            opacity: 0.85,
+            fillOpacity: AppState.isPolygonFill ? 0.2 : 0
         }
     };
 
@@ -345,6 +346,9 @@ map.on(L.Draw.Event.CREATED, function (event) {
         layer.setIcon(createColoredMarkerIcon(randomColor));
     } else {
         layer.setStyle({ color: randomColor, fillColor: randomColor });
+        if (event.layerType === 'polygon' && !AppState.isPolygonFill) {
+            layer.setStyle({ fillOpacity: 0 });
+        }
     }
 
     updateLayerInfo(layer);

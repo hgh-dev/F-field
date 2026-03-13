@@ -5,6 +5,9 @@
 이 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.0.0/)를 따릅니다.
 
 
+## [2.1.2] - 2026-03-14
+### 추가 (Added)
+- 면 채우기 켜기, 끄기 설정 추가
 
 ## [2.1.1] - 2026-03-14
 ### 수정 (Fixed)

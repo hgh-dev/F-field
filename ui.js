@@ -937,6 +937,7 @@ export function openSettingsModal() {
     document.getElementsByName('coord-mode-select').forEach(r => { if (parseInt(r.value) === AppState.coordMode) r.checked = true; });
     document.getElementsByName('export-format-select').forEach(r => { if (r.value === AppState.exportFormat) r.checked = true; });
     document.getElementsByName('track-interval-select').forEach(r => { if (parseInt(r.value) === AppState.trackInterval) r.checked = true; });
+    document.getElementsByName('polygon-fill-select').forEach(r => { if ((r.value === 'true') === AppState.isPolygonFill) r.checked = true; });
     const overlay = document.getElementById('settings-modal-overlay');
     overlay.style.display = 'flex';
     setTimeout(() => { overlay.classList.add('visible'); }, 10);

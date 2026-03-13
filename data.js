@@ -8,6 +8,7 @@ import { drawnItems } from './draw.js';
 import { renderSurveyList, updateLayerInfo, renderProjectSelector, closeSidebar, createNewProject, openSidebar, switchSidebarTab } from './ui.js';
 import { getRandomColor, createColoredMarkerIcon, getShortAddress } from './utils.js';
 import { VWORLD_API_KEY } from './config.js';
+import { map } from './map.js';
 
 
 /* 1. 로컬 저장소 관리 (Local Storage) */
@@ -183,7 +184,11 @@ export function restoreFeatures(geoJsonData) {
             // 선/면 스타일 적용
             if (feature.geometry.type !== 'Point') {
                 const color = feature.properties.customColor || getRandomColor();
-                return { color: color, fillColor: color };
+                const styleObj = { color: color, fillColor: color };
+                if (feature.geometry.type === 'Polygon' && !AppState.isPolygonFill) {
+                    styleObj.fillOpacity = 0;
+                }
+                return styleObj;
             }
         },
         onEachFeature: function (feature, layer) {
@@ -549,7 +554,7 @@ export function saveCurrentBoundary(addressName) {
             addedCount++;
 
             const newLayer = L.geoJSON(singleFeature, {
-                style: { color: '#FF0000', weight: 4, opacity: 0.8, fillColor: '#FF0000', fillOpacity: 0.2 }
+                style: { color: '#FF0000', weight: 4, opacity: 0.8, fillColor: '#FF0000', fillOpacity: AppState.isPolygonFill ? 0.2 : 0 }
             });
 
             newLayer.eachLayer(function (innerLayer) {
