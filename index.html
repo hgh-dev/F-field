@@ -2395,6 +2395,19 @@
                             <input type="checkbox" id="chk-nas-imdo" onchange="toggleOverlay('nasImdo', this.checked)">
                         </label>
                     </div>
+
+                    <div class="menu-section">
+                        <div class="menu-title">오프라인 지도</div>
+                        <button id="btn-offline-map" class="mono-btn"
+                            style="width:100%; justify-content:center; padding: 12px; font-size: 14px; background: #007bff; color: white; border: none;"
+                            disabled onclick="downloadOfflineMap()">
+                            <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;margin-right:8px;">
+                                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+                            </svg>
+                            <span id="btn-offline-map-text">15레벨 이상 확대 시 활성화</span>
+                        </button>
+                    </div>
+
                     <div class="sidebar-warning">
                         <ul>
                             <li>모든 정보는 법적 효력이 없으며, 참고용으로만 활용하시기 바랍니다.</li>
@@ -2560,6 +2573,20 @@
         </div>
     </div>
 
+    <!-- 오프라인 지도 다운로드 모달 -->
+    <div id="offline-download-modal-overlay" class="nav-modal-overlay" style="z-index:9999;">
+        <div class="nav-modal-content" onclick="event.stopPropagation()">
+            <div class="nav-modal-header"
+                style="font-size:18px; font-weight:bold; margin-bottom:20px; text-align:center;">지도 다운로드 중</div>
+            <div style="text-align:center; padding: 20px 0;">
+                <div style="font-size:24px; font-weight:bold; color:#3B82F6; margin-bottom:10px;">
+                    <span id="offline-download-progress">0</span> / <span id="offline-download-total">0</span>
+                </div>
+                <div style="font-size:13px; color:#555;">앱을 종료하지 마세요.</div>
+            </div>
+        </div>
+    </div>
+
     <!-- 위치 액션 모달 (주소 클릭 시) -->
     <div id="location-action-modal-overlay" class="nav-modal-overlay" onclick="closeLocationActionModal()">
         <div class="nav-modal-content" onclick="event.stopPropagation()">
@@ -2623,7 +2650,7 @@
             </div>
 
             <div style="margin-bottom:20px;">
-                <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">면 채우기 (투명도)</div>
+                <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">면 채우기</div>
                 <div style="display:flex; flex-direction:row; background:#f8f9fa; border-radius:12px; padding:12px;">
                     <label style="display:flex; align-items:center; flex:1;">
                         <input type="radio" name="polygon-fill-select" value="true" onclick="setPolygonFill(true)"
@@ -2635,7 +2662,7 @@
                     </label>
                 </div>
                 <div style="font-size:11px; color:#888; padding:5px 5px 0 5px;">
-                    ※ 지도에 그려진 면(Polygon)의 내부 채우기 여부를 설정합니다.
+                    ※ 기록된 면(Polygon)의 내부 채우기 여부를 설정합니다.
                 </div>
             </div>
 
@@ -2777,7 +2804,7 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script type="module" src="script.js?v=2.1.2"></script>
+    <script type="module" src="script.js?v=2.2.0"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {

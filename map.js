@@ -2,8 +2,8 @@
    [모듈] 지도 및 레이어 매니저 (map.js)
    [역할] Leaflet 지도 객체 생성 및 각종 배경/지적도/오버레이 레이어 관리
    ========================================================================== */
-import { VWORLD_API_KEY } from './config.js?v=2.1.2';
-import { AppState } from './state.js?v=2.1.2';
+import { VWORLD_API_KEY } from './config.js?v=2.2.0';
+import { AppState } from './state.js?v=2.2.0';
 
 /* --------------------------------------------------------------------------
    1. 지도 초기화 (Map Initialization)
@@ -156,7 +156,7 @@ export const vworldContinuousLayer = L.tileLayer.wms("https://api.vworld.kr/req/
 // 6. 국유림 레이어 (직접 호스팅하는 커스텀 타일)
 // GitHub Pages 등에 올려둔 타일 이미지를 불러옵니다.
 export const nasGukLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon/guk/{z}/{x}/{y}.png', {
-    minZoom: 1,
+    minZoom: 12,
     maxZoom: 22,
     maxNativeZoom: 18,
     tms: false, // TMS 방식(Y축 반전)이 아니므로 false
@@ -169,7 +169,7 @@ export const nasGukLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon
 
 // 6-1. 임도망도 레이어 (직접 호스팅하는 커스텀 타일)
 export const nasImdoLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon/imdo/{z}/{x}/{y}.png', {
-    minZoom: 1,
+    minZoom: 12,
     maxZoom: 22,
     maxNativeZoom: 18,
     tms: false,
@@ -400,5 +400,53 @@ map.on('moveend', function () {
     if (AppState.isForestActive) fetchForestData();
 });
 
+/* --------------------------------------------------------------------------
+   5. 오프라인 지도 (Offline Map)
+   -------------------------------------------------------------------------- */
+/**
+ * 주어진 영역(bounds)과 줌 레벨 범위에 해당하는 타일 URL 배열을 반환합니다.
+ */
+export function getOfflineMapUrls(bounds, minZoom, maxZoom) {
+    const urls = [];
+    const minLat = bounds.getSouth();
+    const maxLat = bounds.getNorth();
+    const minLng = bounds.getWest();
+    const maxLng = bounds.getEast();
 
+    function lng2tile(lon, zoom) { return Math.floor((lon + 180) / 360 * Math.pow(2, zoom)); }
+    function lat2tile(lat, zoom) { return Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom)); }
 
+    // 현재 활성화된 배경 지도 확인
+    let baseUrlTemplate = '';
+
+    if (map.hasLayer(vworldSatellite)) {
+        baseUrlTemplate = `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_API_KEY}/Satellite/{z}/{y}/{x}.jpeg`;
+    } else if (map.hasLayer(esriSatelliteLayer)) {
+        baseUrlTemplate = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}`;
+    } else { // 기본 지도를 기본값으로 사용
+        baseUrlTemplate = `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_API_KEY}/Base/{z}/{y}/{x}.png`;
+    }
+
+    // 하이브리드, 행정경계 등 오버레이도 저장하려면 이 부분을 확장할 수 있지만, 
+    // 본 기능에서는 배경 지도(위성/일반)만 저장합니다.
+
+    for (let z = minZoom; z <= maxZoom; z++) {
+        let xtileMin = lng2tile(minLng, z);
+        let xtileMax = lng2tile(maxLng, z);
+        let ytileMin = lat2tile(maxLat, z); // lat은 북쪽이 값이 크므로 y좌표는 북쪽이 최소값
+        let ytileMax = lat2tile(minLat, z);
+
+        // 최대/최소값 오류 보정
+        const minX = Math.min(xtileMin, xtileMax);
+        const maxX = Math.max(xtileMin, xtileMax);
+        const minY = Math.min(ytileMin, ytileMax);
+        const maxY = Math.max(ytileMin, ytileMax);
+
+        for (let x = minX; x <= maxX; x++) {
+            for (let y = minY; y <= maxY; y++) {
+                urls.push(baseUrlTemplate.replace('{z}', z).replace('{x}', x).replace('{y}', y));
+            }
+        }
+    }
+    return urls;
+}
