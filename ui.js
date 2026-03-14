@@ -4,7 +4,7 @@
    ========================================================================== */
 import { VWORLD_API_KEY, SEARCH_HISTORY_KEY, SEARCH_SETTING_KEY, SVG_ICONS } from './config.js';
 import { AppState } from './state.js';
-import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, updateLayerOrder, getOfflineMapUrls } from './map.js';
+import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, updateLayerOrder } from './map.js';
 import { drawnItems, startDraw, currentEditLayerId, completeDrawing, cancelDrawing, enableSingleLayerEdit } from './draw.js';
 import { getTimestampString, getRandomColor, createColoredMarkerIcon, copyText, getTmCoords, getWgs84FromTm, convertToDms, dmsToDecimal, getShortAddress, resizeImage, parseNationalPointNumber } from './utils.js';
 import { saveToStorage, loadCurrentProjectFeatures, exportSingleLayer } from './data.js';
@@ -1458,11 +1458,6 @@ export function initUiEventListeners() {
         document.addEventListener('mousemove', onDragMove);
         document.addEventListener('mouseup', onDragEnd);
     }
-
-    // 오프라인 지도 확대 레벨 체크 이벤트
-    map.on('zoomend', updateOfflineButton);
-    map.on('moveend', updateOfflineButton);
-    setTimeout(updateOfflineButton, 100);
 }
 
 /* --------------------------------------------------------------------------
@@ -1724,86 +1719,7 @@ export function updateLayerColor(id, newColor) {
 
 
 /* --------------------------------------------------------------------------
-   10. 오프라인 지도 기능 (Offline Map)
-   -------------------------------------------------------------------------- */
-export function updateOfflineButton() {
-    const btn = document.getElementById('btn-offline-map');
-    const textSpan = document.getElementById('btn-offline-map-text');
-    if (!btn || !textSpan) return;
-
-    if (map.getZoom() < 15) {
-        btn.disabled = true;
-        btn.style.backgroundColor = '#ccc';
-        textSpan.innerText = '15레벨 이상으로 확대하세요';
-    } else {
-        btn.disabled = false;
-        btn.style.backgroundColor = '#007bff';
-        textSpan.innerText = '현재 화면 지도 데이터 저장';
-    }
-}
-
-export async function downloadOfflineMap() {
-    const zoom = map.getZoom();
-    if (zoom < 15) return;
-
-    const btn = document.getElementById('btn-offline-map');
-    if (btn) btn.disabled = true;
-
-    const minZoom = 15;
-    const maxZoom = 18;
-    const urls = getOfflineMapUrls(map.getBounds(), minZoom, maxZoom);
-
-    // 약 25KB 당 계산 (MB)
-    const mbSize = (urls.length * 25 / 1024).toFixed(1);
-
-    if (!confirm(`총 ${urls.length}개의 파일 (약 ${mbSize} MB)을 다운로드합니다. 데이터가 소모됩니다.\n진행하시겠습니까?`)) {
-        if (btn) btn.disabled = false;
-        return;
-    }
-
-    const overlay = document.getElementById('offline-download-modal-overlay');
-    const progressEl = document.getElementById('offline-download-progress');
-    const totalEl = document.getElementById('offline-download-total');
-
-    if (overlay) overlay.style.display = 'flex';
-    if (totalEl) totalEl.innerText = urls.length;
-    if (progressEl) progressEl.innerText = '0';
-
-    try {
-        const cache = await caches.open('F-field-map-v1');
-        let count = 0;
-
-        // chunk fetch
-        const chunkSize = 10;
-        for (let i = 0; i < urls.length; i += chunkSize) {
-            const chunk = urls.slice(i, i + chunkSize);
-            await Promise.all(chunk.map(async (url) => {
-                try {
-                    const response = await fetch(url, { mode: 'cors' });
-                    if (response.ok || response.type === 'opaque') {
-                        await cache.put(url, response.clone());
-                    }
-                } catch (e) {
-                    console.error("Tile fetch error:", url, e);
-                } finally {
-                    count++;
-                }
-            }));
-            if (progressEl) progressEl.innerText = count;
-        }
-
-        alert('오프라인 지도 저장이 완료되었습니다.');
-    } catch (e) {
-        console.error('Offline map download failed:', e);
-        alert('다운로드 중 오류가 발생했습니다.');
-    } finally {
-        if (overlay) overlay.style.display = 'none';
-        if (btn) btn.disabled = false;
-    }
-}
-
-/* --------------------------------------------------------------------------
-   11. 토스트 알림 및 로딩 (Toast & Loading)
+   10. 토스트 알림 및 로딩 (Toast & Loading)
    -------------------------------------------------------------------------- */
 
 /* --- 전역 바인딩 (UI 관련) --- */
@@ -1867,4 +1783,3 @@ window.closeSettingsModal = closeSettingsModal;
 window.shareLocationText = shareLocationText;
 window.openContextMenu = openContextMenu;
 window.handleMenuAction = handleMenuAction;
-window.downloadOfflineMap = downloadOfflineMap;
