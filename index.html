@@ -20,7 +20,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes"> <!-- iOS 호환성을 위해 남겨둠 -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon.png">
 
     <!-- 
     외부 라이브러리 불러오기
@@ -2395,6 +2395,30 @@
                             <input type="checkbox" id="chk-nas-imdo" onchange="toggleOverlay('nasImdo', this.checked)">
                         </label>
                     </div>
+
+                    <div class="menu-section">
+                        <div class="menu-title"
+                            style="display: flex; justify-content: space-between; align-items: center; border-bottom: none; padding-bottom: 0;">
+                            <span>오프라인 지도</span>
+                            <button id="btn-offline-map" class="mono-btn"
+                                style="padding: 6px 10px; font-size: 11px; font-weight: normal; background: #007bff; color: white; border: none; border-radius: 6px; justify-content:center; min-width:60px; margin-left: 10px;"
+                                disabled onclick="downloadOfflineMap()">
+                                <svg viewBox="0 0 24 24"
+                                    style="width:14px;height:14px;fill:currentColor;margin-right:2px;">
+                                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+                                </svg>
+                                <span id="btn-offline-map-text">다운로드</span>
+                            </button>
+                        </div>
+                        <div id="offline-map-status"
+                            style="font-size: 11px; color: #888; margin-top: 6px; text-align: left;">
+                            <ul style="padding-left: 18px; margin: 6px 0 0 0; line-height: 1.4;">
+                                <li>15레벨 이상 확대 시 현재 화면의 지도를 다운로드할 수 있습니다.</li>
+                                <li style="margin-top: 2px;">다운로드 후 오프라인 상태에서 지도를 확인할 수 있습니다.</li>
+                            </ul>
+                        </div>
+                    </div>
+
                     <div class="sidebar-warning">
                         <ul>
                             <li>모든 정보는 법적 효력이 없으며, 참고용으로만 활용하시기 바랍니다.</li>
@@ -2557,6 +2581,20 @@
             </div>
             <button onclick="closeNavModal()"
                 style="width:100%; padding:14px; background:#f5f5f5; border:none; border-radius:12px; font-weight:bold; color:#666;">취소</button>
+        </div>
+    </div>
+
+    <!-- 오프라인 지도 다운로드 모달 -->
+    <div id="offline-download-modal-overlay" class="nav-modal-overlay" style="z-index:9999;">
+        <div class="nav-modal-content" onclick="event.stopPropagation()">
+            <div class="nav-modal-header"
+                style="font-size:18px; font-weight:bold; margin-bottom:20px; text-align:center;">지도 다운로드 중</div>
+            <div style="text-align:center; padding: 20px 0;">
+                <div style="font-size:24px; font-weight:bold; color:#3B82F6; margin-bottom:10px;">
+                    <span id="offline-download-progress">0</span> / <span id="offline-download-total">0</span>
+                </div>
+                <div style="font-size:13px; color:#555;">앱을 종료하지 마세요.</div>
+            </div>
         </div>
     </div>
 
@@ -2777,7 +2815,7 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script type="module" src="script.js?v=2.1.2"></script>
+    <script type="module" src="script.js?v=2.2.0"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {

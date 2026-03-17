@@ -487,6 +487,35 @@ window.toggleAllLayers = (isChecked) => {
     saveToStorage();
     uiRenderSurveyList();
 };
+
+window.deleteSelectedLayers = () => {
+    let deletedCount = 0;
+    const layersToRemove = [];
+    
+    drawnItems.getLayers().forEach(layer => {
+        if (layer.feature && layer.feature.properties && !layer.feature.properties.isHidden) {
+            layersToRemove.push(layer);
+        }
+    });
+
+    if (layersToRemove.length === 0) {
+        alert("선택된 기록이 없습니다.");
+        return;
+    }
+
+    if(!confirm(`선택한 ${layersToRemove.length}개의 기록을 삭제하시겠습니까?\n(삭제 후 복구할 수 없습니다.)`)) return;
+
+    layersToRemove.forEach(layer => {
+        drawnItems.removeLayer(layer);
+        if(layer._popup) layer.closePopup();
+        deletedCount++;
+    });
+    
+    if (deletedCount > 0) {
+        saveToStorage();
+        uiRenderSurveyList();
+    }
+};
 window.exportCurrentProject = exportCurrentProject;
 window.toggleOverlay = toggleOverlay;
 window.toggleBaseLayer = toggleBaseLayer;
