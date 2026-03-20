@@ -10,7 +10,7 @@ import {
     map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer,
     vworldLxLayer, vworldContinuousLayer, nasGukLayer, mergedAdminLayer,
     toggleBaseLayer, changeBaseMap, updateLayerOrder, changeCadastralMap,
-    toggleOverlay, fetchForestData
+    toggleOverlay
 } from './map.js';
 import {
     drawnItems, startDraw, completeDrawing, cancelDrawing,

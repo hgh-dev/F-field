@@ -2,8 +2,8 @@
    [모듈] 지도 및 레이어 매니저 (map.js)
    [역할] Leaflet 지도 객체 생성 및 각종 배경/지적도/오버레이 레이어 관리
    ========================================================================== */
-import { VWORLD_API_KEY } from './config.js?v=2.2.0';
-import { AppState } from './state.js?v=2.2.0';
+import { VWORLD_API_KEY } from './config.js?v=2.2.1';
+import { AppState } from './state.js?v=2.2.1';
 
 /* --------------------------------------------------------------------------
    1. 지도 초기화 (Map Initialization)
@@ -46,6 +46,14 @@ map.getPane('nasGukPane').style.pointerEvents = 'none';
 map.createPane('nasImdoPane');
 map.getPane('nasImdoPane').style.zIndex = 360;
 map.getPane('nasImdoPane').style.pointerEvents = 'none';
+
+map.createPane('nasHeritagePane');
+map.getPane('nasHeritagePane').style.zIndex = 390; // 산림보호구역(400) 아래
+map.getPane('nasHeritagePane').style.pointerEvents = 'none';
+
+map.createPane('nasRestrictionPane');
+map.getPane('nasRestrictionPane').style.zIndex = 410; // 산림보호구역(overlayPane 기본 400) 위
+map.getPane('nasRestrictionPane').style.pointerEvents = 'none';
 
 /**
  * [Proj4js 좌표계 정의]
@@ -194,6 +202,88 @@ export const mergedAdminLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms",
     className: 'admin-layer'
 });
 
+// 8. 개발제한구역 (WMS)
+export const vworldRestrictionLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY,
+    layers: 'lt_c_ud801',
+    styles: 'lt_c_ud801',
+    format: 'image/png',
+    transparent: true,
+    opacity: 0.7,
+    version: '1.3.0',
+    minZoom: 8,
+    maxZoom: 22,
+    maxNativeZoom: 19,
+    pane: 'nasRestrictionPane', // 산림보호구역보다 위에 표시
+    className: 'restriction-layer'
+});
+
+// 9. 국가유산 지정/보호구역 (WMS)
+export const vworldHeritageLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY,
+    layers: 'lt_c_uo301',
+    styles: 'lt_c_uo301',
+    format: 'image/png',
+    transparent: true,
+    opacity: 0.7,
+    version: '1.3.0',
+    minZoom: 12,
+    maxZoom: 22,
+    maxNativeZoom: 19,
+    pane: 'nasHeritagePane', // 산림보호구역보다 아래에 표시
+    className: 'heritage-layer'
+});
+
+// 산림보호구역 (WMS)
+export const vworldForestLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_uf151', styles: 'lt_c_uf151', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'forest-layer'
+});
+
+// 10. 도시자연공원구역 (WMS)
+export const vworldCityparkLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_uq162', styles: 'lt_c_uq162', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'citypark-layer'
+});
+
+// 11. 임업 및 산촌 진흥권역 (WMS)
+export const vworldForestryLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_uf602', styles: 'lt_c_uf602', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'forestry-layer'
+});
+
+// 12. 자연환경보전지역 (WMS)
+export const vworldEnvpreserveLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_uq114', styles: 'lt_c_uq114', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'envpreserve-layer'
+});
+
+// 13. 백두대간보호지역 (WMS)
+export const vworldBaekduLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_uf901', styles: 'lt_c_uf901', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 8, maxZoom: 22, maxNativeZoom: 19, className: 'baekdu-layer'
+});
+
+// 14. 습지보호지역 (WMS)
+export const vworldWetlandLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_wgisarwet', styles: 'lt_c_wgisarwet', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'wetland-layer'
+});
+
+// 15. 야생생물보호 (WMS)
+export const vworldWildlifeLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_um221', styles: 'lt_c_um221', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'wildlife-layer'
+});
+
+// 16. 상수원보호 (WMS)
+export const vworldWatersourceLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_um710', styles: 'lt_c_um710', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'watersource-layer'
+});
+
+// 17. 자연공원 (WMS) - 국립, 군립, 도립 묶음
+export const vworldNatureparkLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_wgisnpgug,lt_c_wgisnpgun,lt_c_wgisnpdo', styles: 'lt_c_wgisnpgug,lt_c_wgisnpgun,lt_c_wgisnpdo', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 8, maxZoom: 22, maxNativeZoom: 19, className: 'naturepark-layer'
+});
+
+// 18. 사업지구경계도 (WMS)
+export const vworldBizzoneLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_lhzone', styles: 'lt_c_lhzone', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'bizzone-layer'
+});
+
 
 // 초기 레이어 추가 (위성지도 + 연속지적도 + 하이브리드)
 map.addLayer(vworldSatellite);
@@ -306,31 +396,33 @@ export function toggleOverlay(type, isChecked) {
     } else if (type === 'nasImdo') {
         layer = nasImdoLayer;
 
+    } else if (type === 'restriction') {
+        layer = vworldRestrictionLayer;
+
+    } else if (type === 'heritage') {
+        layer = vworldHeritageLayer;
+
+    } else if (type === 'citypark') {
+        layer = vworldCityparkLayer;
+    } else if (type === 'forestry') {
+        layer = vworldForestryLayer;
+    } else if (type === 'envpreserve') {
+        layer = vworldEnvpreserveLayer;
+    } else if (type === 'baekdu') {
+        layer = vworldBaekduLayer;
+    } else if (type === 'wetland') {
+        layer = vworldWetlandLayer;
+    } else if (type === 'wildlife') {
+        layer = vworldWildlifeLayer;
+    } else if (type === 'watersource') {
+        layer = vworldWatersourceLayer;
+    } else if (type === 'naturepark') {
+        layer = vworldNatureparkLayer;
+    } else if (type === 'bizzone') {
+        layer = vworldBizzoneLayer;
+
     } else if (type === 'forest') {
-        // 산림보호구역 API 처리
-        AppState.isForestActive = isChecked;
-        if (isChecked) {
-            if (!AppState.forestDataLayer) {
-                // 레이어가 없으면 새로 생성 (초록색 점선)
-                AppState.forestDataLayer = L.geoJSON(null, {
-                    style: {
-                        color: "#e1ff00ff", weight: 1, opacity: 0.6, fillOpacity: 0.1
-                    },
-                    onEachFeature: function (feature, layer) {
-                        layer.bindPopup("산림보호구역");
-                    }
-                }).addTo(map);
-            } else {
-                map.addLayer(AppState.forestDataLayer);
-            }
-            fetchForestData(); // 데이터 불러오기
-        } else {
-            if (AppState.forestDataLayer) {
-                map.removeLayer(AppState.forestDataLayer);
-                AppState.forestDataLayer.clearLayers();
-            }
-        }
-        return;
+        layer = vworldForestLayer;
     }
 
     // 일반 레이어 추가/제거
@@ -349,54 +441,7 @@ export function toggleOverlay(type, isChecked) {
 /* --------------------------------------------------------------------------
    4. 외부 API 연동 (External API Data)
    -------------------------------------------------------------------------- */
-// 산림보호구역 데이터 가져오기 (JSONP 방식)
-// [교육용] CORS 문제 해결을 위해 JSONP를 사용합니다. (script 태그는 교차 출처 허용)
-export function fetchForestData() {
-    if (!AppState.isForestActive || !AppState.forestDataLayer) return;
 
-    // 성능을 위해 줌 레벨이 13 미만이면 데이터 표시 안 함
-    if (map.getZoom() < 13) {
-        AppState.forestDataLayer.clearLayers();
-        return;
-    }
-
-    // 현재 화면 영역(Bounds) 가져오기
-    const bounds = map.getBounds();
-    const min = bounds.getSouthWest();
-    const max = bounds.getNorthEast();
-    const bbox = `${min.lng},${min.lat},${max.lng},${max.lat}`;
-
-    const requestId = ++AppState.lastForestRequestId;
-    const callbackName = 'vworld_forest_' + Date.now();
-
-    // JSONP 방식으로 데이터 요청
-    window[callbackName] = function (data) {
-        if (requestId !== AppState.lastForestRequestId) {
-            delete window[callbackName];
-            return;
-        }
-
-        if (data.response.status === "OK") {
-            AppState.forestDataLayer.clearLayers();
-            const features = data.response.result.featureCollection.features;
-            AppState.forestDataLayer.addData(features);
-        }
-
-        delete window[callbackName];
-        document.getElementById(callbackName)?.remove();
-    };
-
-    const url = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LT_C_UF151&key=${VWORLD_API_KEY}&domain=${window.location.hostname}&geomFilter=BOX(${bbox})&format=json&errorFormat=json&size=1000&callback=${callbackName}`;
-    const script = document.createElement('script');
-    script.id = callbackName;
-    script.src = url;
-    document.body.appendChild(script);
-}
-
-// 지도 이동이 끝날 때마다 데이터를 다시 불러옴
-map.on('moveend', function () {
-    if (AppState.isForestActive) fetchForestData();
-});
 
 /* --------------------------------------------------------------------------
    5. 오프라인 지도 (Offline Map)

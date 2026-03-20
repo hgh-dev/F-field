@@ -2290,7 +2290,12 @@
                     </svg>
                 </button>
                 <div style="display:flex; gap:10px;">
-                    <button class="btn-sidebar-action" onclick="openSettingsModal()">
+                    <button class="btn-sidebar-action" onclick="window.open('https://getupnote.com/share/notes/ixIE9WYlfTPrpRbRIt446szGaIn2/019cd019-143e-772b-9609-7720b35fb002', '_blank')" title="사용설명서">
+                        <svg class="svg-icon" viewBox="0 0 24 24" style="opacity: 0.3; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='0.3'">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z" fill="currentColor"/>
+                        </svg>
+                    </button>
+                    <button class="btn-sidebar-action" onclick="openSettingsModal()" title="설정">
                         <svg class="svg-icon" viewBox="0 0 24 24">
                             <path
                                 d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
@@ -2306,8 +2311,11 @@
                 <!-- 탭 1: 지도 설정 -->
                 <div id="content-map" class="tab-content active">
                     <div class="menu-section">
-                        <div class="menu-title">기본 지도</div>
-                        <div class="check-group">
+                        <div class="menu-title accordion-header active" onclick="toggleAccordion('section-base-map', this)" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
+                            <span>기본 지도</span><span class="toggle-icon"></span>
+                        </div>
+                        <div id="section-base-map" class="accordion-content" style="display: block;">
+                            <div class="check-group">
                             <div class="option-row" style="border-bottom:none; padding-bottom:5px;">
                                 <div class="accordion-header" onclick="toggleAccordion('base-layer-options', this)">
                                     <span class="toggle-icon"></span>
@@ -2360,19 +2368,83 @@
                                         style="flex:1;">LX맵</span><input type="radio" name="cadastralMap" value="lx"
                                         onchange="changeCadastralMap('lx')"></label>
                             </div>
+                            </div>
                         </div>
                     </div>
                     <div class="menu-section">
-                        <div class="menu-title">산림 주제도</div>
+                        <div class="menu-title accordion-header" onclick="toggleAccordion('section-zone-map', this)" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
+                            <span>지역/지구/구역</span><span class="toggle-icon"></span>
+                        </div>
+                        <div id="section-zone-map" class="accordion-content" style="display: none;">
+                        <label class="option-row">
+                            <span class="static-icon"></span>
+                            <span style="flex:1;">개발제한구역</span>
+                            <input type="checkbox" id="chk-restriction"
+                                onchange="toggleOverlay('restriction', this.checked)">
+                        </label>
                         <label class="option-row">
                             <span class="static-icon"></span>
                             <span style="flex:1;">산림보호구역</span>
                             <input type="checkbox" id="chk-forest" onchange="toggleOverlay('forest', this.checked)">
                         </label>
+                        <label class="option-row">
+                            <span class="static-icon"></span>
+                            <span style="flex:1;">국가유산 지정/보호구역</span>
+                            <input type="checkbox" id="chk-heritage" onchange="toggleOverlay('heritage', this.checked)">
+                        </label>
+                        <label class="option-row">
+                            <span class="static-icon"></span>
+                            <span style="flex:1;">도시자연공원구역</span>
+                            <input type="checkbox" id="chk-citypark" onchange="toggleOverlay('citypark', this.checked)">
+                        </label>
+                        <label class="option-row">
+                            <span class="static-icon"></span>
+                            <span style="flex:1;">임업 및 산촌 진흥권역</span>
+                            <input type="checkbox" id="chk-forestry" onchange="toggleOverlay('forestry', this.checked)">
+                        </label>
+                        <label class="option-row">
+                            <span class="static-icon"></span>
+                            <span style="flex:1;">자연환경보전지역</span>
+                            <input type="checkbox" id="chk-envpreserve" onchange="toggleOverlay('envpreserve', this.checked)">
+                        </label>
+                        <label class="option-row">
+                            <span class="static-icon"></span>
+                            <span style="flex:1;">백두대간보호지역</span>
+                            <input type="checkbox" id="chk-baekdu" onchange="toggleOverlay('baekdu', this.checked)">
+                        </label>
+                        <label class="option-row">
+                            <span class="static-icon"></span>
+                            <span style="flex:1;">습지보호지역</span>
+                            <input type="checkbox" id="chk-wetland" onchange="toggleOverlay('wetland', this.checked)">
+                        </label>
+                        <label class="option-row">
+                            <span class="static-icon"></span>
+                            <span style="flex:1;">야생생물보호</span>
+                            <input type="checkbox" id="chk-wildlife" onchange="toggleOverlay('wildlife', this.checked)">
+                        </label>
+                        <label class="option-row">
+                            <span class="static-icon"></span>
+                            <span style="flex:1;">상수원보호</span>
+                            <input type="checkbox" id="chk-watersource" onchange="toggleOverlay('watersource', this.checked)">
+                        </label>
+                        <label class="option-row">
+                            <span class="static-icon"></span>
+                            <span style="flex:1;">자연공원</span>
+                            <input type="checkbox" id="chk-naturepark" onchange="toggleOverlay('naturepark', this.checked)">
+                        </label>
+                        <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
+                            <span class="static-icon"></span>
+                            <span style="flex:1;">사업지구경계도</span>
+                            <input type="checkbox" id="chk-bizzone" onchange="toggleOverlay('bizzone', this.checked)">
+                        </label>
+                        </div>
                     </div>
                     <!-- 수원국유림관리소 레이어 (암호 입력 시 표시) -->
                     <div id="hidden-layer-section" class="menu-section" style="display: none;">
-                        <div class="menu-title">수원국유림관리소</div>
+                        <div class="menu-title accordion-header active" onclick="toggleAccordion('section-nas-guk', this)" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
+                            <span>수원국유림관리소</span><span class="toggle-icon"></span>
+                        </div>
+                        <div id="section-nas-guk" class="accordion-content" style="display: block;">
                         <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
                             <span class="static-icon"></span>
                             <span style="flex:1;">국유재산기본도(26년 1월)</span>
@@ -2394,6 +2466,7 @@
                             <span style="flex:1;">임도망도(25년 말)</span>
                             <input type="checkbox" id="chk-nas-imdo" onchange="toggleOverlay('nasImdo', this.checked)">
                         </label>
+                        </div>
                     </div>
 
                     <div class="menu-section">
@@ -2815,7 +2888,7 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script type="module" src="script.js?v=2.2.0"></script>
+    <script type="module" src="script.js?v=2.2.1"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {
