@@ -111,17 +111,108 @@ export function unlockHiddenLayers() {
         return;
     }
 
-    const input = prompt("암호를 입력하세요:");
-    if (!input) return;
+    // 커스텀 다이얼로그 동적 생성
+    const overlay = document.createElement('div');
+    overlay.className = 'nav-modal-overlay visible';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.zIndex = '99999';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
 
-    if (btoa(input) === 'ODkwNg==') {
-        section.style.display = 'block';
-        btnLock.innerHTML = SVG_ICONS.unlock;
-        btnLock.style.color = '#3B82F6';
-        alert("잠금이 해제되었습니다. 비공개 정보가 유출되지 않도록 주의하세요.");
-    } else {
-        alert("암호가 올바르지 않습니다.");
-    }
+    const modal = document.createElement('div');
+    modal.style.width = '80%';
+    modal.style.maxWidth = '300px';
+    modal.style.backgroundColor = '#fff';
+    modal.style.borderRadius = '16px';
+    modal.style.padding = '24px';
+    modal.style.boxShadow = '0 10px 25px rgba(0,0,0,0.1)';
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
+    modal.style.gap = '20px';
+    modal.onclick = (e) => e.stopPropagation();
+
+    const title = document.createElement('div');
+    title.innerText = '암호를 입력하세요';
+    title.style.fontSize = '17px';
+    title.style.fontWeight = 'bold';
+    title.style.textAlign = 'center';
+    title.style.color = '#333';
+
+    const input = document.createElement('input');
+    input.type = 'password';
+    input.pattern = '[0-9]*';
+    input.inputMode = 'numeric';
+    input.style.width = '100%';
+    input.style.padding = '14px';
+    input.style.fontSize = '24px';
+    input.style.border = '1.5px solid #e5e5ea';
+    input.style.borderRadius = '12px';
+    input.style.textAlign = 'center';
+    input.style.letterSpacing = '10px';
+    input.style.boxSizing = 'border-box';
+    input.style.outline = 'none';
+    input.style.transition = 'border-color 0.2s';
+    input.onfocus = () => { input.style.borderColor = '#007aff'; };
+    input.onblur = () => { input.style.borderColor = '#e5e5ea'; };
+    
+    const btnGroup = document.createElement('div');
+    btnGroup.style.display = 'flex';
+    btnGroup.style.gap = '10px';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.innerText = '취소';
+    cancelBtn.style.flex = '1';
+    cancelBtn.style.padding = '12px';
+    cancelBtn.style.background = '#f2f2f7';
+    cancelBtn.style.border = 'none';
+    cancelBtn.style.borderRadius = '12px';
+    cancelBtn.style.fontWeight = 'bold';
+    cancelBtn.style.fontSize = '15px';
+    cancelBtn.style.color = '#8e8e93';
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.innerText = '확인';
+    confirmBtn.style.flex = '1';
+    confirmBtn.style.padding = '12px';
+    confirmBtn.style.background = '#007aff';
+    confirmBtn.style.border = 'none';
+    confirmBtn.style.borderRadius = '12px';
+    confirmBtn.style.fontWeight = 'bold';
+    confirmBtn.style.fontSize = '15px';
+    confirmBtn.style.color = 'white';
+
+    btnGroup.appendChild(cancelBtn);
+    btnGroup.appendChild(confirmBtn);
+
+    modal.appendChild(title);
+    modal.appendChild(input);
+    modal.appendChild(btnGroup);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    input.focus();
+
+    const cleanup = () => { document.body.removeChild(overlay); };
+
+    cancelBtn.onclick = cleanup;
+    overlay.onclick = cleanup;
+
+    const doSubmit = () => {
+        const val = input.value;
+        cleanup();
+        if (!val) return;
+        if (btoa(val) === 'ODkwNg==') {
+            section.style.display = 'block';
+            btnLock.innerHTML = SVG_ICONS.unlock;
+            btnLock.style.color = '#3B82F6';
+            alert("잠금이 해제되었습니다. 비공개 정보가 유출되지 않도록 주의하세요.");
+        } else {
+            alert("암호가 올바르지 않습니다.");
+        }
+    };
+    confirmBtn.onclick = doSubmit;
+    input.onkeypress = (e) => { if (e.key === 'Enter') doSubmit(); };
 }
 
 /* --------------------------------------------------------------------------
