@@ -43,7 +43,7 @@ import {
     createNewProject, editProjectName, deleteCurrentProject,
     openMoveProjectModal, openMoveSelectionModal, closeMoveProjectModal,
     highlightButton, resetButtonStyles, openNavModal, closeNavModal,
-    executeNavigation, updateCoordDisplay,
+    executeNavigation, openSearchModal, closeSearchModal, executeMapSearch, updateCoordDisplay,
     startSleepMode, unlockSleepMode, initSleepSlider, toggleAccordion,
     toggleMoreMenu, toggleProjectMenu, openPhotoSelectMenu,
     closePhotoSelectMenu, handlePhotoMenuAction, processPhotoFiles,
@@ -414,6 +414,9 @@ window.startPhotoPoint = startPhotoPoint;
 window.processPendingPhotoFiles = processPendingPhotoFiles;
 window.saveCurrentPoint = saveCurrentPoint;
 window.saveCurrentBoundary = saveCurrentBoundary;
+window.openSearchModal = openSearchModal;
+window.closeSearchModal = closeSearchModal;
+window.executeMapSearch = executeMapSearch;
 window.triggerFileInput = () => document.getElementById('geoJsonInput').click();
 window.setCoordMode = (mode) => {
     AppState.coordMode = parseInt(mode);

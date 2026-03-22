@@ -155,7 +155,7 @@ export function unlockHiddenLayers() {
     input.style.transition = 'border-color 0.2s';
     input.onfocus = () => { input.style.borderColor = '#007aff'; };
     input.onblur = () => { input.style.borderColor = '#e5e5ea'; };
-    
+
     const btnGroup = document.createElement('div');
     btnGroup.style.display = 'flex';
     btnGroup.style.gap = '10px';
@@ -712,12 +712,26 @@ export function showInfoPopup(lat, lng) {
     window[callbackName] = function (data) {
         let parcelAddr = "주소 정보 없음";
         let roadAddr = "";
+        let zipcode = "";
+
         if (data.response.status === "OK") {
             const results = data.response.result;
+            let tempParcelZip = "";
+            let tempRoadZip = "";
+
             results.forEach(item => {
-                if (item.type === 'parcel') parcelAddr = item.text;
-                else if (item.type === 'road') roadAddr = item.text;
+                if (item.type === 'parcel') {
+                    parcelAddr = item.text;
+                    if (item.zipcode) tempParcelZip = item.zipcode;
+                }
+                else if (item.type === 'road') {
+                    roadAddr = item.text;
+                    if (item.zipcode) tempRoadZip = item.zipcode;
+                }
             });
+
+            zipcode = tempRoadZip || tempParcelZip || "";
+
             if (parcelAddr === "주소 정보 없음" && roadAddr !== "") {
                 parcelAddr = roadAddr;
                 roadAddr = "";
@@ -745,13 +759,18 @@ export function showInfoPopup(lat, lng) {
                             <hr style="margin: 12px 0; border: none; border-top: 1px solid #f0f0f0;">
                             ${roadAddr ? `
                             <div style="display:flex; align-items:baseline; font-size: 14px; color: #555; margin-bottom: 8px;">
-                                <span class="badge-road" style="flex-shrink:0; width:29px; display:inline-block; text-align:center;">도로명</span>
+                                <span class="badge-road" style="flex-shrink:0; width:33px; display:inline-block; text-align:center;">도로명</span>
                                 <span onclick="copyText(this.innerText, false, '도로명 주소')" style="margin-left: 5px; line-height: 1.5; word-break: keep-all; cursor: pointer;">${roadAddr}</span>
                             </div>` : ''}
-                            <div style="display:flex; align-items:baseline; font-size: 14px; color: #555; margin-bottom: 30px;">
-                                <span class="badge-coord" style="flex-shrink:0; width:29px; display:inline-block; text-align:center;">좌표</span>
+                            <div style="display:flex; align-items:baseline; font-size: 14px; color: #555; margin-bottom: ${zipcode ? '8px' : '30px'};">
+                                <span class="badge-coord" style="flex-shrink:0; width:33px; display:inline-block; text-align:center;">좌표</span>
                                 <div onclick="copyText(this.innerText, false, '좌표')" style="margin-left: 5px; line-height: 1.5; cursor: pointer;">${infoText}</div>
                             </div>
+                            ${zipcode ? `
+                            <div style="display:flex; align-items:baseline; font-size: 14px; color: #555; margin-bottom: 30px;">
+                                <span style="background:#f3f4f6; color:#4b5563; padding:2px 4px; border-radius:3px; font-size:10px; width:33px; display:inline-block; text-align:center; flex-shrink:0;">우편</span>
+                                <span onclick="copyText(this.innerText, false, '우편번호')" style="margin-left: 5px; line-height: 1.5; cursor: pointer;">${zipcode}</span>
+                            </div>` : ''}
                         </div>
                         <div style="margin-top: 10px; display:flex; flex-direction:column; gap:5px;">
                             <div style="display:flex; gap:5px; justify-content:center;">
@@ -763,6 +782,9 @@ export function showInfoPopup(lat, lng) {
                                 </button>
                                 <button class="popup-btn" style="flex:1; background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;" onclick="shareLocationText('${parcelAddr}', '${lat}', '${lng}')">
                                     <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill:currentColor;"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.66 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+                                </button>
+                                <button class="popup-btn" style="flex:1; background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;" onclick="openSearchModal('${parcelAddr}')">
+                                    <div style="width:16px; height:16px;">${SVG_ICONS.search}</div>
                                 </button>
                                 <button class="popup-btn" style="flex:1; background:#fff; color:#555; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:4px;" onclick="openNavModal('${parcelAddr}', ${lat}, ${lng})">
                                     <div style="width:16px; height:16px;">${SVG_ICONS.car}</div>
@@ -788,7 +810,7 @@ export function showInfoPopup(lat, lng) {
     };
     const script = document.createElement('script');
     script.id = callbackName;
-    script.src = `https://api.vworld.kr/req/address?service=address&request=getAddress&version=2.0&crs=epsg:4326&point=${lng},${lat}&format=jsonp&type=BOTH&zipcode=false&simple=false&key=${VWORLD_API_KEY}&callback=${callbackName}`;
+    script.src = `https://api.vworld.kr/req/address?service=address&request=getAddress&version=2.0&crs=epsg:4326&point=${lng},${lat}&format=jsonp&type=BOTH&zipcode=true&simple=false&key=${VWORLD_API_KEY}&callback=${callbackName}`;
     document.body.appendChild(script);
 }
 
@@ -1061,6 +1083,47 @@ export function executeNavigation(type) {
     else if (type === 'kakao') url = `kakaomap://route?ep=${lat},${lng}&by=CAR`;
     window.location.href = url;
     setTimeout(closeNavModal, 500);
+}
+
+export let searchTarget = { name: "" };
+
+export function openSearchModal(name) {
+    searchTarget = { name: name || "검색" };
+    const overlay = document.getElementById('search-modal-overlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    setTimeout(() => { overlay.classList.add('visible'); }, 10);
+}
+
+export function closeSearchModal() {
+    const overlay = document.getElementById('search-modal-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+}
+
+export function executeMapSearch(type) {
+    const { name } = searchTarget;
+    let url = "";
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    if (type === 'naver') {
+        if (isMobile) {
+            url = `nmap://search?query=${encodeURIComponent(name)}&appname=F-Field`;
+        } else {
+            url = `https://map.naver.com/v5/search/${encodeURIComponent(name)}`;
+        }
+    } else if (type === 'kakao') {
+        if (isMobile) {
+            url = `kakaomap://search?q=${encodeURIComponent(name)}`;
+        } else {
+            url = `https://map.kakao.com/link/search/${encodeURIComponent(name)}`;
+        }
+    } else if (type === 'google') {
+        url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`;
+    }
+    window.open(url, '_blank');
+    setTimeout(closeSearchModal, 500);
 }
 
 /* --------------------------------------------------------------------------
@@ -1681,7 +1744,7 @@ export function updateLayerInfo(layer) {
 
     if (infoText) {
         if (layer instanceof L.Marker) {
-            popupContent += `<div style="display:flex; align-items:baseline; font-size: 14px; color: #555; margin-bottom: 15px;"><span class="badge-coord" style="flex-shrink:0; width:29px; display:inline-block; text-align:center;">좌표</span><div style="margin-left: 5px; line-height: 1.5;">${infoText}</div></div>`;
+            popupContent += `<div style="display:flex; align-items:baseline; font-size: 14px; color: #555; margin-bottom: 15px;"><span class="badge-coord" style="flex-shrink:0; width:36px; display:inline-block; text-align:center;">좌표</span><div style="margin-left: 5px; line-height: 1.5;">${infoText}</div></div>`;
         } else {
             popupContent += `<div style="font-size:14px; color:#666; line-height:1.5; margin-bottom:15px;">${infoText}</div>`;
         }
