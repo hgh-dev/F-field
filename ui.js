@@ -122,19 +122,20 @@ export function unlockHiddenLayers() {
 
     const modal = document.createElement('div');
     modal.style.width = '80%';
-    modal.style.maxWidth = '300px';
+    modal.style.maxWidth = '280px';
     modal.style.backgroundColor = '#fff';
-    modal.style.borderRadius = '16px';
-    modal.style.padding = '24px';
+    modal.style.borderRadius = '14px';
+    modal.style.padding = '20px';
     modal.style.boxShadow = '0 10px 25px rgba(0,0,0,0.1)';
     modal.style.display = 'flex';
     modal.style.flexDirection = 'column';
-    modal.style.gap = '20px';
+    modal.style.gap = '16px';
+    modal.style.transition = 'transform 0.3s ease-out';
     modal.onclick = (e) => e.stopPropagation();
 
     const title = document.createElement('div');
     title.innerText = '암호를 입력하세요';
-    title.style.fontSize = '17px';
+    title.style.fontSize = '15px';
     title.style.fontWeight = 'bold';
     title.style.textAlign = 'center';
     title.style.color = '#333';
@@ -144,17 +145,26 @@ export function unlockHiddenLayers() {
     input.pattern = '[0-9]*';
     input.inputMode = 'numeric';
     input.style.width = '100%';
-    input.style.padding = '14px';
-    input.style.fontSize = '24px';
+    input.style.padding = '12px';
+    input.style.fontSize = '18px';
     input.style.border = '1.5px solid #e5e5ea';
-    input.style.borderRadius = '12px';
+    input.style.borderRadius = '8px';
     input.style.textAlign = 'center';
-    input.style.letterSpacing = '10px';
+    input.style.letterSpacing = '5px';
     input.style.boxSizing = 'border-box';
     input.style.outline = 'none';
     input.style.transition = 'border-color 0.2s';
-    input.onfocus = () => { input.style.borderColor = '#007aff'; };
-    input.onblur = () => { input.style.borderColor = '#e5e5ea'; };
+    input.onfocus = () => { 
+        input.style.borderColor = '#007aff';
+        // 모바일 가상 키보드 회피를 위해 모달을 위로 올림
+        if (window.innerWidth <= 768) {
+            modal.style.transform = 'translateY(-15vh)';
+        }
+    };
+    input.onblur = () => { 
+        input.style.borderColor = '#e5e5ea';
+        modal.style.transform = 'translateY(0)';
+    };
 
     const btnGroup = document.createElement('div');
     btnGroup.style.display = 'flex';
@@ -163,23 +173,23 @@ export function unlockHiddenLayers() {
     const cancelBtn = document.createElement('button');
     cancelBtn.innerText = '취소';
     cancelBtn.style.flex = '1';
-    cancelBtn.style.padding = '12px';
+    cancelBtn.style.padding = '10px';
     cancelBtn.style.background = '#f2f2f7';
     cancelBtn.style.border = 'none';
-    cancelBtn.style.borderRadius = '12px';
+    cancelBtn.style.borderRadius = '8px';
     cancelBtn.style.fontWeight = 'bold';
-    cancelBtn.style.fontSize = '15px';
+    cancelBtn.style.fontSize = '14px';
     cancelBtn.style.color = '#8e8e93';
 
     const confirmBtn = document.createElement('button');
     confirmBtn.innerText = '확인';
     confirmBtn.style.flex = '1';
-    confirmBtn.style.padding = '12px';
+    confirmBtn.style.padding = '10px';
     confirmBtn.style.background = '#007aff';
     confirmBtn.style.border = 'none';
-    confirmBtn.style.borderRadius = '12px';
+    confirmBtn.style.borderRadius = '8px';
     confirmBtn.style.fontWeight = 'bold';
-    confirmBtn.style.fontSize = '15px';
+    confirmBtn.style.fontSize = '14px';
     confirmBtn.style.color = 'white';
 
     btnGroup.appendChild(cancelBtn);
