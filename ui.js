@@ -96,10 +96,6 @@ export function switchSidebarTab(tabName) {
     document.getElementById('tab-btn-' + tabName).classList.add('active');
     document.getElementById('content-' + tabName).classList.add('active');
 
-    const btnLock = document.getElementById('btn-lock');
-    if (btnLock) {
-        btnLock.style.display = (tabName === 'map') ? 'block' : 'none';
-    }
 }
 
 export function unlockHiddenLayers() {
@@ -1716,13 +1712,13 @@ export function renderSurveyList() {
         <div class="survey-check-area">
             <input type="checkbox" class="survey-checkbox" ${!isHidden ? "checked" : ""} onchange="toggleLayerVisibility(${props.id})">
         </div>
-        <div style="display:flex; align-items:center; padding-left:8px; color:#666;">${typeIcon}</div>
+        <span style="flex-shrink:0; display:flex; align-items:center; color:#999;">${typeIcon}</span>
         <div class="survey-info" onclick="zoomToLayer(${props.id})">
             <div class="survey-name">${props.memo}</div>
-            ${dateStr ? `<div style="font-size: 11px; color: #999; margin-top: 2px;">${dateStr}</div>` : ''}
+            ${dateStr ? `<div style="font-size:11px; color:#aaa; margin-top:1px;">${dateStr}</div>` : ''}
         </div>
         <div class="survey-actions">
-            <input type="color" class="color-picker-input" value="${props.customColor || '#3388ff'}" onchange="updateLayerColor(${props.id}, this.value)" style="margin-right:2px;">
+            <input type="color" class="color-picker-input" value="${props.customColor || '#3388ff'}" onchange="updateLayerColor(${props.id}, this.value)">
             <button class="btn-more" onclick="openContextMenu(event, ${props.id})">${SVG_ICONS.more}</button>
         </div>`;
         listContainer.appendChild(div);

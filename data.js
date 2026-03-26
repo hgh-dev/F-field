@@ -248,7 +248,7 @@ export function exportSingleLayer(id) {
 
 // 변경: 현재 프로젝트 전체 저장 (파일명: 프로젝트명_yymmdd)
 export function exportCurrentProject() {
-    if (!confirm('현재 프로젝트를 기기에 저장합니다.')) return;
+    if (!confirm('현재 프로젝트를 기기에 저장합니다.\n프로젝트의 모든 기록이 한 개의 파일로 저장됩니다.')) return;
 
     const project = AppState.projects.find(p => p.id === parseInt(AppState.currentProjectId));
     if (!project) return;
@@ -510,7 +510,7 @@ export function handleFileSelect(input) {
             // 일반 불러오기 (현재 프로젝트에 병합)
             restoreFeatures(json);
             saveToStorage();
-            alert("완료");
+            alert("불러오기가 완료되었습니다.");
             closeSidebar();
         } catch (err) { alert("오류: " + err); }
         input.value = '';

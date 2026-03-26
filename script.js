@@ -3,7 +3,7 @@
    [역할] 초기화 및 모듈 조립 (Entry Point)
    ========================================================================== */
 
-import { VWORLD_API_KEY, STORAGE_KEY, SEARCH_HISTORY_KEY, SEARCH_SETTING_KEY, SVG_ICONS } from './config.js';
+import { APP_MODE, VWORLD_API_KEY, STORAGE_KEY, SEARCH_HISTORY_KEY, SEARCH_SETTING_KEY, SVG_ICONS } from './config.js';
 import { AppState } from './state.js';
 
 import {
@@ -377,6 +377,46 @@ function addTrackPhotoPoint(event) {
 
 // 초기화 이벤트
 document.addEventListener('DOMContentLoaded', async () => {
+    if (APP_MODE === 'public') {
+        document.body.classList.add('has-ad-main');
+
+        const btnLock = document.getElementById('btn-lock');
+        if (btnLock) btnLock.style.display = 'none';
+
+        const adMain = document.getElementById('ad-container-main');
+        if (adMain) adMain.style.display = 'block';
+
+
+        const blockFeature = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            alert("일반 버전에서는 제공되지 않는 기능입니다.");
+        };
+
+        const btnTrack = document.getElementById('btn-track');
+        if (btnTrack) {
+            btnTrack.style.opacity = '0.5';
+            btnTrack.addEventListener('click', blockFeature, true);
+        }
+
+        const btnPhotoPoint = document.getElementById('btn-photo-point');
+        if (btnPhotoPoint) {
+            btnPhotoPoint.style.opacity = '0.5';
+            btnPhotoPoint.addEventListener('click', blockFeature, true);
+        }
+    } else if (APP_MODE === 'premium') {
+        const btnLock = document.getElementById('btn-lock');
+        if (btnLock) btnLock.style.display = 'none';
+
+        const adMain = document.getElementById('ad-container-main');
+        if (adMain) adMain.style.display = 'none';
+
+    } else {
+        // internal 모드
+        const adMain = document.getElementById('ad-container-main');
+        if (adMain) adMain.style.display = 'none';
+    }
+
     initUiEventListeners();
     initSleepSlider();
     await loadFromStorage();

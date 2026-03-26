@@ -12,7 +12,7 @@
 
     <!-- 모바일 기기에서 화면 배율을 설정합니다. (확대/축소 방지) -->
     <meta name="viewport"
-        content="width=device-width, initial-scale=0.9, maximum-scale=0.9, user-scalable=no, viewport-fit=cover">
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta charset="utf-8" />
 
     <!-- PWA (웹앱) 설정: 홈 화면에 추가할 때 앱처럼 보이게 합니다. -->
@@ -63,15 +63,12 @@
         /* --- 지도 컨테이너 --- */
         #map {
             position: absolute;
-            top: 50px;
-            /* 상단 툴바 높이만큼 띄움 */
-            bottom: 60px;
-            /* 하단 툴바 높이만큼 띄움 */
+            top: 45px;
+            /* 상단 툴바 높이(45px)에 맞춤 */
+            bottom: 54px;
+            /* 하단 툴바 높이(54px)에 맞춤 */
             width: 100%;
             z-index: 1;
-            /* 가장 아래쪽 레이어 */
-
-            /* 터치 관련 최적화 */
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
             -webkit-user-select: none;
@@ -84,7 +81,8 @@
             top: env(safe-area-inset-top);
             left: 0;
             width: 100%;
-            height: 50px;
+            height: 45px;
+            /* 50 × 0.9 */
             background: white;
             display: flex;
             justify-content: space-between;
@@ -92,7 +90,6 @@
             padding: 0 5px;
             box-sizing: border-box;
             z-index: 2000;
-            /* 지도보다 위에 표시 */
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
@@ -101,8 +98,9 @@
             background: none;
             border: none;
             cursor: pointer;
-            width: 44px;
-            height: 44px;
+            width: 40px;
+            /* 44 × 0.9 */
+            height: 40px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -116,8 +114,9 @@
 
         /* 아이콘 공통 스타일 */
         .svg-icon {
-            width: 24px;
-            height: 24px;
+            width: 22px;
+            /* 24 × 0.9 ≈ 22 */
+            height: 22px;
             fill: currentColor;
         }
 
@@ -148,7 +147,8 @@
         }
 
         #address-display {
-            font-size: 13px;
+            font-size: 12px;
+            /* 13 × 0.9 ≈ 12 */
             font-weight: bold;
             color: #333;
             white-space: nowrap;
@@ -160,10 +160,10 @@
         }
 
         #coord-display {
-            font-size: 11px;
+            font-size: 10px;
+            /* 11 × 0.9 ≈ 10 */
             color: #666;
             font-family: monospace;
-            /* 고정폭 글꼴 */
         }
 
         /* --- 검색창 (평소엔 숨김) --- */
@@ -410,8 +410,9 @@
         }
 
         .circle-btn {
-            width: 50px;
-            height: 50px;
+            width: 45px;
+            /* 50 × 0.9 = 45 */
+            height: 45px;
             background: white;
             border: none;
             border-radius: 50%;
@@ -431,8 +432,9 @@
 
         /* 위치 추적 버튼 활성화 상태 스타일 */
         #tracking-svg-icon {
-            width: 38px;
-            height: 38px;
+            width: 34px;
+            /* 38 × 0.9 ≈ 34 */
+            height: 34px;
             transition: all 0.3s ease;
             filter: grayscale(100%);
             opacity: 0.6;
@@ -454,11 +456,11 @@
             bottom: env(safe-area-inset-bottom);
             left: 0;
             width: 100%;
-            height: 60px;
+            height: 54px;
+            /* 60 × 0.9 = 54 */
             background: white;
             border-top: 1px solid #ddd;
             display: flex;
-            /* 가로 배치 */
             justify-content: space-around;
             align-items: center;
             z-index: 1000;
@@ -470,7 +472,8 @@
             height: 100%;
             border: none;
             background: white;
-            font-size: 12px;
+            font-size: 11px;
+            /* 12 × 0.9 ≈ 11 */
             font-weight: bold;
             color: #555;
             display: flex;
@@ -486,9 +489,10 @@
         }
 
         .bottom-btn .icon-box {
-            width: 24px;
-            height: 24px;
-            margin-bottom: 3px;
+            width: 22px;
+            /* 24 × 0.9 ≈ 22 */
+            height: 22px;
+            margin-bottom: 2px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -507,15 +511,17 @@
         /* --- 그리기 진행 중 액션 바 (Floating Action Bar) --- */
         .action-toolbar {
             position: absolute;
-            bottom: calc(85px + env(safe-area-inset-bottom));
-            left: 50%;
+            bottom: calc(76px + env(safe-area-inset-bottom));
+            /* 85 × 0.9 ≈ 76 */
             left: 50%;
             transform: translateX(-50%);
             width: auto;
-            min-width: 320px;
+            min-width: 290px;
+            /* 320 × 0.9 ≈ 288 → 290 */
             max-width: 95%;
             height: auto;
-            padding: 10px 15px;
+            padding: 9px 14px;
+            /* 10/15 × 0.9 */
 
             /* Glassmorphism Style */
             background: rgba(255, 255, 255, 0.85);
@@ -542,15 +548,15 @@
             background: none;
             flex: 1;
             height: auto;
-            padding: 8px 5px;
-
+            padding: 7px 5px;
+            /* 8 × 0.9 ≈ 7 */
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             gap: 4px;
-
-            font-size: 11px;
+            font-size: 10px;
+            /* 11 × 0.9 ≈ 10 */
             font-weight: 600;
             color: #555;
             cursor: pointer;
@@ -638,7 +644,8 @@
         /* 슬라이드 인 */
 
         .sidebar-header {
-            height: 55px;
+            height: 50px;
+            /* 55 × 0.9 ≈ 50 */
             background: white;
             display: flex;
             align-items: center;
@@ -652,8 +659,9 @@
             border-radius: 50%;
             cursor: pointer;
             color: #555;
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            /* 36 × 0.9 ≈ 32 */
+            height: 32px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -673,10 +681,12 @@
 
         .tab-btn {
             flex: 1;
-            padding: 14px 0;
+            padding: 12px 0;
+            /* 14 × 0.9 ≈ 12~13, 12정수 사용 */
             background: none;
             border: none;
-            font-size: 15px;
+            font-size: 14px;
+            /* 15 × 0.9 ≈ 13.5 → 14 */
             font-weight: 600;
             color: #8898AA;
             cursor: pointer;
@@ -717,17 +727,15 @@
         #content-map.active {
             display: block;
             overflow-y: auto;
-            padding: 20px;
-            padding-bottom: 100px;
+            padding: 10px;
+            padding-bottom: 10px;
         }
 
         /* 탭 2: Flex 레이아웃 (상단 고정, 중간 스크롤, 하단 고정) */
         #content-record.active {
             display: flex;
             flex-direction: column;
-            padding: 20px;
-            padding-bottom: 20px;
-            /* 사이드바 하단 여백 */
+            padding: 10px 10px 20px 10px;
             overflow: hidden;
         }
 
@@ -770,8 +778,8 @@
             align-items: center;
             justify-content: space-between;
             padding: 12px 0;
-            /* border-bottom 제거 */
-            font-size: 15px;
+            font-size: 14px;
+            /* 15 × 0.9 ≈ 13.5 → 14 */
         }
 
         .option-row input[type="checkbox"] {
@@ -879,8 +887,10 @@
             border: 1px solid #ccc;
             color: #333;
             border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 13px;
+            padding: 7px 11px;
+            /* 8px, 12px × 0.9 ≈ 7, 11 */
+            font-size: 12px;
+            /* 13 × 0.9 ≈ 12 */
             font-weight: 600;
             cursor: pointer;
             display: flex;
@@ -1006,11 +1016,12 @@
         .survey-item {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 12px;
+            gap: 6px;
+            padding: 9px 10px;
             border-bottom: 1px solid #f0f0f0;
             background: white;
             transition: background 0.2s;
+            min-width: 0;
         }
 
         .survey-item:active {
@@ -1021,12 +1032,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 30px;
+            flex-shrink: 0;
+            width: 24px;
         }
 
         .survey-checkbox {
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             cursor: pointer;
             accent-color: #3B82F6;
             margin: 0;
@@ -1036,30 +1048,29 @@
             display: flex;
             flex-direction: column;
             flex: 1;
+            min-width: 0;
+            /* flex 자식이 넘칠 때 말줄임 작동을 위해 필수 */
             cursor: pointer;
-            padding-left: 10px;
         }
 
         .survey-name {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             color: #333;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .survey-name svg {
+            /* block 레이아웃이어야 text-overflow: ellipsis가 동작함 */
             display: block;
         }
 
+
         .survey-actions {
             display: flex;
-            gap: 3px;
+            gap: 2px;
             align-items: center;
+            flex-shrink: 0;
+            /* 오른쪽 버튼 영역이 찌그러지지 않도록 */
         }
 
         .action-icon-btn {
@@ -1286,7 +1297,8 @@
         /* 줌 컨트롤, 축척바 위치 재정의 (모바일 최적화) */
         .leaflet-control-zoom {
             position: fixed !important;
-            bottom: calc(90px + env(safe-area-inset-bottom)) !important;
+            bottom: calc(81px + env(safe-area-inset-bottom)) !important;
+            /* 90 × 0.9 = 81 */
             right: 20px !important;
             margin: 0 !important;
             z-index: 999 !important;
@@ -1295,7 +1307,8 @@
         /* 지도 위 Leaflet 축체 컨트롤 전체 래퍼 */
         .leaflet-control-scale {
             position: fixed !important;
-            bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+            bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+            /* 80 × 0.9 = 72 */
             left: 15px !important;
             margin: 0 !important;
             z-index: 990 !important;
@@ -1320,14 +1333,14 @@
             /* 흰색 외곽선 효과 (8방향 그림자 + 약간의 blur) */
             text-shadow:
                 -1px -1px 0 white,
-                 1px -1px 0 white,
-                -1px  1px 0 white,
-                 1px  1px 0 white,
-                -1px  0px 0 white,
-                 1px  0px 0 white,
-                 0px -1px 0 white,
-                 0px  1px 0 white,
-                 0 0 2px white;
+                1px -1px 0 white,
+                -1px 1px 0 white,
+                1px 1px 0 white,
+                -1px 0px 0 white,
+                1px 0px 0 white,
+                0px -1px 0 white,
+                0px 1px 0 white,
+                0 0 2px white;
             line-height: 1.4;
             position: relative;
             display: block;
@@ -1963,6 +1976,23 @@
             transition: none;
             background-color: #555;
         }
+
+        /* === (일반 배포용) 광고 활성화 시 하단 UI 들림 처리 === */
+        body.has-ad-main #map {
+            bottom: 100px !important;
+        }
+
+        body.has-ad-main .action-toolbar {
+            bottom: calc(125px + env(safe-area-inset-bottom)) !important;
+        }
+
+        body.has-ad-main .leaflet-control-zoom {
+            bottom: calc(130px + env(safe-area-inset-bottom)) !important;
+        }
+
+        body.has-ad-main .leaflet-control-scale {
+            bottom: calc(120px + env(safe-area-inset-bottom)) !important;
+        }
     </style>
 </head>
 
@@ -2140,6 +2170,10 @@
     모바일 환경을 고려하여 화면 하단에 고정 배치됩니다.
     ==========================================================================
     -->
+    <div id="ad-container-main"
+        style="position: absolute; bottom: calc(60px + env(safe-area-inset-bottom)); width: 100%; text-align: center; z-index: 1000; background: #eee; padding: 10px 0; border-top: 1px solid #ddd; display: none; font-size: 14px; color: #666;">
+        광고 (일반 배포용)
+    </div>
     <div class="bottom-toolbar">
         <button id="btn-poly" class="bottom-btn" onclick="startDraw('polygon')">
             <div class="icon-box">
@@ -2534,124 +2568,131 @@
                             <li>많은 레이어를 표시할 경우 오류가 발생할 수 있습니다.</li>
                         </ul>
                     </div>
+
+                    <div style="display:flex; justify-content:flex-start; margin-top:20px; padding-left:10px;">
+                        <button id="btn-lock" onclick="unlockHiddenLayers()"
+                            style="border: none; background: none; color: #aaa; cursor: pointer;">
+                            <svg id="icon-lock" viewBox="0 0 24 24"
+                                style="width: 24px; height: 24px; fill: currentColor;">
+                                <path
+                                    d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <!-- 탭 2: 기록 관리 -->
-                <div id="content-record" class="tab-content">
-                    <div class="menu-section flex-card">
-                        <!-- 프로젝트 관리 컨트롤 -->
-                        <div id="project-controls"
-                            style="margin-bottom:15px; background:#f0f2f5; padding:10px; border-radius:12px;">
-                            <div
-                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <span style="font-size:13px; font-weight:bold; color:#555;">프로젝트</span>
-                                <div class="dropdown-container">
-                                    <button onclick="toggleProjectMenu(event)" class="btn-more">
-                                        <svg viewBox="0 0 24 24">
-                                            <path
-                                                d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                                        </svg>
-                                    </button>
-                                    <div id="project-menu" class="dropdown-menu">
-                                        <div class="dropdown-item" onclick="createNewProject()">
-                                            <svg viewBox="0 0 24 24">
-                                                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-                                            </svg>
-                                            새 프로젝트
-                                        </div>
-                                        <div class="dropdown-item" onclick="editProjectName()">
-                                            <svg viewBox="0 0 24 24">
-                                                <path
-                                                    d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
-                                            </svg>
-                                            이름 변경
-                                        </div>
-                                        <div class="dropdown-item danger" onclick="deleteCurrentProject()">
-                                            <svg viewBox="0 0 24 24">
-                                                <path
-                                                    d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-                                            </svg>
-                                            프로젝트 삭제
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div style="display:flex; gap:5px;">
-                                <select id="project-select" onchange="switchProject(this.value)"
-                                    style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px; font-size:14px; background:white;">
-                                    <!-- 프로젝트 목록이 여기 로드됨 -->
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- 상단: 헤더 -->
+                <div id="content-record" class="tab-content" style="padding:10px 10px 20px 10px;">
+                    <!-- 프로젝트 관리 컨트롤 -->
+                    <div id="project-controls" style="margin-bottom:10px;">
                         <div
-                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:14px; color:#888; flex-shrink: 0;">
-                            <label style="cursor:pointer; color:#333; display:flex; align-items:center;"><input
-                                    type="checkbox" id="chk-select-all" checked onchange="toggleAllLayers(this.checked)"
-                                    style="margin-right:5px;"> 전체 선택</label>
-
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span
+                                style="font-size:12px; font-weight:bold; color:#aaa; letter-spacing:0.5px;">프로젝트</span>
                             <div class="dropdown-container">
-                                <button onclick="toggleMoreMenu(event)" class="btn-more">
+                                <button onclick="toggleProjectMenu(event)" class="btn-more">
                                     <svg viewBox="0 0 24 24">
                                         <path
                                             d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                                     </svg>
                                 </button>
-                                <div id="more-menu" class="dropdown-menu">
-                                    <div class="dropdown-item" onclick="openMoveSelectionModal()">
-                                        <!-- 폴더 + 화살표 커스텀 아이콘 -->
+                                <div id="project-menu" class="dropdown-menu">
+                                    <div class="dropdown-item" onclick="createNewProject()">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                                        </svg>
+                                        새 프로젝트
+                                    </div>
+                                    <div class="dropdown-item" onclick="editProjectName()">
                                         <svg viewBox="0 0 24 24">
                                             <path
-                                                d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h11v-2H4V8h16v4h2V8c0-1.1-.9-2-2-2z" />
-                                            <path d="M14 13v-3l7 4.5-7 4.5v-3H9v-3h5z" />
+                                                d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
                                         </svg>
-                                        선택 이동
+                                        이름 변경
                                     </div>
-                                    <div class="dropdown-item danger" onclick="deleteSelectedLayers()">
+                                    <div class="dropdown-item danger" onclick="deleteCurrentProject()">
                                         <svg viewBox="0 0 24 24">
                                             <path
                                                 d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
                                         </svg>
-                                        선택 삭제
+                                        프로젝트 삭제
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        <select id="project-select" onchange="switchProject(this.value)"
+                            style="width:100%; padding:8px 15px 8px 15px; border:1px solid #ddd; border-radius:8px; font-size:14px; background:white url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23666%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3e%3cpolyline points=%226 9 12 15 18 9%22%3e%3c/polyline%3e%3c/svg%3e') no-repeat right 12px center / 16px 16px; -webkit-appearance:none; appearance:none; box-sizing:border-box; cursor:pointer;">
+                            <!-- 프로젝트 목록이 여기 로드됨 -->
+                        </select>
+                    </div>
 
-                        <!-- 중간: 리스트 (유연하게 늘어남) -->
-                        <div id="survey-list-area" class="survey-list-container"
-                            style="flex:1; overflow-y:auto; min-height:0; margin-bottom:15px; max-height:none;"></div>
+                    <!-- 상단: 헤더 -->
+                    <div
+                        style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:14px; color:#888; flex-shrink: 0;">
+                        <label style="cursor:pointer; color:#333; display:flex; align-items:center;"><input
+                                type="checkbox" id="chk-select-all" checked onchange="toggleAllLayers(this.checked)"
+                                style="margin-right:5px;"> 전체 선택</label>
 
-                        <!-- 하단: 버튼 그룹 (고정) -->
-                        <!-- 하단: 버튼 그룹 (고정) -->
-                        <div style="flex-shrink: 0;">
-                            <div style="display:flex; gap:8px; margin-bottom:10px;">
-                                <button onclick="triggerFileInput()" class="mono-btn"
-                                    style="flex:1; justify-content:center; padding: 12px; font-size: 14px;">
-                                    <svg viewBox="0 0 24 24">
-                                        <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z" />
-                                    </svg>
-                                    불러오기
-                                </button>
-                                <button onclick="exportCurrentProject()" class="mono-btn"
-                                    style="flex:1; justify-content:center; padding: 12px; font-size: 14px;">
+                        <div class="dropdown-container">
+                            <button onclick="toggleMoreMenu(event)" class="btn-more">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                                </svg>
+                            </button>
+                            <div id="more-menu" class="dropdown-menu">
+                                <div class="dropdown-item" onclick="openMoveSelectionModal()">
+                                    <!-- 폴더 + 화살표 커스텀 아이콘 -->
                                     <svg viewBox="0 0 24 24">
                                         <path
-                                            d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
+                                            d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h11v-2H4V8h16v4h2V8c0-1.1-.9-2-2-2z" />
+                                        <path d="M14 13v-3l7 4.5-7 4.5v-3H9v-3h5z" />
                                     </svg>
-                                    프로젝트 저장
-                                </button>
+                                    선택 이동
+                                </div>
+                                <div class="dropdown-item danger" onclick="deleteSelectedLayers()">
+                                    <svg viewBox="0 0 24 24">
+                                        <path
+                                            d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                                    </svg>
+                                    선택 삭제
+                                </div>
                             </div>
                         </div>
-                        <button onclick="clearAllData()" class="mono-btn danger"
-                            style="width:100%; justify-content:center; padding: 12px; font-size: 14px;">
-                            <svg viewBox="0 0 24 24">
-                                <path
-                                    d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
-                            </svg>
-                            초기화
-                        </button>
                     </div>
+
+                    <!-- 중간: 리스트 (유연하게 늘어남) -->
+                    <div id="survey-list-area" class="survey-list-container"
+                        style="flex:1; overflow-y:auto; min-height:0; margin-bottom:15px; max-height:none;"></div>
+
+                    <!-- 하단: 버튼 그룹 (고정) -->
+                    <!-- 하단: 버튼 그룹 (고정) -->
+                    <div style="flex-shrink: 0;">
+                        <div style="display:flex; gap:8px; margin-bottom:10px;">
+                            <button onclick="triggerFileInput()" class="mono-btn"
+                                style="flex:1; justify-content:center; padding: 11px; font-size: 13px;">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z" />
+                                </svg>
+                                불러오기
+                            </button>
+                            <button onclick="exportCurrentProject()" class="mono-btn"
+                                style="flex:1; justify-content:center; padding: 11px; font-size: 13px;">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
+                                </svg>
+                                프로젝트 저장
+                            </button>
+                        </div>
+                    </div>
+                    <button onclick="clearAllData()" class="mono-btn danger"
+                        style="width:100%; justify-content:center; padding: 11px; font-size: 13px;">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                        </svg>
+                        초기화
+                    </button>
                     <div class="sidebar-warning">
                         <ul>
                             <li>많은 기록을 표시하거나 용량이 큰 파일을 불러올 경우 오류가 발생할 수 있습니다.</li>
@@ -2661,14 +2702,6 @@
                 </div>
             </div>
         </div>
-        <!-- 히든 레이어 잠금 버튼 -->
-        <button id="btn-lock" onclick="unlockHiddenLayers()"
-            style="position: absolute; bottom: 20px; left: 20px; border: none; background: none; color: #aaa;">
-            <svg id="icon-lock" viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;">
-                <path
-                    d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
-            </svg>
-        </button>
     </div>
     </div>
 
@@ -2758,15 +2791,15 @@
             <div style="margin-bottom:20px;">
                 <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">좌표 표시 방식</div>
                 <div style="display:flex; flex-direction:column; background:#f8f9fa; border-radius:12px; padding:4px;">
-                    <label style="padding:10px; display:flex; align-items:center;">
+                    <label style="padding:10px; display:flex; align-items:center; font-size:14px;">
                         <input type="radio" name="coord-mode-select" value="0" onclick="setCoordMode(0)"
                             style="margin-right:10px;"> 도분초 (DMS)
                     </label>
-                    <label style="padding:10px; display:flex; align-items:center;">
+                    <label style="padding:10px; display:flex; align-items:center; font-size:14px;">
                         <input type="radio" name="coord-mode-select" value="1" onclick="setCoordMode(1)"
                             style="margin-right:10px;"> 소수점 (Decimal)
                     </label>
-                    <label style="padding:10px; display:flex; align-items:center;">
+                    <label style="padding:10px; display:flex; align-items:center; font-size:14px;">
                         <input type="radio" name="coord-mode-select" value="2" onclick="setCoordMode(2)"
                             style="margin-right:10px;"> TM 좌표 (X, Y)
                     </label>
@@ -2776,11 +2809,11 @@
             <div style="margin-bottom:20px;">
                 <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">내보내기 파일 형식</div>
                 <div style="display:flex; flex-direction:row; background:#f8f9fa; border-radius:12px; padding:12px;">
-                    <label style="display:flex; align-items:center; flex:1;">
+                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
                         <input type="radio" name="export-format-select" value="geojson"
                             onclick="setExportFormat('geojson')" style="margin-right:6px;"> GeoJSON
                     </label>
-                    <label style="display:flex; align-items:center; flex:1;">
+                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
                         <input type="radio" name="export-format-select" value="gpx" onclick="setExportFormat('gpx')"
                             style="margin-right:6px;"> GPX
                     </label>
@@ -2793,11 +2826,11 @@
             <div style="margin-bottom:20px;">
                 <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">면 채우기</div>
                 <div style="display:flex; flex-direction:row; background:#f8f9fa; border-radius:12px; padding:12px;">
-                    <label style="display:flex; align-items:center; flex:1;">
+                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
                         <input type="radio" name="polygon-fill-select" value="true" onclick="setPolygonFill(true)"
                             style="margin-right:6px;"> 켜짐
                     </label>
-                    <label style="display:flex; align-items:center; flex:1;">
+                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
                         <input type="radio" name="polygon-fill-select" value="false" onclick="setPolygonFill(false)"
                             style="margin-right:6px;"> 꺼짐
                     </label>
@@ -2810,19 +2843,19 @@
             <div style="margin-bottom:20px;">
                 <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">트랙 기록 간격</div>
                 <div style="display:flex; flex-direction:row; background:#f8f9fa; border-radius:12px; padding:12px;">
-                    <label style="display:flex; align-items:center; flex:1;">
+                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
                         <input type="radio" name="track-interval-select" value="2" onclick="setTrackInterval(2)"
                             style="margin-right:6px;"> 2m
                     </label>
-                    <label style="display:flex; align-items:center; flex:1;">
+                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
                         <input type="radio" name="track-interval-select" value="5" onclick="setTrackInterval(5)"
                             style="margin-right:6px;"> 5m
                     </label>
-                    <label style="display:flex; align-items:center; flex:1;">
+                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
                         <input type="radio" name="track-interval-select" value="10" onclick="setTrackInterval(10)"
                             style="margin-right:6px;"> 10m
                     </label>
-                    <label style="display:flex; align-items:center; flex:1;">
+                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
                         <input type="radio" name="track-interval-select" value="20" onclick="setTrackInterval(20)"
                             style="margin-right:6px;"> 20m
                     </label>
@@ -2945,7 +2978,7 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script type="module" src="script.js?v=2.2.3"></script>
+    <script type="module" src="script.js?v=2.3.0"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {
