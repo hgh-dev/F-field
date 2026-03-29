@@ -289,12 +289,12 @@ export const vworldNatureparkLayer = L.tileLayer.wms("https://api.vworld.kr/req/
 
 // 18. 도시계획(도로) (WMS)
 export const vworldCityroadLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
-    key: VWORLD_API_KEY, layers: 'lt_c_upisuq151', styles: 'lt_c_upisuq151', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'cityroad-layer'
+    key: VWORLD_API_KEY, layers: 'lt_c_upisuq151', styles: 'lt_c_upisuq151', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 12, maxZoom: 22, maxNativeZoom: 19, className: 'cityroad-layer'
 });
 
 // 19. 토지이용계획도 (WMS)
 export const vworldLanduseLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
-    key: VWORLD_API_KEY, layers: 'lt_c_lhblpn', styles: 'lt_c_lhblpn', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'landuse-layer'
+    key: VWORLD_API_KEY, layers: 'lt_c_lhblpn', styles: 'lt_c_lhblpn', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 8, maxZoom: 22, maxNativeZoom: 19, className: 'landuse-layer'
 });
 
 // 20. 사업지구경계도 (WMS)
