@@ -2468,6 +2468,36 @@
                         </div>
                     </div>
                     <div class="menu-section">
+                        <div class="menu-title accordion-header" onclick="toggleAccordion('section-urban-planning', this)"
+                            style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
+                            <span>도시계획</span><span class="toggle-icon"></span>
+                        </div>
+                        <div id="section-urban-planning" class="accordion-content" style="display: none;">
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">도시계획(도로)</span>
+                                <input type="checkbox" id="chk-cityroad"
+                                    onchange="toggleOverlay('cityroad', this.checked)">
+                            </label>
+                            <div id="legend-cityroad" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">토지이용계획도</span>
+                                <input type="checkbox" id="chk-landuse"
+                                    onchange="toggleOverlay('landuse', this.checked)">
+                            </label>
+                            <div id="legend-landuse" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">사업지구경계도</span>
+                                <input type="checkbox" id="chk-bizzone"
+                                    onchange="toggleOverlay('bizzone', this.checked)">
+                            </label>
+                            <div id="legend-bizzone" class="vworld-legend" style="display:none;"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="menu-section">
                         <div class="menu-title accordion-header" onclick="toggleAccordion('section-zone-map', this)"
                             style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
                             <span>지역/지구/구역</span><span class="toggle-icon"></span>
@@ -2541,34 +2571,13 @@
                                     onchange="toggleOverlay('watersource', this.checked)">
                             </label>
                             <div id="legend-watersource" class="vworld-legend" style="display:none;"></div>
-                            <label class="option-row">
+                            <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">자연공원</span>
                                 <input type="checkbox" id="chk-naturepark"
                                     onchange="toggleOverlay('naturepark', this.checked)">
                             </label>
                             <div id="legend-naturepark" class="vworld-legend" style="display:none;"></div>
-                            <label class="option-row">
-                                <span class="static-icon"></span>
-                                <span style="flex:1;">도시계획(도로)</span>
-                                <input type="checkbox" id="chk-cityroad"
-                                    onchange="toggleOverlay('cityroad', this.checked)">
-                            </label>
-                            <div id="legend-cityroad" class="vworld-legend" style="display:none;"></div>
-                            <label class="option-row">
-                                <span class="static-icon"></span>
-                                <span style="flex:1;">토지이용계획도</span>
-                                <input type="checkbox" id="chk-landuse"
-                                    onchange="toggleOverlay('landuse', this.checked)">
-                            </label>
-                            <div id="legend-landuse" class="vworld-legend" style="display:none;"></div>
-                            <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
-                                <span class="static-icon"></span>
-                                <span style="flex:1;">사업지구경계도</span>
-                                <input type="checkbox" id="chk-bizzone"
-                                    onchange="toggleOverlay('bizzone', this.checked)">
-                            </label>
-                            <div id="legend-bizzone" class="vworld-legend" style="display:none;"></div>
                         </div>
                     </div>
                     <!-- 수원국유림관리소 레이어 (암호 입력 시 표시) -->
