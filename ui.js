@@ -4,7 +4,7 @@
    ========================================================================== */
 import { VWORLD_API_KEY, SEARCH_HISTORY_KEY, SEARCH_SETTING_KEY, SVG_ICONS } from './config.js';
 import { AppState } from './state.js';
-import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, updateLayerOrder, getOfflineMapUrls, topoMapLayer } from './map.js';
+import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, updateLayerOrder, getOfflineMapUrls } from './map.js';
 import { drawnItems, startDraw, currentEditLayerId, completeDrawing, cancelDrawing, enableSingleLayerEdit } from './draw.js';
 import { getTimestampString, getRandomColor, createColoredMarkerIcon, copyText, getTmCoords, getWgs84FromTm, convertToDms, dmsToDecimal, getShortAddress, resizeImage, parseNationalPointNumber } from './utils.js';
 import { saveToStorage, loadCurrentProjectFeatures, exportSingleLayer } from './data.js';
@@ -55,19 +55,16 @@ export function syncSidebarUI() {
     const hasBase = map.hasLayer(vworldBase);
     const hasSat = map.hasLayer(vworldSatellite);
     const hasEsri = map.hasLayer(esriSatelliteLayer);
-    const hasTopo = map.hasLayer(topoMapLayer);
 
     const chkBase = document.getElementById('chk-base-layer');
-    if (chkBase) chkBase.checked = (hasBase || hasSat || hasEsri || hasTopo);
+    if (chkBase) chkBase.checked = (hasBase || hasSat || hasEsri);
 
     const baseSat = document.querySelector('input[name="baseMap"][value="satellite"]');
     const baseEsri = document.querySelector('input[name="baseMap"][value="esri"]');
     const baseBase = document.querySelector('input[name="baseMap"][value="base"]');
-    const baseTopo = document.querySelector('input[name="baseMap"][value="topo"]');
 
     if (hasSat && baseSat) baseSat.checked = true;
     else if (hasEsri && baseEsri) baseEsri.checked = true;
-    else if (hasTopo && baseTopo) baseTopo.checked = true;
     else if (hasBase && baseBase) baseBase.checked = true;
 
     const chkHybrid = document.getElementById('chk-hybrid');

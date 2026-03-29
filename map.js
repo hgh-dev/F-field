@@ -239,14 +239,6 @@ export const vworldForestLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms"
     key: VWORLD_API_KEY, layers: 'lt_c_uf151', styles: 'lt_c_uf151', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'forest-layer'
 });
 
-// 지형도: OpenTopoMap
-export const topoMapLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-    maxZoom: 22,
-    maxNativeZoom: 17,
-    opacity: 1,
-    crossOrigin: true
-});
-
 // 10. 도시자연공원구역 (WMS)
 export const vworldCityparkLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_uq162', styles: 'lt_c_uq162', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'citypark-layer'
@@ -327,7 +319,6 @@ export function toggleBaseLayer(isChecked) {
         map.removeLayer(vworldSatellite);
         map.removeLayer(vworldBase);
         map.removeLayer(esriSatelliteLayer);
-        map.removeLayer(topoMapLayer);
     }
 }
 
@@ -339,14 +330,11 @@ export function changeBaseMap(type) {
     map.removeLayer(vworldSatellite);
     map.removeLayer(vworldBase);
     map.removeLayer(esriSatelliteLayer);
-    map.removeLayer(topoMapLayer);
 
     if (type === 'satellite') {
         map.addLayer(vworldSatellite);
     } else if (type === 'esri') {
         map.addLayer(esriSatelliteLayer);
-    } else if (type === 'topo') {
-        map.addLayer(topoMapLayer);
     } else {
         // base: 일반지도
         map.addLayer(vworldBase);
