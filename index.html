@@ -1384,6 +1384,32 @@
             filter: drop-shadow(0px 0px 1px rgba(255, 0, 0, 0.3)) drop-shadow(0px 0px 1px rgba(255, 0, 0, 0.3));
         }
 
+        /* VWorld 레이어 범례 컨테이너 */
+        .vworld-legend {
+            margin: -4px 0 8px 0;
+            padding: 0;
+            background: transparent;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #555;
+            line-height: 1.4;
+        }
+
+        /* 범례 상단의 불필요한 제목 텍스트 ( ) / 를 잘라내기 위한 개별 아이템 래퍼 */
+        .vworld-legend-item {
+            overflow: hidden;
+            position: relative;
+            margin-bottom: -4px;
+        }
+
+        .vworld-legend-item img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            /* VWorld 범례 이미지 상단의 텍스트(제목 등) 영역 높이만큼 위로 당겨서 숨김 */
+            margin-top: -13px;
+        }
+
         /* 팝업 버튼 스타일 */
         .popup-btn {
             padding: 10px 12px;
@@ -2453,76 +2479,96 @@
                                 <input type="checkbox" id="chk-restriction"
                                     onchange="toggleOverlay('restriction', this.checked)">
                             </label>
+                            <div id="legend-restriction" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">산림보호구역</span>
                                 <input type="checkbox" id="chk-forest" onchange="toggleOverlay('forest', this.checked)">
                             </label>
+                            <div id="legend-forest" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">국가유산 지정/보호구역</span>
                                 <input type="checkbox" id="chk-heritage"
                                     onchange="toggleOverlay('heritage', this.checked)">
                             </label>
+                            <div id="legend-heritage" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">도시자연공원구역</span>
                                 <input type="checkbox" id="chk-citypark"
                                     onchange="toggleOverlay('citypark', this.checked)">
                             </label>
+                            <div id="legend-citypark" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">임업 및 산촌 진흥권역</span>
                                 <input type="checkbox" id="chk-forestry"
                                     onchange="toggleOverlay('forestry', this.checked)">
                             </label>
+                            <div id="legend-forestry" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">자연환경보전지역</span>
                                 <input type="checkbox" id="chk-envpreserve"
                                     onchange="toggleOverlay('envpreserve', this.checked)">
                             </label>
+                            <div id="legend-envpreserve" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">백두대간보호지역</span>
                                 <input type="checkbox" id="chk-baekdu" onchange="toggleOverlay('baekdu', this.checked)">
                             </label>
+                            <div id="legend-baekdu" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">습지보호지역</span>
                                 <input type="checkbox" id="chk-wetland"
                                     onchange="toggleOverlay('wetland', this.checked)">
                             </label>
+                            <div id="legend-wetland" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">야생생물보호</span>
                                 <input type="checkbox" id="chk-wildlife"
                                     onchange="toggleOverlay('wildlife', this.checked)">
                             </label>
+                            <div id="legend-wildlife" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">상수원보호</span>
                                 <input type="checkbox" id="chk-watersource"
                                     onchange="toggleOverlay('watersource', this.checked)">
                             </label>
+                            <div id="legend-watersource" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">자연공원</span>
                                 <input type="checkbox" id="chk-naturepark"
                                     onchange="toggleOverlay('naturepark', this.checked)">
                             </label>
+                            <div id="legend-naturepark" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">도시계획(도로)</span>
                                 <input type="checkbox" id="chk-cityroad"
                                     onchange="toggleOverlay('cityroad', this.checked)">
                             </label>
+                            <div id="legend-cityroad" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">토지이용계획도</span>
+                                <input type="checkbox" id="chk-landuse"
+                                    onchange="toggleOverlay('landuse', this.checked)">
+                            </label>
+                            <div id="legend-landuse" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">사업지구경계도</span>
                                 <input type="checkbox" id="chk-bizzone"
                                     onchange="toggleOverlay('bizzone', this.checked)">
                             </label>
+                            <div id="legend-bizzone" class="vworld-legend" style="display:none;"></div>
                         </div>
                     </div>
                     <!-- 수원국유림관리소 레이어 (암호 입력 시 표시) -->
@@ -2540,7 +2586,7 @@
                                     onchange="toggleOverlay('nasGuk', this.checked)">
                             </label>
                             <div id="nas-guk-legend"
-                                style="display: none; margin-top: 0; padding: 10px 15px; background: #f9f9f9; border-radius: 8px; margin-bottom: 10px; font-size:13px; color:#555;">
+                                style="display: none; margin-top: 0; padding: 0 0 0 15px; background: transparent; border-radius: 8px; margin-bottom: 10px; font-size:13px; color:#555;">
                                 <div style="margin-bottom:2px;">
                                     <span
                                         style="width:12px; height:12px; background:#8cff90; display:inline-block; margin-right:5px; "></span>보전국유림

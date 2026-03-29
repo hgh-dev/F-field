@@ -292,7 +292,12 @@ export const vworldCityroadLayer = L.tileLayer.wms("https://api.vworld.kr/req/wm
     key: VWORLD_API_KEY, layers: 'lt_c_upisuq151', styles: 'lt_c_upisuq151', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'cityroad-layer'
 });
 
-// 19. 사업지구경계도 (WMS)
+// 19. 토지이용계획도 (WMS)
+export const vworldLanduseLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_lhblpn', styles: 'lt_c_lhblpn', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'landuse-layer'
+});
+
+// 20. 사업지구경계도 (WMS)
 export const vworldBizzoneLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_lhzone', styles: 'lt_c_lhzone', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'bizzone-layer'
 });
@@ -360,10 +365,13 @@ export function updateLayerOrder() {
     if (map.hasLayer(vworldLxLayer)) vworldLxLayer.bringToFront();
     if (map.hasLayer(vworldContinuousLayer)) vworldContinuousLayer.bringToFront();
 
-    // 3. 도시계획(도로) (지적도 위)
+    // 3. 토지이용계획도 (지적도 위)
+    if (map.hasLayer(vworldLanduseLayer)) vworldLanduseLayer.bringToFront();
+
+    // 4. 도시계획(도로) (가장 위)
     if (map.hasLayer(vworldCityroadLayer)) vworldCityroadLayer.bringToFront();
 
-    // 4. 행정경계가 가장 위에 오도록
+    // 5. 행정경계가 가장 위에 오도록
     if (map.hasLayer(mergedAdminLayer)) mergedAdminLayer.bringToFront();
 }
 
@@ -418,10 +426,8 @@ export function toggleOverlay(type, isChecked) {
 
     } else if (type === 'restriction') {
         layer = vworldRestrictionLayer;
-
     } else if (type === 'heritage') {
         layer = vworldHeritageLayer;
-
     } else if (type === 'citypark') {
         layer = vworldCityparkLayer;
     } else if (type === 'forestry') {
@@ -440,9 +446,10 @@ export function toggleOverlay(type, isChecked) {
         layer = vworldNatureparkLayer;
     } else if (type === 'cityroad') {
         layer = vworldCityroadLayer;
+    } else if (type === 'landuse') {
+        layer = vworldLanduseLayer;
     } else if (type === 'bizzone') {
         layer = vworldBizzoneLayer;
-
     } else if (type === 'forest') {
         layer = vworldForestLayer;
     }
@@ -456,6 +463,57 @@ export function toggleOverlay(type, isChecked) {
     } else {
         map.removeLayer(layer);
     }
+
+    // VWorld 범례 표시/숨김
+    showVworldLegend(type, isChecked);
+}
+
+// VWorld GetLegendGraphic API URL 매핑
+// 자연공원은 3개 레이어 묶음이라 배열로 처리
+const VWORLD_LEGEND_LAYERS = {
+    restriction: ['lt_c_ud801'],
+    forest: ['lt_c_uf151'],
+    heritage: ['lt_c_uo301'],
+    citypark: ['lt_c_uq162'],
+    forestry: ['lt_c_uf602'],
+    envpreserve: ['lt_c_uq114'],
+    baekdu: ['lt_c_uf901'],
+    wetland: ['lt_c_wgisarwet'],
+    wildlife: ['lt_c_um221'],
+    watersource: ['lt_c_um710'],
+    naturepark: ['lt_c_wgisnpgug', 'lt_c_wgisnpgun', 'lt_c_wgisnpdo'],
+    cityroad: ['lt_c_upisuq151'],
+    landuse: ['lt_c_lhblpn'],
+    bizzone: ['lt_c_lhzone'],
+};
+
+// 범례 컨테이너에 VWorld 범례 이미지를 동적으로 삽입/숨김
+function showVworldLegend(type, isChecked) {
+    const legendEl = document.getElementById(`legend-${type}`);
+    if (!legendEl) return;
+
+    if (!isChecked) {
+        legendEl.style.display = 'none';
+        return;
+    }
+
+    const layers = VWORLD_LEGEND_LAYERS[type];
+    if (!layers) return;
+
+    // 이미 로드된 경우 재사용
+    if (legendEl.dataset.loaded === '1') {
+        legendEl.style.display = 'block';
+        return;
+    }
+
+    // 범례 이미지 생성 (레이어가 여러 개면 각각 삽입)
+    legendEl.innerHTML = layers.map(layerName =>
+        `<div class="vworld-legend-item">
+            <img src="https://api.vworld.kr/req/image?service=image&request=GetLegendGraphic&format=png&layer=${layerName}&style=${layerName}&type=ALL&key=${VWORLD_API_KEY}" alt="${layerName} 범례" loading="lazy" onerror="this.parentNode.style.display='none'">
+        </div>`
+    ).join('');
+    legendEl.dataset.loaded = '1';
+    legendEl.style.display = 'block';
 }
 
 
