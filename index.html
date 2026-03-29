@@ -123,6 +123,8 @@
         .svg-icon-lg {
             width: 30px;
             height: 30px;
+            display: block;
+            /* 가로/세로 정렬 시 하단 여백 제거 */
         }
 
         .svg-inline {
@@ -625,7 +627,7 @@
             top: 0;
             left: 0;
             width: 85%;
-            max-width: 450px;
+            max-width: 380px;
             height: 100%;
             background: #F2F4F6;
             box-shadow: 5px 0 25px rgba(0, 0, 0, 0.15);
@@ -2092,24 +2094,25 @@
     <div class="gps-btn-group">
         <button class="circle-btn" onclick="findMe()" title="내 위치로 이동">
             <svg class="svg-icon-lg" viewBox="0 0 100 100"
-                style="fill:none; stroke:black; stroke-width:8; stroke-linecap:round;">
-                <line x1="50" y1="10" x2="50" y2="35" />
-                <line x1="50" y1="65" x2="50" y2="90" />
-                <line x1="10" y1="50" x2="35" y2="50" />
-                <line x1="65" y1="50" x2="90" y2="50" />
-                <circle cx="50" cy="50" r="42" />
-                <circle cx="50" cy="50" r="12" style="fill:black; stroke:none;" />
+                style="fill:none; stroke:#000000; stroke-width:4; stroke-linecap:round;">
+                <circle cx="50" cy="50" r="38" />
+                <line x1="50" y1="12" x2="50" y2="28" />
+                <line x1="50" y1="88" x2="50" y2="72" />
+                <line x1="12" y1="50" x2="28" y2="50" />
+                <line x1="88" y1="50" x2="72" y2="50" />
+                <circle cx="50" cy="50" r="5" style="fill:#000000; stroke:none;" />
             </svg>
         </button>
 
         <button id="toggle-track-btn" class="circle-btn" onclick="toggleTracking()" title="위치 추적">
             <svg id="tracking-svg-icon" viewBox="0 0 100 100">
                 <path d="M20 35 L20 20 L35 20 M80 35 L80 20 L65 20 M20 65 L20 80 L35 80 M80 65 L80 80 L65 80"
-                    fill="none" stroke="#2196F3" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
-                <circle cx="50" cy="50" r="28" fill="none" stroke="#FFC107" stroke-width="6" />
-                <path d="M50 35 C42 35 38 42 38 48 C38 58 50 72 50 72 C50 72 62 58 62 48 C62 42 58 35 50 35 Z"
-                    fill="#F44336" stroke="#B71C1C" stroke-width="2" />
-                <circle cx="50" cy="46" r="4" fill="white" />
+                    fill="none" stroke="#F44336" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="50" cy="50" r="28" fill="none" stroke="#000000" stroke-width="2" />
+                <path d="M50 16 L50 26 M50 74 L50 84 M16 50 L26 50 M74 50 L84 50" fill="none" stroke="#000000"
+                    stroke-width="2" stroke-linecap="round" />
+                <path d="M50 26 L34 62 L50 52 L66 62 Z" fill="#4285F4" stroke="#1967D2" stroke-width="2"
+                    stroke-linejoin="round" transform="rotate(45 50 50)" />
             </svg>
         </button>
     </div>
