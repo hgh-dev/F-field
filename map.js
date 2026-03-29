@@ -137,7 +137,7 @@ export const vworldLxLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     opacity: 0.6, // 반투명하게 설정하여 아래 위성지도가 비치도록 함
     version: '1.3.0',
     maxZoom: 22,
-    maxNativeZoom: 19,
+    maxNativeZoom: 22,
     detectRetina: true,
     tileSize: 512, // 고해상도 처리를 위해 타일 크기 조정
     zoomOffset: 0,
@@ -154,7 +154,7 @@ export const vworldContinuousLayer = L.tileLayer.wms("https://api.vworld.kr/req/
     opacity: 0.6,
     version: '1.3.0',
     maxZoom: 22,
-    maxNativeZoom: 19,
+    maxNativeZoom: 22,
     detectRetina: true,
     tileSize: 512,
     zoomOffset: 0,
