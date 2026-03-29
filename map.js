@@ -2,8 +2,8 @@
    [모듈] 지도 및 레이어 매니저 (map.js)
    [역할] Leaflet 지도 객체 생성 및 각종 배경/지적도/오버레이 레이어 관리
    ========================================================================== */
-import { VWORLD_API_KEY } from './config.js?v=2.3.0';
-import { AppState } from './state.js?v=2.3.0';
+import { VWORLD_API_KEY } from './config.js?v=2.3.1';
+import { AppState } from './state.js?v=2.3.1';
 
 /* --------------------------------------------------------------------------
    1. 지도 초기화 (Map Initialization)
@@ -239,6 +239,14 @@ export const vworldForestLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms"
     key: VWORLD_API_KEY, layers: 'lt_c_uf151', styles: 'lt_c_uf151', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'forest-layer'
 });
 
+// 지형도: OpenTopoMap
+export const topoMapLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    maxZoom: 22,
+    maxNativeZoom: 17,
+    opacity: 1,
+    crossOrigin: true
+});
+
 // 10. 도시자연공원구역 (WMS)
 export const vworldCityparkLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_uq162', styles: 'lt_c_uq162', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'citypark-layer'
@@ -309,28 +317,32 @@ export function toggleBaseLayer(isChecked) {
         map.removeLayer(vworldSatellite);
         map.removeLayer(vworldBase);
         map.removeLayer(esriSatelliteLayer);
+        map.removeLayer(topoMapLayer);
     }
 }
 
-// 배경 지도 종류 변경 (위성 vs 일반)
+// 배경 지도 종류 변경 (위성 vs 일반 vs 지형도)
 export function changeBaseMap(type) {
     if (!document.getElementById('chk-base-layer').checked) return;
 
+    // 우선 모두 제거
+    map.removeLayer(vworldSatellite);
+    map.removeLayer(vworldBase);
+    map.removeLayer(esriSatelliteLayer);
+    map.removeLayer(topoMapLayer);
+
     if (type === 'satellite') {
         map.addLayer(vworldSatellite);
-        map.removeLayer(vworldBase);
-        map.removeLayer(esriSatelliteLayer);
     } else if (type === 'esri') {
         map.addLayer(esriSatelliteLayer);
-        map.removeLayer(vworldSatellite);
-        map.removeLayer(vworldBase);
+    } else if (type === 'topo') {
+        map.addLayer(topoMapLayer);
     } else {
+        // base: 일반지도
         map.addLayer(vworldBase);
-        map.removeLayer(vworldSatellite);
-        map.removeLayer(esriSatelliteLayer);
     }
 
-    // 오버레이 레이어들을 순서대로 맨 위로 올림 (지적도 -> 하이브리드 -> 행정경계)
+    // 오버레이 레이어들을 순서대로 맨 위로 올림
     updateLayerOrder();
 }
 

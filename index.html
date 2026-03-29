@@ -2390,10 +2390,15 @@
                                         <input type="radio" name="baseMap" value="esri"
                                             onchange="changeBaseMap('esri')">
                                     </label>
-                                    <label class="option-row" style="border:none; padding:8px 0;">
+                                    <label class="option-row" style="padding:8px 0;">
                                         <span style="flex:1;">일반지도</span>
                                         <input type="radio" name="baseMap" value="base"
                                             onchange="changeBaseMap('base')">
+                                    </label>
+                                    <label class="option-row" style="border:none; padding:8px 0;">
+                                        <span style="flex:1;">지형도(OpenTopoMap)</span>
+                                        <input type="radio" name="baseMap" value="topo"
+                                            onchange="changeBaseMap('topo')">
                                     </label>
                                 </div>
                                 <label class="option-row">
@@ -2427,6 +2432,7 @@
                                             style="flex:1;">LX맵</span><input type="radio" name="cadastralMap" value="lx"
                                             onchange="changeCadastralMap('lx')"></label>
                                 </div>
+
                             </div>
                         </div>
                     </div>
@@ -2981,7 +2987,7 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script type="module" src="script.js?v=2.3.0"></script>
+    <script type="module" src="script.js?v=2.3.1"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {
