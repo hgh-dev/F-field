@@ -287,7 +287,12 @@ export const vworldNatureparkLayer = L.tileLayer.wms("https://api.vworld.kr/req/
     key: VWORLD_API_KEY, layers: 'lt_c_wgisnpgug,lt_c_wgisnpgun,lt_c_wgisnpdo', styles: 'lt_c_wgisnpgug,lt_c_wgisnpgun,lt_c_wgisnpdo', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 8, maxZoom: 22, maxNativeZoom: 19, className: 'naturepark-layer'
 });
 
-// 18. 사업지구경계도 (WMS)
+// 18. 도시계획(도로) (WMS)
+export const vworldCityroadLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_upisuq151', styles: 'lt_c_upisuq151', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'cityroad-layer'
+});
+
+// 19. 사업지구경계도 (WMS)
 export const vworldBizzoneLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_lhzone', styles: 'lt_c_lhzone', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'bizzone-layer'
 });
@@ -346,7 +351,7 @@ export function changeBaseMap(type) {
     updateLayerOrder();
 }
 
-// 레이어 순서 재조정 함수 (하이브리드 < 지적도 < 행정경계)
+// 레이어 순서 재조정 함수 (하이브리드 < 지적도 < 도시계획도로 < 행정경계)
 export function updateLayerOrder() {
     // 1. 하이브리드 먼저 (가장 아래)
     if (map.hasLayer(vworldHybrid)) vworldHybrid.bringToFront();
@@ -355,7 +360,10 @@ export function updateLayerOrder() {
     if (map.hasLayer(vworldLxLayer)) vworldLxLayer.bringToFront();
     if (map.hasLayer(vworldContinuousLayer)) vworldContinuousLayer.bringToFront();
 
-    // 3. 행정경계가 가장 위에 오도록
+    // 3. 도시계획(도로) (지적도 위)
+    if (map.hasLayer(vworldCityroadLayer)) vworldCityroadLayer.bringToFront();
+
+    // 4. 행정경계가 가장 위에 오도록
     if (map.hasLayer(mergedAdminLayer)) mergedAdminLayer.bringToFront();
 }
 
@@ -430,6 +438,8 @@ export function toggleOverlay(type, isChecked) {
         layer = vworldWatersourceLayer;
     } else if (type === 'naturepark') {
         layer = vworldNatureparkLayer;
+    } else if (type === 'cityroad') {
+        layer = vworldCityroadLayer;
     } else if (type === 'bizzone') {
         layer = vworldBizzoneLayer;
 

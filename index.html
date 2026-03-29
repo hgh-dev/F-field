@@ -1379,6 +1379,11 @@
             filter: invert(100%);
         }
 
+        /* 도시계획도로 선명/두껍게 렌더링 효과 (WMS 투명 PNG 이미지 외곽선) */
+        .cityroad-layer {
+            filter: drop-shadow(0px 0px 1px rgba(255, 0, 0, 0.3)) drop-shadow(0px 0px 1px rgba(255, 0, 0, 0.3));
+        }
+
         /* 팝업 버튼 스타일 */
         .popup-btn {
             padding: 10px 12px;
@@ -2505,6 +2510,12 @@
                                 <span style="flex:1;">자연공원</span>
                                 <input type="checkbox" id="chk-naturepark"
                                     onchange="toggleOverlay('naturepark', this.checked)">
+                            </label>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">도시계획(도로)</span>
+                                <input type="checkbox" id="chk-cityroad"
+                                    onchange="toggleOverlay('cityroad', this.checked)">
                             </label>
                             <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
                                 <span class="static-icon"></span>
