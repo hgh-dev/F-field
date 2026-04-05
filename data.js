@@ -9,6 +9,7 @@ import { renderSurveyList, updateLayerInfo, renderProjectSelector, closeSidebar,
 import { getRandomColor, createColoredMarkerIcon, getShortAddress } from './utils.js';
 import { VWORLD_API_KEY } from './config.js';
 import { map } from './map.js';
+import { download as shpDownload } from '@crmackey/shp-write';
 
 
 /* 1. 로컬 저장소 관리 (Local Storage) */
@@ -219,41 +220,117 @@ export function restoreFeatures(geoJsonData) {
 }
 
 /* 2. 파일 내보내기 및 가져오기 (Import/Export) */
-export function exportSingleLayer(id) {
+export async function exportSingleLayer(id) {
     // -----------------------------------------------------------
     // [교육용] exportSingleLayer
     // 선택한 단일 기록(Layer)을 파일로 내보내는 함수입니다.
-    // - AppState.exportFormat 변수(설정 값)에 따라 GPX 또는 GeoJSON 형식을 선택합니다.
-    // - GPX 내보내기 시: geoJsonToGpx 유틸리티를 사용하기 위해 
-    //   단일 Layer를 FeatureCollection 형태로 감싸서 전달합니다.
+    // - 모달 팝업에서 GeoJSON / Shapefile / GPX 형식을 선택하여 저장합니다.
     // -----------------------------------------------------------
-    if (!confirm('기록을 기기에 저장합니다.')) return;
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (!layer) return;
+
+    // 파일 형식 선택 모달 표시 (패널 닫형 딥다음 처리)
+    let format;
+    try {
+        format = await showExportFormatModal();
+    } catch {
+        // 취소 클릭 시 중단
+        return;
+    }
 
     // 파일명에 사용할 수 없는 문자 제거
     let safeMemo = (layer.feature.properties.memo || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
 
-    if (AppState.exportFormat === 'gpx') {
+    if (format === 'gpx') {
         const featureCollection = {
             type: "FeatureCollection",
             features: [layer.toGeoJSON()]
         };
         const gpxData = geoJsonToGpx(featureCollection, safeMemo);
         saveOrShareFile(gpxData, safeMemo + ".gpx", "application/gpx+xml");
+    } else if (format === 'shp') {
+        // Shapefile(.zip) 내보내기 (async)
+        const featureCollection = {
+            type: "FeatureCollection",
+            features: [layer.toGeoJSON()]
+        };
+        try {
+            await shpDownload(featureCollection, { name: safeMemo });
+        } catch (e) {
+            alert('Shapefile 내보내기 실패: ' + e);
+        }
     } else {
+        // GeoJSON (기본)
         saveOrShareFile(JSON.stringify(layer.toGeoJSON(), null, 2), safeMemo + ".geojson", "application/geo+json");
     }
 };
 
-// 변경: 현재 프로젝트 전체 저장 (파일명: 프로젝트명_yymmdd)
+/**
+ * [선택 기록 일괄 저장]
+ * 전달받은 레이어 배열과 형식을 기반으로 각 기록을 파일로 저장합니다.
+ * 모달 없이 이미 선택된 format을 바로 사용합니다.
+ */
+export async function exportLayerWithFormat(layers, format) {
+    if (!layers || layers.length === 0) return;
+
+    for (const layer of layers) {
+        // 파일명에 사용할 수 없는 문자 제거
+        const safeMemo = (layer.feature.properties.memo || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
+
+        if (format === 'gpx') {
+            const featureCollection = { type: "FeatureCollection", features: [layer.toGeoJSON()] };
+            const gpxData = geoJsonToGpx(featureCollection, safeMemo);
+            saveOrShareFile(gpxData, safeMemo + ".gpx", "application/gpx+xml");
+        } else if (format === 'shp') {
+            const featureCollection = { type: "FeatureCollection", features: [layer.toGeoJSON()] };
+            try {
+                await shpDownload(featureCollection, { name: safeMemo });
+            } catch (e) {
+                alert(`"${safeMemo}" Shapefile 내보내기 실패: ${e}`);
+            }
+        } else {
+            // GeoJSON 기본
+            saveOrShareFile(JSON.stringify(layer.toGeoJSON(), null, 2), safeMemo + ".geojson", "application/geo+json");
+        }
+    }
+}
+
+/**
+ * [내보내기 형식 선택 모달]
+ * 모달 팝업을 열고, 사용자가 형식을 선택하면 resolve, 취소하면 reject하는 Promise를 반환합니다.
+ */
+function showExportFormatModal() {
+    return new Promise((resolve, reject) => {
+        const overlay = document.getElementById('export-format-modal-overlay');
+        if (!overlay) { reject(); return; }
+
+        // 기존 resolve 함수가 남아있으면 정리
+        window._resolveExportFormat = (format) => {
+            closeExportFormatModal();
+            resolve(format);
+        };
+
+        overlay.style.display = 'flex';
+        setTimeout(() => overlay.classList.add('visible'), 10);
+    });
+}
+
+export function closeExportFormatModal() {
+    const overlay = document.getElementById('export-format-modal-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+    // resolve를 명시적으로 호출하지 않으면 모달만 닫힌 (Promise는 양재말 대기)
+    window._resolveExportFormat = null;
+}
+
+// 현재 프로젝트 전체 저장 (뮴조건 GeoJSON, 파일명: project_프로젝트명_날짜)
 export function exportCurrentProject() {
-    if (!confirm('현재 프로젝트를 기기에 저장합니다.\n프로젝트의 모든 기록이 한 개의 파일로 저장됩니다.')) return;
+    if (!confirm('현재 프로젝트를 기기에 저장합니다.\n프로젝트의 모든 기록이 한 개의 GeoJSON 파일로 저장됩니다.\nGeoJSON 파일은 QGIS에서 불러올 수 있습니다.')) return;
 
     const project = AppState.projects.find(p => p.id === parseInt(AppState.currentProjectId));
     if (!project) return;
 
-    // 현재 그려진 내용으로 features 갱신
     const currentFeatures = drawnItems.toGeoJSON();
 
     if (currentFeatures.features.length === 0) {
@@ -269,19 +346,13 @@ export function exportCurrentProject() {
     const dateStr = `${yy}${mm}${dd}`;
     const safeProjectName = project.name.replace(/[^a-zA-Z0-9가-힣_-]/g, "_");
 
-    if (AppState.exportFormat === 'gpx') {
-        const gpxData = geoJsonToGpx(currentFeatures, project.name);
-        const fileName = `${safeProjectName}_${dateStr}.gpx`;
-        saveOrShareFile(gpxData, fileName, "application/gpx+xml");
-    } else {
-        // GeoJSON (기본)
-        currentFeatures.isProjectExport = true;
-        currentFeatures.projectName = project.name;
-        currentFeatures.exportedAt = new Date().toISOString();
+    // 프로젝트 내보내기 형식: 무조건 GeoJSON
+    currentFeatures.isProjectExport = true;
+    currentFeatures.projectName = project.name;
+    currentFeatures.exportedAt = new Date().toISOString();
 
-        const fileName = `${safeProjectName}_${dateStr}.geojson`;
-        saveOrShareFile(JSON.stringify(currentFeatures), fileName, "application/geo+json");
-    }
+    const fileName = `project_${safeProjectName}_${dateStr}.geojson`;
+    saveOrShareFile(JSON.stringify(currentFeatures), fileName, "application/geo+json");
 };
 
 
@@ -477,47 +548,132 @@ function saveToDevice(content, fileName) {
 }
 
 
-export function handleFileSelect(input) {
-    const file = input.files[0];
-    if (!file) return;
+export async function handleFileSelect(input) {
+    // -----------------------------------------------------------
+    // [다중 파일 불러오기]
+    // - 여러 개의 파일을 동시에 선택해 처리할 수 있습니다.
+    // - 프로젝트 파일(isProjectExport === true): 현재 지도에 그리지 않고 AppState.projects에 추가합니다.
+    // - 단일 기록 파일: 현재 프로젝트에 레이어를 추가합니다.
+    // - .zip 파일: shpjs를 사용해 Shapefile을 GeoJSON으로 변환합니다.
+    // -----------------------------------------------------------
+    if (!input.files || input.files.length === 0) return;
 
-    const r = new FileReader();
-    r.onload = function (e) {
+    const files = Array.from(input.files);
+    let newProjectCount = 0; // 백그라운드로 추가된 새 프로젝트 수
+    let singleLayerCount = 0; // 현재 지도에 추가된 단일 기록 수
+    let errorCount = 0;
+
+    for (const file of files) {
         try {
-            let json;
-            // GPX 파일 감지 및 변환
-            if (file.name.toLowerCase().endsWith('.gpx')) {
-                json = gpxToGeoJson(e.target.result);
-                // GPX 불러오기는 병합 모드로 동작하도록 유도하거나, 아래에서 통합 처리
-            } else {
-                json = JSON.parse(e.target.result);
-            }
+            let json; // 처리된 GeoJSON 객체
 
-            // 스마트 불러오기: 프로젝트 파일 감지
-            if (json.isProjectExport && json.projectName) {
-                if (confirm(`프로젝트 '${json.projectName}' 데이터를 감지했습니다.\n새 프로젝트로 불러오시겠습니까?\n(취소 시 현재 프로젝트에 합쳐집니다)`)) {
-                    // 새 프로젝트 생성 및 전환
-                    createNewProject(json.projectName);
-                    // 데이터 로드
-                    restoreFeatures(json);
-                    saveToStorage();
-                    closeSidebar();
-                    input.value = '';
-                    return;
+            const ext = file.name.toLowerCase().split('.').pop();
+
+            if (ext === 'zip') {
+                // --- Shapefile(.zip) 처리 ---
+
+                // [1차 제한] 파일 용량 10MB 초과 시 차단
+                const MAX_SHP_SIZE_MB = 10;
+                if (file.size > MAX_SHP_SIZE_MB * 1024 * 1024) {
+                    alert(`"${file.name}" 파일 용량이 ${MAX_SHP_SIZE_MB}MB를 초과합니다.\n모바일 환경에서는 처리하기 어렵습니다. (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+                    errorCount++;
+                    continue;
                 }
+
+                const arrayBuffer = await file.arrayBuffer();
+                const geoJsonResult = await shp(arrayBuffer);
+                // shpjs는 배열 또는 단일 FeatureCollection 반환
+                if (Array.isArray(geoJsonResult)) {
+                    // 여러 레이어: 첫 번째 것을 사용
+                    json = geoJsonResult[0];
+                } else {
+                    json = geoJsonResult;
+                }
+
+                // [2차 제한] 파싱 후 버텍스(꼭짓점) 개수 5만 개 초과 시 차단
+                const MAX_VERTICES = 50000;
+                const vertexCount = countVertices(json);
+                if (vertexCount > MAX_VERTICES) {
+                    alert(`"${file.name}" 파일의 버텍스 개수가 너무 많습니다.\n모바일 환경에서는 ${MAX_VERTICES.toLocaleString()}개 이하만 불러올 수 있습니다.\n(현재: ${vertexCount.toLocaleString()}개)`);
+                    errorCount++;
+                    continue;
+                }
+            } else if (ext === 'gpx') {
+                // --- GPX 처리 ---
+                const text = await file.text();
+                json = gpxToGeoJson(text);
+            } else {
+                // --- GeoJSON / JSON 처리 ---
+                const text = await file.text();
+                json = JSON.parse(text);
             }
 
-            // 일반 불러오기 (현재 프로젝트에 병합)
-            restoreFeatures(json);
-            saveToStorage();
-            alert("불러오기가 완료되었습니다.");
-            closeSidebar();
-        } catch (err) { alert("오류: " + err); }
-        input.value = '';
-    };
-    r.readAsText(file);
+            if (!json) {
+                console.warn(`파일 변환 결과가 없습니다: ${file.name}`);
+                errorCount++;
+                continue;
+            }
+
+            // --- 프로젝트 파일 vs 단일 기록 파일 분기 ---
+            if (json.isProjectExport === true && json.projectName) {
+                // [백그라운드 추가] 프로젝트 파일 → AppState.projects에 새 프로젝트로 추가
+                const newProject = {
+                    id: Date.now() + Math.floor(Math.random() * 1000),
+                    name: json.projectName,
+                    features: json, // FeatureCollection 그대로 저장
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                AppState.projects.push(newProject);
+                newProjectCount++;
+            } else {
+                // [포그라운드 추가] 단일 기록 파일 → 현재 지도에 레이어 추가
+                restoreFeatures(json);
+                singleLayerCount++;
+            }
+
+        } catch (err) {
+            console.error(`파일 처리 실패 [${file.name}]:`, err);
+            errorCount++;
+        }
+    }
+
+    // 모든 파일 처리 후 한 번만 저장 및 UI 갱신
+    await saveToStorage();
+    renderProjectSelector();
+
+    // 결과 알림
+    const msgs = [];
+    if (singleLayerCount > 0) msgs.push(`기록 ${singleLayerCount}건이 현재 프로젝트에 추가되었습니다.`);
+    if (newProjectCount > 0) msgs.push(`프로젝트 ${newProjectCount}개가 새로 추가되었습니다.`);
+    if (errorCount > 0) msgs.push(`${errorCount}개 파일 처리 중 오류가 발생했습니다.`);
+
+    if (msgs.length > 0) alert(msgs.join('\n'));
+
+    input.value = ''; // 파일 input 초기화
 }
 
+/**
+ * GeoJSON FeatureCollection 내 모든 버텍스(꼭짓점) 개수를 계산합니다.
+ * coordinates 배열을 재귀적으로 순회해 [number, number] 쌍의 총 개수를 반환합니다.
+ */
+function countVertices(geojson) {
+    if (!geojson) return 0;
+    const features = geojson.features || [];
+
+    // coordinates 배열에서 꼭짓점 개수 재귀 카운트
+    function countCoords(coords) {
+        if (!Array.isArray(coords)) return 0;
+        // 가장 안쪽: [number, number] 형태인지 확인
+        if (typeof coords[0] === 'number') return 1;
+        return coords.reduce((sum, c) => sum + countCoords(c), 0);
+    }
+
+    return features.reduce((total, feature) => {
+        if (!feature.geometry || !feature.geometry.coordinates) return total;
+        return total + countCoords(feature.geometry.coordinates);
+    }, 0);
+}
 
 export function clearAllData() {
     if (confirm("현재 프로젝트의 모든 기록이 삭제됩니다.")) {

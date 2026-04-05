@@ -1,6 +1,6 @@
 // service-worker.js (하이브리드 전략)
 
-const STATIC_CACHE_NAME = 'F-field-v2.3.1';
+const STATIC_CACHE_NAME = 'F-field-v2.3.2';
 const MAP_CACHE_NAME = 'F-field-map-v1';
 
 // 1. 설치: 기본 뼈대만 캐싱 (라이브러리 등 변하지 않는 것들)
@@ -12,7 +12,8 @@ const STATIC_URLS = [
     'https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js',
     'https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.4.4/proj4.js',
     'https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js',
-    './icon.png',
+    './icon-192.png',
+    './icon-512.png',
     './manifest.json',
     './index.html',
     './config.js',
@@ -107,4 +108,11 @@ self.addEventListener('fetch', (event) => {
                 return caches.match(event.request);
             })
     );
+});
+
+// 새 서비스 워커가 대기 중일 때 페이지로부터 SKIP_WAITING 메시지를 받으면 즉시 활성화
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
 });

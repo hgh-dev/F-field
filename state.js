@@ -32,7 +32,10 @@ export const AppState = {
     // [프로젝트 관리]
     projects: [],             // 모든 프로젝트와 그 안의 기록들을 담고 있는 배열
     currentProjectId: null,   // 현재 작업 중인 프로젝트의 ID (projects 배열 내 객체의 id)
-    exportFormat: localStorage.getItem('setting_export_format') || 'geojson',  // 내보내기 파일 형식 ('geojson' | 'gpx')
+
+    // [기록 정렬 상태]
+    sortBy: localStorage.getItem('setting_sort_by') || 'date',       // 정렬 기준 ('date' | 'name')
+    sortOrder: localStorage.getItem('setting_sort_order') || 'asc',  // 정렬 방향 ('asc' | 'desc')
 
     // [트랙 기록 모드 상태]
     trackInterval: parseInt(localStorage.getItem('setting_track_interval')) || 10, // 트랙 기록 간격 (단위: m)

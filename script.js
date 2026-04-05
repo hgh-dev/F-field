@@ -24,7 +24,7 @@ import {
     saveToStorage, loadFromStorage, loadCurrentProjectFeatures,
     restoreFeatures, exportSingleLayer, exportCurrentProject,
     handleFileSelect, clearAllData, saveCurrentPoint, saveCurrentBoundary,
-    getAddressFromCoords
+    getAddressFromCoords, closeExportFormatModal, exportLayerWithFormat
 } from './data.js';
 
 import {
@@ -457,15 +457,39 @@ window.saveCurrentBoundary = saveCurrentBoundary;
 window.openSearchModal = openSearchModal;
 window.closeSearchModal = closeSearchModal;
 window.executeMapSearch = executeMapSearch;
-window.triggerFileInput = () => document.getElementById('geoJsonInput').click();
+window.triggerFileInput = () => {
+    if (localStorage.getItem('hide_import_warning') === 'true') {
+        document.getElementById('geoJsonInput').click();
+    } else {
+        const overlay = document.getElementById('import-warning-modal-overlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            setTimeout(() => overlay.classList.add('visible'), 10);
+        }
+    }
+};
+
+window.closeImportWarningModal = () => {
+    const overlay = document.getElementById('import-warning-modal-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+};
+
+window.proceedWithImport = () => {
+    const chk = document.getElementById('chk-hide-import-warning');
+    if (chk && chk.checked) {
+        localStorage.setItem('hide_import_warning', 'true');
+    }
+    window.closeImportWarningModal();
+    document.getElementById('geoJsonInput').click();
+};
+
+window.clearAllData = clearAllData;
 window.setCoordMode = (mode) => {
     AppState.coordMode = parseInt(mode);
     localStorage.setItem('setting_coord_mode', mode);
     updateCoordDisplay();
-};
-window.setExportFormat = (format) => {
-    AppState.exportFormat = format;
-    localStorage.setItem('setting_export_format', format);
 };
 window.setTrackInterval = (value) => {
     AppState.trackInterval = parseInt(value);
@@ -534,7 +558,7 @@ window.toggleAllLayers = (isChecked) => {
 window.deleteSelectedLayers = () => {
     let deletedCount = 0;
     const layersToRemove = [];
-    
+
     drawnItems.getLayers().forEach(layer => {
         if (layer.feature && layer.feature.properties && !layer.feature.properties.isHidden) {
             layersToRemove.push(layer);
@@ -546,19 +570,53 @@ window.deleteSelectedLayers = () => {
         return;
     }
 
-    if(!confirm(`선택한 ${layersToRemove.length}개의 기록을 삭제하시겠습니까?\n(삭제 후 복구할 수 없습니다.)`)) return;
+    if (!confirm(`선택한 ${layersToRemove.length}개의 기록을 삭제하시겠습니까?\n(삭제 후 복구할 수 없습니다.)`)) return;
 
     layersToRemove.forEach(layer => {
         drawnItems.removeLayer(layer);
-        if(layer._popup) layer.closePopup();
+        if (layer._popup) layer.closePopup();
         deletedCount++;
     });
-    
+
     if (deletedCount > 0) {
         saveToStorage();
         uiRenderSurveyList();
     }
 };
+
+window.exportSelectedLayers = async () => {
+    // 체크된(화면에 표시된, isHidden이 false인) 레이어 목록 수집
+    const layers = drawnItems.getLayers().filter(
+        l => l.feature && l.feature.properties && !l.feature.properties.isHidden
+    );
+
+    if (layers.length === 0) {
+        alert("선택된 기록이 없습니다.");
+        return;
+    }
+
+    // 파일 형식 선택 모달 표시
+    let format;
+    try {
+        format = await new Promise((resolve, reject) => {
+            const overlay = document.getElementById('export-format-modal-overlay');
+            if (!overlay) { reject(); return; }
+            window._resolveExportFormat = (f) => {
+                closeExportFormatModal();
+                resolve(f);
+            };
+            overlay.style.display = 'flex';
+            setTimeout(() => overlay.classList.add('visible'), 10);
+        });
+    } catch {
+        return; // 취소
+    }
+
+    // 선택된 형식으로 각 레이어 일괄 저장
+    await exportLayerWithFormat(layers, format);
+    alert(`${layers.length}개의 기록을 ${format.toUpperCase()} 형식으로 저장합니다.`);
+};
+
 window.exportCurrentProject = exportCurrentProject;
 window.toggleOverlay = toggleOverlay;
 window.toggleBaseLayer = toggleBaseLayer;
@@ -573,5 +631,6 @@ window.completeSingleEdit = completeSingleEdit;
 window.revertSingleEdit = revertSingleEdit;
 window.cancelSingleEdit = cancelSingleEdit;
 window.handleFileSelect = handleFileSelect;
+window.closeExportFormatModal = closeExportFormatModal;
 
 

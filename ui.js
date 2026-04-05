@@ -1054,7 +1054,6 @@ export function closeLocationActionModal() {
 export function openSettingsModal() {
     closeSidebar();
     document.getElementsByName('coord-mode-select').forEach(r => { if (parseInt(r.value) === AppState.coordMode) r.checked = true; });
-    document.getElementsByName('export-format-select').forEach(r => { if (r.value === AppState.exportFormat) r.checked = true; });
     document.getElementsByName('track-interval-select').forEach(r => { if (parseInt(r.value) === AppState.trackInterval) r.checked = true; });
     document.getElementsByName('polygon-fill-select').forEach(r => { if ((r.value === 'true') === AppState.isPolygonFill) r.checked = true; });
     const overlay = document.getElementById('settings-modal-overlay');
@@ -1695,7 +1694,25 @@ export function renderSurveyList() {
         return;
     }
 
-    layers.forEach(function (layer) {
+    // --- 정렬 ---
+    // AppState.sortBy: 'date'(기록 일시) | 'name'(파일명/기록명)
+    // AppState.sortOrder: 'asc'(오름차순) | 'desc'(내림차순)
+    const sortedLayers = [...layers].sort((a, b) => {
+        const pa = a.feature.properties;
+        const pb = b.feature.properties;
+        let cmp = 0;
+        if (AppState.sortBy === 'name') {
+            const na = (pa.memo || '').toLowerCase();
+            const nb = (pb.memo || '').toLowerCase();
+            cmp = na.localeCompare(nb, 'ko');
+        } else {
+            // 'date': props.id는 Date.now() 기반 타임스탬프
+            cmp = (pa.id || 0) - (pb.id || 0);
+        }
+        return AppState.sortOrder === 'asc' ? cmp : -cmp;
+    });
+
+    sortedLayers.forEach(function (layer) {
         const props = layer.feature.properties || {};
         const isHidden = props.isHidden === true;
         const typeIcon = (layer instanceof L.Marker) ? SVG_ICONS.marker : (layer instanceof L.Polygon ? SVG_ICONS.polygon : (props.isTrack ? SVG_ICONS.track : SVG_ICONS.ruler));
@@ -2041,3 +2058,49 @@ window.shareLocationText = shareLocationText;
 window.openContextMenu = openContextMenu;
 window.handleMenuAction = handleMenuAction;
 window.downloadOfflineMap = downloadOfflineMap;
+
+/* --------------------------------------------------------------------------
+   정렬 모달 (Sort Modal)
+   -------------------------------------------------------------------------- */
+export function openSortModal() {
+    const overlay = document.getElementById('sort-modal-overlay');
+    if (!overlay) return;
+
+    // \ud604\uc7ac \uc815\ub82c \uc0c1\ud0dc\ub97c \ub77c\ub514\uc624 \ubc84\ud2bc\uc5d0 \ubc18\uc601
+    document.querySelectorAll('input[name="sort-by"]').forEach(r => {
+        r.checked = (r.value === AppState.sortBy);
+    });
+    document.querySelectorAll('input[name="sort-order"]').forEach(r => {
+        r.checked = (r.value === AppState.sortOrder);
+    });
+
+    overlay.style.display = 'flex';
+    setTimeout(() => overlay.classList.add('visible'), 10);
+}
+
+export function closeSortModal() {
+    const overlay = document.getElementById('sort-modal-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+}
+
+export function applySortSetting() {
+    // \ubaa8\ub2ec \ub0b4 \ub77c\ub514\uc624 \ubc84\ud2bc\uc5d0\uc11c \uc120\ud0dd\ub41c \uac12 \uc77d\uae30
+    const byEl = document.querySelector('input[name="sort-by"]:checked');
+    const orderEl = document.querySelector('input[name="sort-order"]:checked');
+    if (byEl) {
+        AppState.sortBy = byEl.value;
+        localStorage.setItem('setting_sort_by', byEl.value);
+    }
+    if (orderEl) {
+        AppState.sortOrder = orderEl.value;
+        localStorage.setItem('setting_sort_order', orderEl.value);
+    }
+    closeSortModal();
+    renderSurveyList(); // \ub9ac\uc2a4\ud2b8 \uc7ac\ub80c\ub354\ub9c1
+}
+
+window.openSortModal = openSortModal;
+window.closeSortModal = closeSortModal;
+window.applySortSetting = applySortSetting;
