@@ -568,6 +568,7 @@ export async function handleFileSelect(input) {
             let json; // 처리된 GeoJSON 객체
 
             const ext = file.name.toLowerCase().split('.').pop();
+            const fileNameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
 
             if (ext === 'zip') {
                 // --- Shapefile(.zip) 처리 ---
@@ -588,6 +589,14 @@ export async function handleFileSelect(input) {
                     json = geoJsonResult[0];
                 } else {
                     json = geoJsonResult;
+                }
+
+                // 한글 깨짐 문제 방지를 위해, 도형 데이터의 memo를 추출한 파일명으로 덮어쓰기
+                if (json && json.features) {
+                    json.features.forEach(feature => {
+                        if (!feature.properties) feature.properties = {};
+                        feature.properties.memo = fileNameWithoutExt;
+                    });
                 }
 
                 // [2차 제한] 파싱 후 버텍스(꼭짓점) 개수 5만 개 초과 시 차단
