@@ -251,8 +251,24 @@ export const vworldForestryLayer = L.tileLayer.wms("https://api.vworld.kr/req/wm
 
 // 12. 자연환경보전지역 (WMS)
 export const vworldEnvpreserveLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
-    key: VWORLD_API_KEY, layers: 'lt_c_uq114', styles: 'lt_c_uq114', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'envpreserve-layer'
+    key: VWORLD_API_KEY, layers: 'lt_c_uq114', styles: 'lt_c_uq114', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'envpreserve-layer'
 });
+
+// 12-1. 도시지역 (WMS)
+export const vworldCityzoneLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_uq111', styles: 'lt_c_uq111', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'cityzone-layer'
+});
+
+// 12-2. 관리지역 (WMS)
+export const vworldManagezoneLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_uq112', styles: 'lt_c_uq112', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'managezone-layer'
+});
+
+// 12-3. 농림지역 (WMS)
+export const vworldFarmzoneLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_uq113', styles: 'lt_c_uq113', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'farmzone-layer'
+});
+
 
 // 13. 백두대간보호지역 (WMS)
 export const vworldBaekduLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
@@ -422,6 +438,12 @@ export function toggleOverlay(type, isChecked) {
         layer = vworldForestryLayer;
     } else if (type === 'envpreserve') {
         layer = vworldEnvpreserveLayer;
+    } else if (type === 'cityzone') {
+        layer = vworldCityzoneLayer;
+    } else if (type === 'managezone') {
+        layer = vworldManagezoneLayer;
+    } else if (type === 'farmzone') {
+        layer = vworldFarmzoneLayer;
     } else if (type === 'baekdu') {
         layer = vworldBaekduLayer;
     } else if (type === 'wetland') {
@@ -465,6 +487,9 @@ const VWORLD_LEGEND_LAYERS = {
     citypark: ['lt_c_uq162'],
     forestry: ['lt_c_uf602'],
     envpreserve: ['lt_c_uq114'],
+    cityzone: ['lt_c_uq111'],
+    managezone: ['lt_c_uq112'],
+    farmzone: ['lt_c_uq113'],
     baekdu: ['lt_c_uf901'],
     wetland: ['lt_c_wgisarwet'],
     wildlife: ['lt_c_um221'],
