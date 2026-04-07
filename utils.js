@@ -21,7 +21,28 @@ export function getRandomColor() {
 }
 
 // 컬러 마커 아이콘 생성
-export function createColoredMarkerIcon(color) {
+// 컬러 마커 아이콘 생성 (이모지 지원)
+export function createColoredMarkerIcon(color, emoji = null) {
+    if (emoji) {
+        return L.divIcon({
+            className: 'custom-emoji-marker',
+            html: `<div style="font-size: 28px; color: white; text-shadow: 
+                -1.5px -1.5px 1px white, 
+                 1.5px -1.5px 1px white, 
+                -1.5px  1.5px 1px white, 
+                 1.5px  1.5px 1px white, 
+                -1.5px  0px   1px white, 
+                 1.5px  0px   1px white, 
+                 0px   -1.5px 1px white, 
+                 0px    1.5px 1px white,
+                 0px    0px   2.5px white,
+                 0 2px 5px rgba(0,0,0,0.4); text-align: center; line-height: 1;">${emoji}</div>`,
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+            popupAnchor: [0, -18]
+        });
+    }
+
     return L.divIcon({
         className: '',
         html: `<svg viewBox="0 0 24 24" width="36" height="36" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));">

@@ -1725,6 +1725,24 @@ export function renderSurveyList() {
         }
         const div = document.createElement('div');
         div.className = 'survey-item';
+            const displayColor = props.customColor || (layer instanceof L.Marker ? '#FF0000' : '#3388ff');
+            const customEmoji = props.customEmoji || null;
+            
+            let bgStyle = "";
+            let btnContent = "";
+            
+            if (customEmoji) {
+                // 이모지인 경우: 흰색 배경에 이모지 표시
+                bgStyle = "background: #fff; display: flex; align-items: center; justify-content: center;";
+                btnContent = `<span style="font-size: 16px; line-height: 1;">${customEmoji}</span>`;
+            } else if (displayColor === 'transparent') {
+                bgStyle = "background:#fff; background-image:repeating-linear-gradient(45deg, transparent, transparent 5px, #fbcfe8 5px, #fbcfe8 10px);";
+            } else {
+                bgStyle = `background:${displayColor};`;
+            }
+            
+            const styleBtnHTML = `<button class="style-setting-btn" style="width:28px; height:28px; border-radius:50%; border:2px solid #ddd; ${bgStyle} cursor:pointer; flex-shrink:0;" title="스타일 설정" onclick="openStyleModal(${props.id})">${btnContent}</button>`;
+            
         div.innerHTML = `
         <div class="survey-check-area">
             <input type="checkbox" class="survey-checkbox" ${!isHidden ? "checked" : ""} onchange="toggleLayerVisibility(${props.id})">
@@ -1735,7 +1753,7 @@ export function renderSurveyList() {
             ${dateStr ? `<div style="font-size:11px; color:#aaa; margin-top:1px;">${dateStr}</div>` : ''}
         </div>
         <div class="survey-actions">
-            <input type="color" class="color-picker-input" value="${props.customColor || '#3388ff'}" onchange="updateLayerColor(${props.id}, this.value)">
+            ${styleBtnHTML}
             <button class="btn-more" onclick="openContextMenu(event, ${props.id})">${SVG_ICONS.more}</button>
         </div>`;
         listContainer.appendChild(div);
@@ -1893,10 +1911,150 @@ export function zoomToLayer(id) {
 export function updateLayerColor(id, newColor) {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (!layer) return;
-    if (layer instanceof L.Marker) layer.setIcon(createColoredMarkerIcon(newColor));
+    const emoji = layer.feature.properties.customEmoji || null;
+    if (layer instanceof L.Marker) layer.setIcon(createColoredMarkerIcon(newColor, emoji));
     else layer.setStyle({ color: newColor, fillColor: newColor });
     layer.feature.properties.customColor = newColor;
     saveToStorage();
+}
+
+/* --------------------------------------------------------------------------
+   스타일 설정 모달 로직
+   -------------------------------------------------------------------------- */
+let currentStyleLayerId = null;
+let currentStyleType = null;
+let tempStyleColor = '#3B82F6';
+let tempLineStyle = 'solid';
+let tempMarkerStyle = '';
+let tempFillStyle = 'on';
+
+export function openStyleModal(id) {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
+    if (!layer) return;
+
+    currentStyleLayerId = id;
+    const props = layer.feature.properties || {};
+
+    tempStyleColor = props.customColor || (layer instanceof L.Marker ? '#FF0000' : '#3388ff');
+    tempLineStyle = props.customDashArray === 'none' ? 'none' : (props.customDashArray ? 'dashed' : 'solid');
+    tempMarkerStyle = props.customEmoji || '';
+
+    const overlay = document.getElementById('style-modal-overlay');
+    const lineSec = document.getElementById('style-line-section');
+    const markerSec = document.getElementById('style-marker-section');
+    const polySec = document.getElementById('style-polygon-section');
+
+    if (layer instanceof L.Marker) {
+        currentStyleType = 'marker';
+        if (lineSec) lineSec.style.display = 'none';
+        if (markerSec) markerSec.style.display = 'block';
+        if (polySec) polySec.style.display = 'none';
+    } else if (layer instanceof L.Polygon) {
+        currentStyleType = 'polygon';
+        if (lineSec) lineSec.style.display = 'block';
+        if (markerSec) markerSec.style.display = 'none';
+        if (polySec) polySec.style.display = 'block';
+        tempFillStyle = props.customFill === false ? 'off' : (props.customFill === true ? 'on' : (AppState.isPolygonFill ? 'on' : 'off'));
+    } else {
+        currentStyleType = 'line';
+        if (lineSec) lineSec.style.display = 'block';
+        if (markerSec) markerSec.style.display = 'none';
+        if (polySec) polySec.style.display = 'none';
+    }
+
+    // 컬러피커 초기값 동기화
+    const colorPicker = document.getElementById('style-custom-color');
+    if (colorPicker && tempStyleColor.startsWith('#')) {
+        colorPicker.value = tempStyleColor.substring(0, 7);
+    }
+
+    updateStyleModalUI();
+
+    if (overlay) {
+        overlay.style.display = 'flex';
+        setTimeout(() => overlay.classList.add('visible'), 10);
+    }
+}
+
+export function closeStyleModal() {
+    const overlay = document.getElementById('style-modal-overlay');
+    if (overlay) {
+        overlay.classList.remove('visible');
+        setTimeout(() => { if (!overlay.classList.contains('visible')) overlay.style.display = 'none'; }, 300);
+    }
+}
+
+function updateStyleModalUI() {
+    document.querySelectorAll('#style-color-palette .color-circle').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.color === tempStyleColor);
+    });
+    document.querySelectorAll('#style-line-choices .style-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.style === tempLineStyle);
+    });
+    document.querySelectorAll('#style-marker-choices .emoji-btn').forEach(btn => {
+        btn.classList.toggle('selected', (btn.dataset.emoji || '') === tempMarkerStyle);
+    });
+    document.querySelectorAll('#style-fill-choices .style-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.fill === tempFillStyle);
+    });
+}
+
+export function selectStyleColor(color) {
+    tempStyleColor = color;
+    updateStyleModalUI();
+    if (color && color.startsWith('#')) {
+        const picker = document.getElementById('style-custom-color');
+        if (picker) picker.value = color.substring(0, 7);
+    }
+}
+
+export function selectLineStyle(style) {
+    tempLineStyle = style;
+    updateStyleModalUI();
+}
+
+export function selectFillStyle(fill) {
+    tempFillStyle = fill;
+    updateStyleModalUI();
+}
+
+export function selectMarkerStyle(emoji) {
+    tempMarkerStyle = emoji;
+    updateStyleModalUI();
+}
+
+export function applyStyleSettings() {
+    const layer = drawnItems.getLayers().find(l => l.feature.properties.id === currentStyleLayerId);
+    if (!layer) return;
+
+    const props = layer.feature.properties;
+    props.customColor = tempStyleColor;
+
+    if (currentStyleType === 'marker') {
+        props.customEmoji = tempMarkerStyle;
+        layer.setIcon(createColoredMarkerIcon(tempStyleColor, tempMarkerStyle));
+    } else {
+        if (tempLineStyle === 'dashed') props.customDashArray = '5, 5';
+        else if (tempLineStyle === 'none') props.customDashArray = 'none';
+        else props.customDashArray = null;
+
+        if (currentStyleType === 'polygon') {
+            props.customFill = tempFillStyle === 'on';
+        }
+
+        layer.setStyle({ 
+            color: tempStyleColor, 
+            fillColor: tempStyleColor, 
+            dashArray: props.customDashArray === 'none' ? null : props.customDashArray,
+            stroke: props.customDashArray !== 'none',
+            fillOpacity: currentStyleType === 'polygon' && props.customFill === true ? 0.2 : 0,
+            opacity: 0.8
+        });
+    }
+
+    saveToStorage();
+    renderSurveyList();
+    closeStyleModal();
 }
 
 
@@ -2058,6 +2216,13 @@ window.shareLocationText = shareLocationText;
 window.openContextMenu = openContextMenu;
 window.handleMenuAction = handleMenuAction;
 window.downloadOfflineMap = downloadOfflineMap;
+window.openStyleModal = openStyleModal;
+window.closeStyleModal = closeStyleModal;
+window.selectStyleColor = selectStyleColor;
+window.selectLineStyle = selectLineStyle;
+window.selectFillStyle = selectFillStyle;
+window.selectMarkerStyle = selectMarkerStyle;
+window.applyStyleSettings = applyStyleSettings;
 
 /* --------------------------------------------------------------------------
    정렬 모달 (Sort Modal)

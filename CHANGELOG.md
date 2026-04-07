@@ -4,6 +4,14 @@
 
 이 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.0.0/)를 따릅니다.
 
+## [2.4.0] - 2026-04-08
+
+### 추가 (Added)
+
+- 기록 스타일 설정 추가
+
+<br>
+
 ## [2.3.2] - 2026-04-05
 
 ### 추가 (Added)

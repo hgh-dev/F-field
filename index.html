@@ -2040,6 +2040,106 @@
         body.has-ad-main .leaflet-control-scale {
             bottom: calc(120px + env(safe-area-inset-bottom)) !important;
         }
+
+        /* 스타일 모달 전용 CSS */
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 6px;
+            margin-bottom: 12px;
+            justify-items: center;
+        }
+
+        .color-circle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s ease;
+        }
+
+        .color-circle.selected {
+            border-color: #333;
+            border-width: 2px;
+            transform: scale(1.1);
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .transparent-btn {
+            width: auto;
+            padding: 0 8px;
+            border-radius: 14px;
+            background: repeating-linear-gradient(45deg, white, white 5px, #fbcfe8 5px, #fbcfe8 10px);
+            color: #333;
+            font-size: 12px;
+            font-weight: bold;
+            border: 1px solid #ccc;
+        }
+
+        .style-choice-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .style-btn {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .style-btn.selected {
+            border-width: 1.5px;
+            border-color: #3B82F6;
+            background: #eff6ff;
+            font-weight: bold;
+        }
+
+        .emoji-palette {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .emoji-btn {
+            font-size: 20px;
+            padding: 4px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .emoji-btn.selected {
+            border-width: 1.5px;
+            border-color: #3B82F6;
+            background: #eff6ff;
+        }
+
+        .setting-group {
+            margin-bottom: 12px;
+        }
+
+        .setting-group .setting-title {
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -2910,6 +3010,163 @@
         </div>
     </div>
 
+    <!-- 스타일 설정 모달 -->
+    <div id="style-modal-overlay" class="nav-modal-overlay" onclick="closeStyleModal()">
+        <div class="nav-modal-content" id="style-modal" onclick="event.stopPropagation()">
+            <div class="nav-modal-header"
+                style="font-size:18px; font-weight:bold; margin-bottom:20px; text-align:center;">
+                스타일 설정
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-title">색상 선택</div>
+                <div class="color-palette" id="style-color-palette">
+                    <!-- 1행: 빨강/핑크 계열 -->
+                    <div class="color-circle" data-color="#7F1D1D" style="background-color: #7F1D1D;"
+                        onclick="selectStyleColor('#7F1D1D')"></div>
+                    <div class="color-circle" data-color="#B91C1C" style="background-color: #B91C1C;"
+                        onclick="selectStyleColor('#B91C1C')"></div>
+                    <div class="color-circle" data-color="#FF0000" style="background-color: #FF0000;"
+                        onclick="selectStyleColor('#FF0000')"></div>
+                    <div class="color-circle" data-color="#EF4444" style="background-color: #EF4444;"
+                        onclick="selectStyleColor('#EF4444')"></div>
+                    <div class="color-circle" data-color="#F87171" style="background-color: #F87171;"
+                        onclick="selectStyleColor('#F87171')"></div>
+                    <div class="color-circle" data-color="#FEE2E2" style="background-color: #FEE2E2;"
+                        onclick="selectStyleColor('#FEE2E2')"></div>
+
+                    <!-- 2행: 주황/노랑 계열 -->
+                    <div class="color-circle" data-color="#C2410C" style="background-color: #C2410C;"
+                        onclick="selectStyleColor('#C2410C')"></div>
+                    <div class="color-circle" data-color="#F97316" style="background-color: #F97316;"
+                        onclick="selectStyleColor('#F97316')"></div>
+                    <div class="color-circle" data-color="#FB923C" style="background-color: #FB923C;"
+                        onclick="selectStyleColor('#FB923C')"></div>
+                    <div class="color-circle" data-color="#FFFF00" style="background-color: #FFFF00;"
+                        onclick="selectStyleColor('#FFFF00')"></div>
+                    <div class="color-circle" data-color="#F59E0B" style="background-color: #F59E0B;"
+                        onclick="selectStyleColor('#F59E0B')"></div>
+                    <div class="color-circle" data-color="#FEF3C7" style="background-color: #FEF3C7;"
+                        onclick="selectStyleColor('#FEF3C7')"></div>
+
+                    <!-- 3행: 녹색 계열 -->
+                    <div class="color-circle" data-color="#064E3B" style="background-color: #064E3B;"
+                        onclick="selectStyleColor('#064E3B')"></div>
+                    <div class="color-circle" data-color="#047857" style="background-color: #047857;"
+                        onclick="selectStyleColor('#047857')"></div>
+                    <div class="color-circle" data-color="#00FF00" style="background-color: #00FF00;"
+                        onclick="selectStyleColor('#00FF00')"></div>
+                    <div class="color-circle" data-color="#10B981" style="background-color: #10B981;"
+                        onclick="selectStyleColor('#10B981')"></div>
+                    <div class="color-circle" data-color="#34D399" style="background-color: #34D399;"
+                        onclick="selectStyleColor('#34D399')"></div>
+                    <div class="color-circle" data-color="#D1FAE5" style="background-color: #D1FAE5;"
+                        onclick="selectStyleColor('#D1FAE5')"></div>
+
+                    <!-- 4행: 하늘/파랑 계열 -->
+                    <div class="color-circle" data-color="#00FFFF" style="background-color: #00FFFF;"
+                        onclick="selectStyleColor('#00FFFF')"></div>
+                    <div class="color-circle" data-color="#0891B2" style="background-color: #0891B2;"
+                        onclick="selectStyleColor('#0891B2')"></div>
+                    <div class="color-circle" data-color="#22D3EE" style="background-color: #22D3EE;"
+                        onclick="selectStyleColor('#22D3EE')"></div>
+                    <div class="color-circle" data-color="#1E3A8A" style="background-color: #1E3A8A;"
+                        onclick="selectStyleColor('#1E3A8A')"></div>
+                    <div class="color-circle" data-color="#3B82F6" style="background-color: #3B82F6;"
+                        onclick="selectStyleColor('#3B82F6')"></div>
+                    <div class="color-circle" data-color="#DBEAFE" style="background-color: #DBEAFE;"
+                        onclick="selectStyleColor('#DBEAFE')"></div>
+
+                    <!-- 5행: 파랑/보라 계열 -->
+                    <div class="color-circle" data-color="#0000FF" style="background-color: #0000FF;"
+                        onclick="selectStyleColor('#0000FF')"></div>
+                    <div class="color-circle" data-color="#1D4ED8" style="background-color: #1D4ED8;"
+                        onclick="selectStyleColor('#1D4ED8')"></div>
+                    <div class="color-circle" data-color="#4C1D95" style="background-color: #4C1D95;"
+                        onclick="selectStyleColor('#4C1D95')"></div>
+                    <div class="color-circle" data-color="#6D28D9" style="background-color: #6D28D9;"
+                        onclick="selectStyleColor('#6D28D9')"></div>
+                    <div class="color-circle" data-color="#8B5CF6" style="background-color: #8B5CF6;"
+                        onclick="selectStyleColor('#8B5CF6')"></div>
+                    <div class="color-circle" data-color="#EDE9FE" style="background-color: #EDE9FE;"
+                        onclick="selectStyleColor('#EDE9FE')"></div>
+
+                    <!-- 6행: 자주/무채색 계열 -->
+                    <div class="color-circle" data-color="#FF00FF" style="background-color: #FF00FF;"
+                        onclick="selectStyleColor('#FF00FF')"></div>
+                    <div class="color-circle" data-color="#EC4899" style="background-color: #EC4899;"
+                        onclick="selectStyleColor('#EC4899')"></div>
+                    <div class="color-circle" data-color="#000000" style="background-color: #000000;"
+                        onclick="selectStyleColor('#000000')"></div>
+                    <div class="color-circle" data-color="#9CA3AF" style="background-color: #9CA3AF;"
+                        onclick="selectStyleColor('#9CA3AF')"></div>
+                    <div class="color-circle" data-color="#FFFFFF" style="background-color: #FFFFFF;"
+                        onclick="selectStyleColor('#FFFFFF')"></div>
+                    <input type="color" id="style-custom-color" class="color-picker-input"
+                        style="width: 24px; height: 24px; padding: 0; border: none; flex-shrink: 0;"
+                        onchange="selectStyleColor(this.value)">
+                </div>
+            </div>
+
+            <!-- 면 전용: 면 채우기 -->
+            <div class="setting-group" id="style-polygon-section" style="display:none;">
+                <div class="setting-title">면 채우기</div>
+                <div class="style-choice-group" id="style-fill-choices">
+                    <button class="style-btn" data-fill="on" onclick="selectFillStyle('on')">켜짐</button>
+                    <button class="style-btn" data-fill="off" onclick="selectFillStyle('off')">꺼짐</button>
+                </div>
+            </div>
+
+            <!-- 선/면 공통: 선 모양 -->
+            <div class="setting-group" id="style-line-section">
+                <div class="setting-title">선 모양</div>
+                <div class="style-choice-group" id="style-line-choices">
+                    <button class="style-btn" data-style="solid" onclick="selectLineStyle('solid')">실선</button>
+                    <button class="style-btn" data-style="dashed" onclick="selectLineStyle('dashed')">점선</button>
+                    <button class="style-btn" data-style="none" onclick="selectLineStyle('none')">선 없음</button>
+                </div>
+            </div>
+
+            <!-- 점 전용: 마커 모양 -->
+            <div class="setting-group" id="style-marker-section">
+                <div class="setting-title">마커 모양</div>
+                <div class="emoji-palette" id="style-marker-choices">
+                    <button class="emoji-btn" data-emoji="" onclick="selectMarkerStyle('')"
+                        style="font-size:12px; font-weight:bold;">기본</button>
+                    <button class="emoji-btn" data-emoji="⭐" onclick="selectMarkerStyle('⭐')">⭐</button>
+                    <button class="emoji-btn" data-emoji="🟦" onclick="selectMarkerStyle('🟦')">🟦</button>
+                    <button class="emoji-btn" data-emoji="🔺" onclick="selectMarkerStyle('🔺')">🔺</button>
+                    <button class="emoji-btn" data-emoji="🔴" onclick="selectMarkerStyle('🔴')">🔴</button>
+                    <button class="emoji-btn" data-emoji="🟣" onclick="selectMarkerStyle('🟣')">🟣</button>
+                    <button class="emoji-btn" data-emoji="🔶" onclick="selectMarkerStyle('🔶')">🔶</button>
+                    <button class="emoji-btn" data-emoji="📌" onclick="selectMarkerStyle('📌')">📌</button>
+                    <button class="emoji-btn" data-emoji="📍" onclick="selectMarkerStyle('📍')">📍</button>
+                    <button class="emoji-btn" data-emoji="🚩" onclick="selectMarkerStyle('🚩')">🚩</button>
+                    <button class="emoji-btn" data-emoji="💡" onclick="selectMarkerStyle('💡')">💡</button>
+                    <button class="emoji-btn" data-emoji="🚧" onclick="selectMarkerStyle('🚧')">🚧</button>
+                    <button class="emoji-btn" data-emoji="⚠️" onclick="selectMarkerStyle('⚠️')">⚠️</button>
+                    <button class="emoji-btn" data-emoji="✅" onclick="selectMarkerStyle('✅')">✅</button>
+                    <button class="emoji-btn" data-emoji="❌" onclick="selectMarkerStyle('❌')">❌</button>
+                    <button class="emoji-btn" data-emoji="❓" onclick="selectMarkerStyle('❓')">❓</button>
+                    <button class="emoji-btn" data-emoji="🏠" onclick="selectMarkerStyle('🏠')">🏠</button>
+                    <button class="emoji-btn" data-emoji="🏢" onclick="selectMarkerStyle('🏢')">🏢</button>
+                    <button class="emoji-btn" data-emoji="⛰️" onclick="selectMarkerStyle('⛰️')">⛰️</button>
+                    <button class="emoji-btn" data-emoji="🌳" onclick="selectMarkerStyle('🌳')">🌳</button>
+                    <button class="emoji-btn" data-emoji="🌲" onclick="selectMarkerStyle('🌲')">🌲</button>
+                    <button class="emoji-btn" data-emoji="🌸" onclick="selectMarkerStyle('🌸')">🌸</button>
+                    <button class="emoji-btn" data-emoji="🌾" onclick="selectMarkerStyle('🌾')">🌾</button>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:8px; margin-top:16px;">
+                <button onclick="closeStyleModal()"
+                    style="flex:1; padding:12px; background:#f5f5f5; border:none; border-radius:10px; font-size:14px; font-weight:bold; color:#666;">취소</button>
+                <button onclick="applyStyleSettings()"
+                    style="flex:1; padding:12px; background:#3b82f6; border:none; border-radius:10px; font-size:14px; font-weight:bold; color:#fff;">적용</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 설정 모달 -->
     <div id="settings-modal-overlay" class="nav-modal-overlay" onclick="closeSettingsModal()">
         <div class="nav-modal-content" onclick="event.stopPropagation()">
@@ -3059,12 +3316,12 @@
                 <button id="btn-export-geojson" onclick="window._resolveExportFormat('geojson')"
                     style="padding:16px; background:#f8f9fa; border:1.5px solid #ddd; border-radius:12px; font-size:15px; font-weight:bold; color:#333; cursor:pointer; text-align:left;">
                     GeoJSON(권장)<div style="font-size:12px; font-weight:normal; color:#888; margin-top:3px;">웹과 앱에서 가장
-                        선호하는 표준 형식으로 QGIS에서 불러올 수 있습니다. 이 앱에서 불러올 때 기록 내에 저장한 메모, 사진, 도형의 색깔 정보가 유지됩니다.</div>
+                        선호하는 표준 형식으로 QGIS에서 불러올 수 있습니다. 이 앱에서 불러올 때 기록 내에 저장한 메모, 사진, 도형의 스타일 정보가 유지됩니다.</div>
                 </button>
                 <button id="btn-export-shp" onclick="window._resolveExportFormat('shp')"
                     style="padding:16px; background:#f8f9fa; border:1.5px solid #ddd; border-radius:12px; font-size:15px; font-weight:bold; color:#333; cursor:pointer; text-align:left;">
                     Shapefile (.zip)<div style="font-size:12px; font-weight:normal; color:#888; margin-top:3px;">가장 전통적인
-                        GIS 데이터 포맷입니다. .shp, .dbf, .shx, .prj파일이 한 압축파일(.zip)로 저장됩니다. 기록 내에 저장한 메모, 사진, 도형의 색깔 정보가
+                        GIS 데이터 포맷입니다. .shp, .dbf, .shx, .prj파일이 한 압축파일(.zip)로 저장됩니다. 기록 내에 저장한 메모, 사진, 도형의 스타일 정보가
                         사라집니다.
                     </div>
                 </button>
@@ -3188,7 +3445,7 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script type="module" src="script.js?v=2.3.2"></script>
+    <script type="module" src="script.js?v=2.4.0"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {

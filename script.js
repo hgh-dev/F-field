@@ -504,7 +504,11 @@ window.setPolygonFill = (value) => {
         // layer.feature.geometry는 새로 그린 직후엔 객체가 없습니다. (새로고침해야 생성됨)
         // 따라서 L.Polygon 객체인지 여부로 다이렉트 확인합니다.
         if (layer instanceof L.Polygon) {
-            layer.setStyle({ fillOpacity: isFill ? 0.2 : 0 });
+            if (layer.feature && layer.feature.properties && typeof layer.feature.properties.customFill === 'boolean') {
+                layer.setStyle({ fillOpacity: layer.feature.properties.customFill ? 0.2 : 0 });
+            } else {
+                layer.setStyle({ fillOpacity: isFill ? 0.2 : 0 });
+            }
         }
     });
 };

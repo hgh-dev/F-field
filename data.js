@@ -178,7 +178,8 @@ export function restoreFeatures(geoJsonData) {
         pointToLayer: function (feature, latlng) {
             // 마커 생성 시 색상 적용
             const color = feature.properties.customColor || getRandomColor();
-            const marker = L.marker(latlng, { icon: createColoredMarkerIcon(color) });
+            const emoji = feature.properties.customEmoji || null;
+            const marker = L.marker(latlng, { icon: createColoredMarkerIcon(color, emoji) });
             return marker;
         },
         style: function (feature) {
@@ -186,9 +187,25 @@ export function restoreFeatures(geoJsonData) {
             if (feature.geometry.type !== 'Point') {
                 const color = feature.properties.customColor || getRandomColor();
                 const styleObj = { color: color, fillColor: color };
-                if (feature.geometry.type === 'Polygon' && !AppState.isPolygonFill) {
-                    styleObj.fillOpacity = 0;
+                if (feature.geometry.type === 'Polygon') {
+                    if (feature.properties.customFill === false) {
+                        styleObj.fillOpacity = 0;
+                    } else if (feature.properties.customFill === true) {
+                        styleObj.fillOpacity = 0.2;
+                    } else if (!AppState.isPolygonFill) {
+                        styleObj.fillOpacity = 0;
+                    } else {
+                        styleObj.fillOpacity = 0.2;
+                    }
                 }
+                
+                const dashArray = feature.properties.customDashArray;
+                if (dashArray === 'none') {
+                    styleObj.stroke = false;
+                } else if (dashArray) {
+                    styleObj.dashArray = dashArray;
+                }
+                
                 return styleObj;
             }
         },
