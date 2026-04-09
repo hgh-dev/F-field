@@ -340,10 +340,16 @@ map.on(L.Draw.Event.CREATED, function (event) {
     if (AppState.pendingPhotos && AppState.pendingPhotos.length > 0) {
         layer.feature.properties.photos = AppState.pendingPhotos;
         AppState.pendingPhotos = null;
+        
+        // 사진 추가로 만든 점은 카메라 이모지를 기본으로 설정
+        layer.feature.properties.customEmoji = '📷';
+        layer.feature.properties.customMarkerSize = 3;
     }
 
     if (event.layerType === 'marker') {
-        layer.setIcon(createColoredMarkerIcon(randomColor));
+        const emoji = layer.feature.properties.customEmoji || null;
+        const size = layer.feature.properties.customMarkerSize || 3;
+        layer.setIcon(createColoredMarkerIcon(randomColor, emoji, size));
     } else {
         layer.setStyle({ color: randomColor, fillColor: randomColor });
         if (event.layerType === 'polygon' && !AppState.isPolygonFill) {

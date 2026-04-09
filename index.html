@@ -3136,30 +3136,50 @@
                     <button class="emoji-btn" data-emoji="⭐" onclick="selectMarkerStyle('⭐')">⭐</button>
                     <button class="emoji-btn" data-emoji="❌" onclick="selectMarkerStyle('❌')">❌</button>
                     <button class="emoji-btn" data-emoji="❓" onclick="selectMarkerStyle('❓')">❓</button>
+                    <button class="emoji-btn" data-emoji="❗️" onclick="selectMarkerStyle('❗️')">❗️</button>
                     <button class="emoji-btn" data-emoji="📷" onclick="selectMarkerStyle('📷')">📷</button>
-                    <button class="emoji-btn" data-emoji="🟦" onclick="selectMarkerStyle('🟦')">🟦</button>
-                    <button class="emoji-btn" data-emoji="🔺" onclick="selectMarkerStyle('🔺')">🔺</button>
-                    <button class="emoji-btn" data-emoji="🔴" onclick="selectMarkerStyle('🔴')">🔴</button>
-                    <button class="emoji-btn" data-emoji="🟣" onclick="selectMarkerStyle('🟣')">🟣</button>
-                    <button class="emoji-btn" data-emoji="🔶" onclick="selectMarkerStyle('🔶')">🔶</button>
+                    <button class="emoji-btn" data-emoji="🗒️" onclick="selectMarkerStyle('🗒️')">🗒️</button>
                     <button class="emoji-btn" data-emoji="📌" onclick="selectMarkerStyle('📌')">📌</button>
                     <button class="emoji-btn" data-emoji="📍" onclick="selectMarkerStyle('📍')">📍</button>
                     <button class="emoji-btn" data-emoji="🚩" onclick="selectMarkerStyle('🚩')">🚩</button>
-                    <button class="emoji-btn" data-emoji="💡" onclick="selectMarkerStyle('💡')">💡</button>
                     <button class="emoji-btn" data-emoji="🚧" onclick="selectMarkerStyle('🚧')">🚧</button>
-                    <button class="emoji-btn" data-emoji="⚠️" onclick="selectMarkerStyle('⚠️')">⚠️</button>
-                    <button class="emoji-btn" data-emoji="✅" onclick="selectMarkerStyle('✅')">✅</button>
-                    <button class="emoji-btn" data-emoji="🏠" onclick="selectMarkerStyle('🏠')">🏠</button>
-                    <button class="emoji-btn" data-emoji="🏢" onclick="selectMarkerStyle('🏢')">🏢</button>
-                    <button class="emoji-btn" data-emoji="⛰️" onclick="selectMarkerStyle('⛰️')">⛰️</button>
                     <button class="emoji-btn" data-emoji="🌳" onclick="selectMarkerStyle('🌳')">🌳</button>
                     <button class="emoji-btn" data-emoji="🌲" onclick="selectMarkerStyle('🌲')">🌲</button>
+                    <button class="emoji-btn" data-emoji="🪾" onclick="selectMarkerStyle('🪾')">🪾</button>
+                    <button class="emoji-btn" data-emoji="🪵" onclick="selectMarkerStyle('🪵')">🪵</button>
+                    <button class="emoji-btn" data-emoji="🌱" onclick="selectMarkerStyle('🌱')">🌱</button>
                     <button class="emoji-btn" data-emoji="🌸" onclick="selectMarkerStyle('🌸')">🌸</button>
                     <button class="emoji-btn" data-emoji="🌾" onclick="selectMarkerStyle('🌾')">🌾</button>
+                    <button class="emoji-btn" data-emoji="🥬" onclick="selectMarkerStyle('🥬')">🥬</button>
+                    <button class="emoji-btn" data-emoji="🏠" onclick="selectMarkerStyle('🏠')">🏠</button>
+                    <button class="emoji-btn" data-emoji="🏢" onclick="selectMarkerStyle('🏢')">🏢</button>
+                    <button class="emoji-btn" data-emoji="🏭" onclick="selectMarkerStyle('🏭')">🏭</button>
+                    <button class="emoji-btn" data-emoji="⛰️" onclick="selectMarkerStyle('⛰️')">⛰️</button>
+                    <button class="emoji-btn" data-emoji="⚠️" onclick="selectMarkerStyle('⚠️')">⚠️</button>
+                    <button class="emoji-btn" data-emoji="🟦" onclick="selectMarkerStyle('🟦')">🟦</button>
+                    <button class="emoji-btn" data-emoji="🔴" onclick="selectMarkerStyle('🔴')">🔴</button>
+                    <button class="emoji-btn" data-emoji="🔶" onclick="selectMarkerStyle('🔶')">🔶</button>
+                    <button class="emoji-btn" data-emoji="✅" onclick="selectMarkerStyle('✅')">✅</button>
+                    <button class="emoji-btn" data-emoji="🔥" onclick="selectMarkerStyle('🔥')">🔥</button>
+                    <button class="emoji-btn" data-emoji="🚒" onclick="selectMarkerStyle('🚒')">🚒</button>
+                    <button class="emoji-btn" data-emoji="🧯" onclick="selectMarkerStyle('🧯')">🧯</button>
+                    <button class="emoji-btn" data-emoji="💧" onclick="selectMarkerStyle('💧')">💧</button>
                     <button class="emoji-btn" data-emoji="🐍" onclick="selectMarkerStyle('🐍')">🐍</button>
                     <button class="emoji-btn" data-emoji="☕️" onclick="selectMarkerStyle('☕️')">☕️</button>
                 </div>
             </div>
+
+            <!-- 점 전용: 마커 크기 -->
+            <div class="setting-group" id="style-marker-size-section">
+                <div class="setting-title">마커 크기</div>
+                <div style="display:flex; align-items:center; gap: 10px;">
+                    <input type="range" id="style-marker-size" min="1" max="5" value="3" step="1" style="flex:1;"
+                        oninput="updateMarkerSizeLabel(this.value)" onchange="selectMarkerSize(this.value)">
+                    <span id="style-marker-size-label"
+                        style="font-weight:bold; font-size:14px; width:20px; text-align:center;">3</span>
+                </div>
+            </div>
+
 
             <div style="display:flex; gap:8px; margin-top:16px;">
                 <button onclick="closeStyleModal()"
@@ -3448,7 +3468,7 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script type="module" src="script.js?v=2.4.0"></script>
+    <script type="module" src="script.js?v=2.4.1"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {

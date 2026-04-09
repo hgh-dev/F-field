@@ -22,11 +22,20 @@ export function getRandomColor() {
 
 // 컬러 마커 아이콘 생성
 // 컬러 마커 아이콘 생성 (이모지 지원)
-export function createColoredMarkerIcon(color, emoji = null) {
+export function createColoredMarkerIcon(color, emoji = null, size = 3) {
+    const sizeMap = {
+        1: { emojiSize: 14, iconSize: 26, anchor: 13 },
+        2: { emojiSize: 17, iconSize: 31, anchor: 15.5 },
+        3: { emojiSize: 20, iconSize: 36, anchor: 18 },
+        4: { emojiSize: 24, iconSize: 42, anchor: 21 },
+        5: { emojiSize: 28, iconSize: 48, anchor: 24 }
+    };
+    const s = sizeMap[size] || sizeMap[3];
+
     if (emoji) {
         return L.divIcon({
             className: 'custom-emoji-marker',
-            html: `<div style="font-size: 28px; color: white; text-shadow: 
+            html: `<div style="font-size: ${s.emojiSize}px; color: white; text-shadow: 
                 -1.5px -1.5px 1px white, 
                  1.5px -1.5px 1px white, 
                 -1.5px  1.5px 1px white, 
@@ -36,22 +45,22 @@ export function createColoredMarkerIcon(color, emoji = null) {
                  0px   -1.5px 1px white, 
                  0px    1.5px 1px white,
                  0px    0px   2.5px white,
-                 0 2px 5px rgba(0,0,0,0.4); text-align: center; line-height: 1;">${emoji}</div>`,
-            iconSize: [36, 36],
-            iconAnchor: [18, 18],
-            popupAnchor: [0, -18]
+                 0 2px 5px rgba(0,0,0,0.4); text-align: center; line-height: 1.2;">${emoji}</div>`,
+            iconSize: [s.iconSize, s.iconSize],
+            iconAnchor: [s.anchor, s.anchor],
+            popupAnchor: [0, -s.anchor]
         });
     }
 
     return L.divIcon({
         className: '',
-        html: `<svg viewBox="0 0 24 24" width="36" height="36" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));">
+        html: `<svg viewBox="0 0 24 24" width="${s.iconSize}" height="${s.iconSize}" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" 
                       fill="${color}" stroke="white" stroke-width="0.8"/>
                </svg>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 36],
-        popupAnchor: [0, -36]
+        iconSize: [s.iconSize, s.iconSize],
+        iconAnchor: [s.anchor, s.iconSize],
+        popupAnchor: [0, -s.iconSize]
     });
 }
 

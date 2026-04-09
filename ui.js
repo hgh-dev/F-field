@@ -1730,18 +1730,53 @@ export function renderSurveyList() {
             
             let bgStyle = "";
             let btnContent = "";
+            let buttonStyle = "width:28px; height:28px; border-radius:50%; flex-shrink:0; cursor:pointer; box-sizing:border-box;";
             
-            if (customEmoji) {
-                // 이모지인 경우: 흰색 배경에 이모지 표시
-                bgStyle = "background: #fff; display: flex; align-items: center; justify-content: center;";
-                btnContent = `<span style="font-size: 16px; line-height: 1;">${customEmoji}</span>`;
-            } else if (displayColor === 'transparent') {
-                bgStyle = "background:#fff; background-image:repeating-linear-gradient(45deg, transparent, transparent 5px, #fbcfe8 5px, #fbcfe8 10px);";
+            if (layer instanceof L.Marker) {
+                // 점 기록은 마커/이모지 자체를 버튼으로 표시
+                buttonStyle = "width:28px; height:28px; border:none; background:transparent; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; padding:0;";
+                bgStyle = "";
+                
+                if (customEmoji) {
+                    btnContent = `<span style="font-size: 22px; line-height: 1;">${customEmoji}</span>`;
+                } else {
+                    const fallbackColor = displayColor === 'transparent' ? '#ccc' : displayColor;
+                    btnContent = `<svg viewBox="0 0 24 24" width="24" height="24" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" 
+                              fill="${fallbackColor}" stroke="white" stroke-width="1"/>
+                    </svg>`;
+                }
+            } else if (layer instanceof L.Polygon) {
+                let customFill = props.customFill === true || (props.customFill === undefined && AppState.isPolygonFill);
+                const isNone = props.customDashArray === 'none';
+                const isDashed = props.customDashArray && !isNone;
+                
+                const bStyle = isNone ? 'solid' : (isDashed ? 'dashed' : 'solid');
+                const bColor = isNone ? '#eee' : displayColor;
+                
+                // 선 기록과 동일하게 사각형 모양 (안쪽 여백 포함)
+                buttonStyle = "width:28px; height:28px; border:1px solid #ddd; border-radius:4px; background:transparent; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; box-sizing:border-box; padding:1px;";
+                bgStyle = "";
+                
+                let fillStyle = customFill ? `background:${displayColor}; opacity:0.4;` : "background:transparent;";
+                btnContent = `
+                    <div style="width:100%; height:100%; border-radius:2px; box-sizing:border-box; border: 2px ${bStyle} ${bColor}; overflow:hidden;">
+                        <div style="width:100%; height:100%; ${fillStyle}"></div>
+                    </div>`;
             } else {
-                bgStyle = `background:${displayColor};`;
+                // 선 (Polyline)
+                const isNone = props.customDashArray === 'none';
+                const isDashed = props.customDashArray && !isNone;
+                
+                const bStyle = isNone ? 'solid' : (isDashed ? 'dashed' : 'solid');
+                const bColor = isNone ? '#eee' : displayColor;
+                
+                // 대각선으로 꽉 차게 변경하여 점선/실선 구분이 잘 되도록 함 (내부 여백 1px 추가)
+                buttonStyle = "width:28px; height:28px; border:1px solid #ddd; border-radius:4px; background:transparent; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; box-sizing:border-box; padding:1px;";
+                btnContent = `<div style="width:100%; height:100%; overflow:hidden; border-radius:2px; display:flex; align-items:center; justify-content:center;"><div style="width:38px; height:0; border-top: 3px ${bStyle} ${bColor}; transform: rotate(-45deg);"></div></div>`;
             }
             
-            const styleBtnHTML = `<button class="style-setting-btn" style="width:28px; height:28px; border-radius:50%; border:2px solid #ddd; ${bgStyle} cursor:pointer; flex-shrink:0;" title="스타일 설정" onclick="openStyleModal(${props.id})">${btnContent}</button>`;
+            const styleBtnHTML = `<button class="style-setting-btn" style="${buttonStyle} ${bgStyle}" title="스타일 설정" onclick="openStyleModal(${props.id})">${btnContent}</button>`;
             
         div.innerHTML = `
         <div class="survey-check-area">
@@ -1912,7 +1947,8 @@ export function updateLayerColor(id, newColor) {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (!layer) return;
     const emoji = layer.feature.properties.customEmoji || null;
-    if (layer instanceof L.Marker) layer.setIcon(createColoredMarkerIcon(newColor, emoji));
+    const size = layer.feature.properties.customMarkerSize || 3;
+    if (layer instanceof L.Marker) layer.setIcon(createColoredMarkerIcon(newColor, emoji, size));
     else layer.setStyle({ color: newColor, fillColor: newColor });
     layer.feature.properties.customColor = newColor;
     saveToStorage();
@@ -1926,6 +1962,7 @@ let currentStyleType = null;
 let tempStyleColor = '#3B82F6';
 let tempLineStyle = 'solid';
 let tempMarkerStyle = '';
+let tempMarkerSize = 3;
 let tempFillStyle = 'on';
 
 export function openStyleModal(id) {
@@ -1938,27 +1975,32 @@ export function openStyleModal(id) {
     tempStyleColor = props.customColor || (layer instanceof L.Marker ? '#FF0000' : '#3388ff');
     tempLineStyle = props.customDashArray === 'none' ? 'none' : (props.customDashArray ? 'dashed' : 'solid');
     tempMarkerStyle = props.customEmoji || '';
+    tempMarkerSize = props.customMarkerSize || 3;
 
     const overlay = document.getElementById('style-modal-overlay');
     const lineSec = document.getElementById('style-line-section');
     const markerSec = document.getElementById('style-marker-section');
     const polySec = document.getElementById('style-polygon-section');
+    const markerSizeSec = document.getElementById('style-marker-size-section');
 
     if (layer instanceof L.Marker) {
         currentStyleType = 'marker';
         if (lineSec) lineSec.style.display = 'none';
         if (markerSec) markerSec.style.display = 'block';
+        if (markerSizeSec) markerSizeSec.style.display = 'block';
         if (polySec) polySec.style.display = 'none';
     } else if (layer instanceof L.Polygon) {
         currentStyleType = 'polygon';
         if (lineSec) lineSec.style.display = 'block';
         if (markerSec) markerSec.style.display = 'none';
+        if (markerSizeSec) markerSizeSec.style.display = 'none';
         if (polySec) polySec.style.display = 'block';
         tempFillStyle = props.customFill === false ? 'off' : (props.customFill === true ? 'on' : (AppState.isPolygonFill ? 'on' : 'off'));
     } else {
         currentStyleType = 'line';
         if (lineSec) lineSec.style.display = 'block';
         if (markerSec) markerSec.style.display = 'none';
+        if (markerSizeSec) markerSizeSec.style.display = 'none';
         if (polySec) polySec.style.display = 'none';
     }
 
@@ -1997,6 +2039,11 @@ function updateStyleModalUI() {
     document.querySelectorAll('#style-fill-choices .style-btn').forEach(btn => {
         btn.classList.toggle('selected', btn.dataset.fill === tempFillStyle);
     });
+
+    const sizeInput = document.getElementById('style-marker-size');
+    const sizeLabel = document.getElementById('style-marker-size-label');
+    if (sizeInput) sizeInput.value = tempMarkerSize;
+    if (sizeLabel) sizeLabel.innerText = tempMarkerSize;
 }
 
 export function selectStyleColor(color) {
@@ -2023,6 +2070,15 @@ export function selectMarkerStyle(emoji) {
     updateStyleModalUI();
 }
 
+export function updateMarkerSizeLabel(val) {
+    const sizeLabel = document.getElementById('style-marker-size-label');
+    if (sizeLabel) sizeLabel.innerText = val;
+}
+
+export function selectMarkerSize(val) {
+    tempMarkerSize = parseInt(val, 10);
+}
+
 export function applyStyleSettings() {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === currentStyleLayerId);
     if (!layer) return;
@@ -2032,7 +2088,8 @@ export function applyStyleSettings() {
 
     if (currentStyleType === 'marker') {
         props.customEmoji = tempMarkerStyle;
-        layer.setIcon(createColoredMarkerIcon(tempStyleColor, tempMarkerStyle));
+        props.customMarkerSize = tempMarkerSize;
+        layer.setIcon(createColoredMarkerIcon(tempStyleColor, tempMarkerStyle, tempMarkerSize));
     } else {
         if (tempLineStyle === 'dashed') props.customDashArray = '5, 5';
         else if (tempLineStyle === 'none') props.customDashArray = 'none';
@@ -2222,6 +2279,8 @@ window.selectStyleColor = selectStyleColor;
 window.selectLineStyle = selectLineStyle;
 window.selectFillStyle = selectFillStyle;
 window.selectMarkerStyle = selectMarkerStyle;
+window.updateMarkerSizeLabel = updateMarkerSizeLabel;
+window.selectMarkerSize = selectMarkerSize;
 window.applyStyleSettings = applyStyleSettings;
 
 /* --------------------------------------------------------------------------

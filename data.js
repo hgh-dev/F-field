@@ -179,7 +179,8 @@ export function restoreFeatures(geoJsonData) {
             // 마커 생성 시 색상 적용
             const color = feature.properties.customColor || getRandomColor();
             const emoji = feature.properties.customEmoji || null;
-            const marker = L.marker(latlng, { icon: createColoredMarkerIcon(color, emoji) });
+            const size = feature.properties.customMarkerSize || 3;
+            const marker = L.marker(latlng, { icon: createColoredMarkerIcon(color, emoji, size) });
             return marker;
         },
         style: function (feature) {

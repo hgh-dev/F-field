@@ -354,10 +354,10 @@ function addTrackPhotoPoint(event) {
     if (!AppState.lastTrackLatLng) { alert('GPS 위치 수신 대기 중...'); return; }
     const trackColor = AppState.trackPolyline ? AppState.trackPolyline.options.color : '#3388ff';
     const markerId = Date.now();
-    const marker = L.marker(AppState.lastTrackLatLng, { icon: createColoredMarkerIcon(trackColor) });
+    const marker = L.marker(AppState.lastTrackLatLng, { icon: createColoredMarkerIcon(trackColor, '📷', 3) });
     marker.feature = {
         type: 'Feature',
-        properties: { id: markerId, memo: '트랙 사진', isHidden: false, customColor: trackColor }
+        properties: { id: markerId, memo: '트랙 사진', isHidden: false, customColor: trackColor, customEmoji: '📷', customMarkerSize: 3 }
     };
     drawnItems.addLayer(marker);
     updateLayerInfo(marker);
