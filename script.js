@@ -396,11 +396,9 @@ async function checkAppVersion() {
 
         const serverVersion = match[1];
         if (serverVersion !== APP_VERSION) {
-            // 버전이 다르면 업데이트 배지 표시
+            // 버전이 다르면 업데이트 배지만 표시 (버전 클릭으로 강제 업데이트 가능)
             const badge = document.getElementById('update-badge');
-            const btn = document.getElementById('btn-force-update');
             if (badge) badge.style.display = 'inline';
-            if (btn) btn.style.display = 'block';
         }
     } catch (e) {
         // 네트워크 오류 등은 무시
