@@ -45,6 +45,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.4.4/proj4.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <!-- Shapefile 불러오기: shpjs (window.shp로 노출) -->
     <!-- 내보내기용 @crmackey/shp-write는 importmap으로 로드 -->
@@ -2794,6 +2795,21 @@
                             </svg>
                         </button>
                     </div>
+                    <!-- 버전 정보 및 업데이트 -->
+                    <div
+                        style="padding: 12px 10px 4px 10px; display: flex; flex-direction: column; gap: 8px; align-items: center;">
+                        <div
+                            style="display: flex; align-items: center; justify-content: center; font-size: 12px; color: #aaa; width: 100%;">
+                            <span>v<span id="app-version-display"></span></span>
+                            <span id="update-badge"
+                                style="display: none; color: #EF4444; font-size: 12px; font-weight: bold; margin-left: 6px;">●
+                                업데이트 있음</span>
+                        </div>
+                        <button id="btn-force-update" onclick="forceAppUpdate()"
+                            style="display: none; width: 100%; padding: 8px 0; background: #EF4444; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer;">
+                            최신 버전으로 업데이트
+                        </button>
+                    </div>
                 </div>
                 <!-- 탭 2: 기록 관리 -->
                 <div id="content-record" class="tab-content" style="padding:10px 10px 20px 10px;">
@@ -3468,7 +3484,7 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script type="module" src="script.js?v=2.4.1"></script>
+    <script type="module" src="script.js?v=2.4.2"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {

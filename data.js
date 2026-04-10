@@ -6,10 +6,10 @@ import { STORAGE_KEY } from './config.js';
 import { AppState } from './state.js';
 import { drawnItems } from './draw.js';
 import { renderSurveyList, updateLayerInfo, renderProjectSelector, closeSidebar, createNewProject, openSidebar, switchSidebarTab } from './ui.js';
-import { getRandomColor, createColoredMarkerIcon, getShortAddress } from './utils.js';
+import { getRandomColor, createColoredMarkerIcon, getShortAddress, getTimestampString } from './utils.js';
 import { VWORLD_API_KEY } from './config.js';
 import { map } from './map.js';
-import { download as shpDownload } from '@crmackey/shp-write';
+import { download as shpDownload, zip as shpZip } from '@crmackey/shp-write';
 
 
 /* 1. 로컬 저장소 관리 (Local Storage) */
@@ -291,6 +291,72 @@ export async function exportSingleLayer(id) {
 export async function exportLayerWithFormat(layers, format) {
     if (!layers || layers.length === 0) return;
 
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+
+    // iOS 기기이면서 선택된 레이어가 2개 이상일 경우 하나의 zip(또는 단일 파일)으로 묶어서 처리
+    if (isIOS && layers.length > 1) {
+        if (format === 'shp') {
+            // shp의 경우 각 레이어별로 shp 생성(zip 버퍼) 후, 단일 마스터 ZIP으로 묶어 내보내기
+            try {
+                const masterZip = new JSZip();
+                const nameCounts = {};
+                for (let i = 0; i < layers.length; i++) {
+                    const layer = layers[i];
+                    const baseMemo = (layer.feature.properties.memo || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
+                    
+                    let safeMemo = baseMemo;
+                    if (nameCounts[baseMemo]) {
+                        safeMemo = `${baseMemo}_${nameCounts[baseMemo]}`;
+                        nameCounts[baseMemo]++;
+                    } else {
+                        nameCounts[baseMemo] = 1;
+                    }
+                    
+                    const featureCollection = { type: "FeatureCollection", features: [layer.toGeoJSON()] };
+                    const shpBuffer = await shpZip(featureCollection);
+                    masterZip.file(safeMemo + ".zip", shpBuffer);
+                }
+                const content = await masterZip.generateAsync({ type: "blob" });
+                saveOrShareFile(content, `선택저장_${getTimestampString()}.zip`, "application/zip");
+            } catch (e) {
+                alert(`Shapefile 일괄 내보내기 실패: ${e}`);
+            }
+        } else {
+            // GPX, GeoJSON은 jszip을 이용해 하나의 ZIP 파일로 압축
+            try {
+                const zip = new JSZip();
+                const nameCounts = {};
+                for (let i = 0; i < layers.length; i++) {
+                    const layer = layers[i];
+                    
+                    const baseMemo = (layer.feature.properties.memo || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
+                    
+                    let safeMemo = baseMemo;
+                    if (nameCounts[baseMemo]) {
+                        safeMemo = `${baseMemo}_${nameCounts[baseMemo]}`;
+                        nameCounts[baseMemo]++;
+                    } else {
+                        nameCounts[baseMemo] = 1;
+                    }
+                    
+                    if (format === 'gpx') {
+                        const featureCollection = { type: "FeatureCollection", features: [layer.toGeoJSON()] };
+                        const gpxData = geoJsonToGpx(featureCollection, safeMemo);
+                        zip.file(safeMemo + ".gpx", gpxData);
+                    } else {
+                        zip.file(safeMemo + ".geojson", JSON.stringify(layer.toGeoJSON(), null, 2));
+                    }
+                }
+                const content = await zip.generateAsync({ type: "blob" });
+                saveOrShareFile(content, `선택저장_${getTimestampString()}.zip`, "application/zip");
+            } catch (e) {
+                alert(`ZIP 압축 실패: ${e}`);
+            }
+        }
+        return;
+    }
+
+    // 기존 방식 (PC, Android 또는 단일 파일)
     for (const layer of layers) {
         // 파일명에 사용할 수 없는 문자 제거
         const safeMemo = (layer.feature.properties.memo || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
@@ -533,15 +599,16 @@ function gpxToGeoJson(gpxText) {
     return { type: "FeatureCollection", features: features };
 }
 
-function saveOrShareFile(content, fileName) {
+function saveOrShareFile(content, fileName, mimeType = "application/json") {
     // 모바일 공유 기능(Navigator Share API) 지원 시 시도
     if (navigator.canShare && navigator.share) {
-        const file = new File([content], fileName, { type: "application/json" });
+        const file = new File([content], fileName, { type: mimeType });
         if (navigator.canShare({ files: [file] })) {
-            navigator.share({ files: [file], title: 'F-Field 기록' }).catch(err => saveToDevice(content, fileName));
-        } else saveToDevice(content, fileName);
+            // iOS에서 title이나 text를 포함하면 '텍스트.txt' 같은 불필요한 파일이 같이 생성될 수 있으므로 파일만 전달
+            navigator.share({ files: [file] }).catch(err => saveToDevice(content, fileName, mimeType));
+        } else saveToDevice(content, fileName, mimeType);
     } else {
-        saveToDevice(content, fileName);
+        saveToDevice(content, fileName, mimeType);
     }
 }
 
@@ -554,8 +621,8 @@ function saveOrShareFile(content, fileName) {
  * 3. 링크 클릭: 보이지 않는 <a> 태그를 만들어 URL을 연결하고 click() 합니다.
  * 4. 해제: 메모리 누수를 막기 위해 URL 객체를 해제(revokeObjectURL)합니다.
  */
-function saveToDevice(content, fileName) {
-    const blob = new Blob([content], { type: "application/geo+json" });
+function saveToDevice(content, fileName, mimeType = "application/geo+json") {
+    const blob = new Blob([content], { type: mimeType });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = fileName;

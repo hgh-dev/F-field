@@ -3,7 +3,7 @@
    [역할] 초기화 및 모듈 조립 (Entry Point)
    ========================================================================== */
 
-import { APP_MODE, VWORLD_API_KEY, STORAGE_KEY, SEARCH_HISTORY_KEY, SEARCH_SETTING_KEY, SVG_ICONS } from './config.js';
+import { APP_MODE, APP_VERSION, VWORLD_API_KEY, STORAGE_KEY, SEARCH_HISTORY_KEY, SEARCH_SETTING_KEY, SVG_ICONS } from './config.js';
 import { AppState } from './state.js';
 
 import {
@@ -357,7 +357,7 @@ function addTrackPhotoPoint(event) {
     const marker = L.marker(AppState.lastTrackLatLng, { icon: createColoredMarkerIcon(trackColor, '📷', 3) });
     marker.feature = {
         type: 'Feature',
-        properties: { id: markerId, memo: '트랙 사진', isHidden: false, customColor: trackColor, customEmoji: '📷', customMarkerSize: 3 }
+        properties: { id: markerId, memo: '트랙사진_' + getTimestampString(), isHidden: false, customColor: trackColor, customEmoji: '📷', customMarkerSize: 3 }
     };
     drawnItems.addLayer(marker);
     updateLayerInfo(marker);
@@ -373,6 +373,57 @@ function addTrackPhotoPoint(event) {
         document.body.appendChild(div);
     }
     openPhotoSelectMenu(event, markerId);
+}
+
+// ============================================================
+// 버전 체크 및 강제 업데이트
+// ============================================================
+
+async function checkAppVersion() {
+    // 현재 버전 표시
+    const versionEl = document.getElementById('app-version-display');
+    if (versionEl) versionEl.textContent = APP_VERSION;
+
+    try {
+        // 캐시를 우회하여 서버의 최신 config.js를 가져옴
+        const res = await fetch('./config.js?t=' + Date.now());
+        if (!res.ok) return;
+        const text = await res.text();
+
+        // 정규식으로 APP_VERSION 추출
+        const match = text.match(/APP_VERSION\s*=\s*"([^"]+)"/);
+        if (!match) return;
+
+        const serverVersion = match[1];
+        if (serverVersion !== APP_VERSION) {
+            // 버전이 다르면 업데이트 배지 표시
+            const badge = document.getElementById('update-badge');
+            const btn = document.getElementById('btn-force-update');
+            if (badge) badge.style.display = 'inline';
+            if (btn) btn.style.display = 'block';
+        }
+    } catch (e) {
+        // 네트워크 오류 등은 무시
+        console.warn('버전 체크 실패:', e);
+    }
+}
+
+async function forceAppUpdate() {
+    if (!confirm('앱 캐시를 삭제하고 최신 버전으로 업데이트합니다.\n(잠시 후 다시 시작됩니다)')) return;
+    try {
+        // 브라우저의 모든 캐시 삭제
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
+
+        // 등록된 모든 서비스 워커 해제
+        if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(reg => reg.unregister()));
+        }
+    } catch (e) {
+        console.warn('캐시 삭제 실패:', e);
+    }
+    window.location.reload(true);
 }
 
 // 초기화 이벤트
@@ -423,6 +474,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await handleDeepLink();
     updateLayerOrder();
     syncSidebarUI();
+    checkAppVersion();
 
     // GPS 시작
     if (navigator.geolocation) {
@@ -635,6 +687,7 @@ window.completeSingleEdit = completeSingleEdit;
 window.revertSingleEdit = revertSingleEdit;
 window.cancelSingleEdit = cancelSingleEdit;
 window.handleFileSelect = handleFileSelect;
+window.forceAppUpdate = forceAppUpdate;
 window.closeExportFormatModal = closeExportFormatModal;
 
 
