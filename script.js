@@ -407,7 +407,7 @@ async function checkAppVersion() {
 }
 
 async function forceAppUpdate() {
-    if (!confirm('앱 캐시를 삭제하고 최신 버전으로 업데이트합니다.\n(잠시 후 다시 시작됩니다)')) return;
+    if (!confirm('최신 버전으로 업데이트합니다.')) return;
     try {
         // 브라우저의 모든 캐시 삭제
         const keys = await caches.keys();

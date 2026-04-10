@@ -648,6 +648,8 @@ export async function handleFileSelect(input) {
     let singleLayerCount = 0; // 현재 지도에 추가된 단일 기록 수
     let errorCount = 0;
 
+    let lastImportedProjectId = null; // 마지막으로 불러온 프로젝트 ID 추적
+
     for (const file of files) {
         try {
             let json; // 처리된 GeoJSON 객체
@@ -719,6 +721,7 @@ export async function handleFileSelect(input) {
                     updatedAt: new Date().toISOString()
                 };
                 AppState.projects.push(newProject);
+                lastImportedProjectId = newProject.id; // 마지막 프로젝트 ID 기록
                 newProjectCount++;
             } else {
                 // [포그라운드 추가] 단일 기록 파일 → 현재 지도에 레이어 추가
@@ -734,6 +737,13 @@ export async function handleFileSelect(input) {
 
     // 모든 파일 처리 후 한 번만 저장 및 UI 갱신
     await saveToStorage();
+
+    // 프로젝트를 불러온 경우 마지막 불러온 프로젝트를 자동 선택하여 지도에 표시
+    if (lastImportedProjectId !== null) {
+        AppState.currentProjectId = lastImportedProjectId;
+        loadCurrentProjectFeatures();
+    }
+
     renderProjectSelector();
 
     // 결과 알림
