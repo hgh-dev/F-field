@@ -2,8 +2,8 @@
    [모듈] 지도 및 레이어 매니저 (map.js)
    [역할] Leaflet 지도 객체 생성 및 각종 배경/지적도/오버레이 레이어 관리
    ========================================================================== */
-import { VWORLD_API_KEY } from './config.js?v=2.4.2';
-import { AppState } from './state.js?v=2.4.2';
+import { VWORLD_API_KEY } from './config.js?v=2.4.3';
+import { AppState } from './state.js?v=2.4.3';
 
 /* --------------------------------------------------------------------------
    1. 지도 초기화 (Map Initialization)

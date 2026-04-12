@@ -37,6 +37,10 @@ export const AppState = {
     sortBy: localStorage.getItem('setting_sort_by') || 'date',       // 정렬 기준 ('date' | 'name')
     sortOrder: localStorage.getItem('setting_sort_order') || 'asc',  // 정렬 방향 ('asc' | 'desc')
 
+    // [프로젝트 정렬 상태]
+    projectSortBy: localStorage.getItem('setting_project_sort_by') || 'date',
+    projectSortOrder: localStorage.getItem('setting_project_sort_order') || 'asc',
+
     // [트랙 기록 모드 상태]
     trackInterval: parseInt(localStorage.getItem('setting_track_interval')) || 10, // 트랙 기록 간격 (단위: m)
     trackWatchId: null,      // GPS watchPosition 피드 시구체 ID

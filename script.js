@@ -24,7 +24,7 @@ import {
     saveToStorage, loadFromStorage, loadCurrentProjectFeatures,
     restoreFeatures, exportSingleLayer, exportCurrentProject,
     handleFileSelect, clearAllData, saveCurrentPoint, saveCurrentBoundary,
-    getAddressFromCoords, closeExportFormatModal, exportLayerWithFormat
+    getAddressFromCoords, closeExportFormatModal, exportLayerWithFormat, backupAllProjects
 } from './data.js';
 
 import {
@@ -672,6 +672,7 @@ window.exportSelectedLayers = async () => {
 };
 
 window.exportCurrentProject = exportCurrentProject;
+window.backupAllProjects = backupAllProjects;
 window.toggleOverlay = toggleOverlay;
 window.toggleBaseLayer = toggleBaseLayer;
 window.changeCadastralMap = changeCadastralMap;

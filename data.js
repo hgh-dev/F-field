@@ -199,14 +199,14 @@ export function restoreFeatures(geoJsonData) {
                         styleObj.fillOpacity = 0.2;
                     }
                 }
-                
+
                 const dashArray = feature.properties.customDashArray;
                 if (dashArray === 'none') {
                     styleObj.stroke = false;
                 } else if (dashArray) {
                     styleObj.dashArray = dashArray;
                 }
-                
+
                 return styleObj;
             }
         },
@@ -303,7 +303,7 @@ export async function exportLayerWithFormat(layers, format) {
                 for (let i = 0; i < layers.length; i++) {
                     const layer = layers[i];
                     const baseMemo = (layer.feature.properties.memo || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
-                    
+
                     let safeMemo = baseMemo;
                     if (nameCounts[baseMemo]) {
                         safeMemo = `${baseMemo}_${nameCounts[baseMemo]}`;
@@ -311,7 +311,7 @@ export async function exportLayerWithFormat(layers, format) {
                     } else {
                         nameCounts[baseMemo] = 1;
                     }
-                    
+
                     const featureCollection = { type: "FeatureCollection", features: [layer.toGeoJSON()] };
                     const shpBuffer = await shpZip(featureCollection);
                     masterZip.file(safeMemo + ".zip", shpBuffer);
@@ -328,9 +328,9 @@ export async function exportLayerWithFormat(layers, format) {
                 const nameCounts = {};
                 for (let i = 0; i < layers.length; i++) {
                     const layer = layers[i];
-                    
+
                     const baseMemo = (layer.feature.properties.memo || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
-                    
+
                     let safeMemo = baseMemo;
                     if (nameCounts[baseMemo]) {
                         safeMemo = `${baseMemo}_${nameCounts[baseMemo]}`;
@@ -338,7 +338,7 @@ export async function exportLayerWithFormat(layers, format) {
                     } else {
                         nameCounts[baseMemo] = 1;
                     }
-                    
+
                     if (format === 'gpx') {
                         const featureCollection = { type: "FeatureCollection", features: [layer.toGeoJSON()] };
                         const gpxData = geoJsonToGpx(featureCollection, safeMemo);
@@ -439,6 +439,55 @@ export function exportCurrentProject() {
     saveOrShareFile(JSON.stringify(currentFeatures), fileName, "application/geo+json");
 };
 
+export async function backupAllProjects() {
+    if (!confirm('모든 프로젝트와 기록을 하나의 압축파일(ZIP)로 백업하시겠습니까?')) return;
+    
+    // 현재 작성중인 데이터부터 먼저 저장
+    await saveToStorage();
+    
+    try {
+        const zip = new JSZip();
+        
+        // 날짜 포맷 생성 (YYMMDD_HHMM)
+        const now = new Date();
+        const yy = String(now.getFullYear()).slice(2);
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const time = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+        const dateStr = `${yy}${mm}${dd}_${time}`;
+        
+        const nameCounts = {};
+        
+        for (const p of AppState.projects) {
+            let features = p.features;
+            if (!features || !features.features) {
+                features = { type: "FeatureCollection", features: [] };
+            }
+            
+            features.isProjectExport = true;
+            features.projectName = p.name;
+            features.exportedAt = new Date().toISOString();
+            
+            const baseName = (p.name || "unnamed").replace(/[\\/:*?"<>|]/g, "_");
+            let safeName = baseName;
+            
+            if (nameCounts[baseName]) {
+                safeName = `${baseName}_${nameCounts[baseName]}`;
+                nameCounts[baseName]++;
+            } else {
+                nameCounts[baseName] = 1;
+            }
+            
+            zip.file(`${safeName}.geojson`, JSON.stringify(features, null, 2));
+        }
+        
+        const content = await zip.generateAsync({ type: "blob" });
+        saveOrShareFile(content, `F-field_Backup_${dateStr}.zip`, "application/zip");
+    } catch (e) {
+        alert("백업 중 오류가 발생했습니다:\n" + e);
+        console.error(e);
+    }
+}
 
 function geoJsonToGpx(geoJson, projectName) {
     // -----------------------------------------------------------
@@ -646,6 +695,7 @@ export async function handleFileSelect(input) {
     const files = Array.from(input.files);
     let newProjectCount = 0; // 백그라운드로 추가된 새 프로젝트 수
     let singleLayerCount = 0; // 현재 지도에 추가된 단일 기록 수
+    let mergedDefaultCount = 0; // 기존에 병합된 기본 프로젝트 기록 수
     let errorCount = 0;
 
     let lastImportedProjectId = null; // 마지막으로 불러온 프로젝트 ID 추적
@@ -712,10 +762,53 @@ export async function handleFileSelect(input) {
 
             // --- 프로젝트 파일 vs 단일 기록 파일 분기 ---
             if (json.isProjectExport === true && json.projectName) {
+                if (json.projectName === "기본 프로젝트") {
+                    const defaultP = AppState.projects.find(p => p.name === "기본 프로젝트");
+                    if (defaultP) {
+                        const importedFeats = json.features || [];
+                        const featuresObj = { type: "FeatureCollection", features: [] };
+                        
+                        // ID 중복 방지 처리
+                        for (let i = 0; i < importedFeats.length; i++) {
+                            const f = importedFeats[i];
+                            if (f.properties) {
+                                f.properties.id = Date.now() + i + Math.floor(Math.random() * 100000);
+                            }
+                            featuresObj.features.push(f);
+                        }
+                        
+                        if (AppState.currentProjectId === defaultP.id) {
+                            // 현재 활성화된 프로젝트가 '기본 프로젝트'면 바로 지도에 추가
+                            restoreFeatures(featuresObj);
+                        } else {
+                            // 백그라운드에서 추가
+                            if (!defaultP.features) defaultP.features = { type: "FeatureCollection", features: [] };
+                            if (!defaultP.features.features) defaultP.features.features = [];
+                            defaultP.features.features.push(...featuresObj.features);
+                            defaultP.updatedAt = new Date().toISOString();
+                        }
+                        
+                        mergedDefaultCount += importedFeats.length;
+                        continue; // 파일 처리 완료
+                    }
+                }
+
+                let importedName = json.projectName;
+                
+                // 중복 이름 확인: 이미 존재하는 이름이면 (2), (3)... 등 붙이기
+                let baseName = importedName;
+                if (AppState.projects.some(p => p.name === baseName)) {
+                    let cnt = 2;
+                    while (AppState.projects.some(p => p.name === `${baseName} (${cnt})`)) {
+                        cnt++;
+                    }
+                    importedName = `${baseName} (${cnt})`;
+                }
+
                 // [백그라운드 추가] 프로젝트 파일 → AppState.projects에 새 프로젝트로 추가
                 const newProject = {
                     id: Date.now() + Math.floor(Math.random() * 1000),
-                    name: json.projectName,
+                    name: importedName,
                     features: json, // FeatureCollection 그대로 저장
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString()
@@ -749,6 +842,7 @@ export async function handleFileSelect(input) {
     // 결과 알림
     const msgs = [];
     if (singleLayerCount > 0) msgs.push(`기록 ${singleLayerCount}건이 현재 프로젝트에 추가되었습니다.`);
+    if (mergedDefaultCount > 0) msgs.push(`기본 프로젝트 기록 ${mergedDefaultCount}건이 앱의 기본 프로젝트에 병합되었습니다.`);
     if (newProjectCount > 0) msgs.push(`프로젝트 ${newProjectCount}개가 새로 추가되었습니다.`);
     if (errorCount > 0) msgs.push(`${errorCount}개 파일 처리 중 오류가 발생했습니다.`);
 
@@ -780,9 +874,21 @@ function countVertices(geojson) {
 }
 
 export function clearAllData() {
-    if (confirm("현재 프로젝트의 모든 기록이 삭제됩니다.")) {
+    if (confirm("모든 프로젝트와 기록이 삭제되고, 앱이 최초 상태로 초기화됩니다.\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?")) {
         drawnItems.clearLayers();
+
+        const defaultProject = {
+            id: Date.now(),
+            name: "기본 프로젝트",
+            features: { type: "FeatureCollection", features: [] },
+            createdAt: new Date().toISOString()
+        };
+
+        AppState.projects = [defaultProject];
+        AppState.currentProjectId = defaultProject.id;
+
         saveToStorage();
+        renderProjectSelector();
         renderSurveyList();
     }
 }

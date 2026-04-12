@@ -88,14 +88,23 @@ export function syncSidebarUI() {
 }
 
 export function switchSidebarTab(tabName) {
-    document.getElementById('tab-btn-map').classList.remove('active');
-    document.getElementById('tab-btn-record').classList.remove('active');
-    document.getElementById('content-map').classList.remove('active');
-    document.getElementById('content-record').classList.remove('active');
+    // 모든 탭 버튼과 콘텐츠 비활성수
+    ['map', 'project', 'record'].forEach(t => {
+        const btn = document.getElementById('tab-btn-' + t);
+        const content = document.getElementById('content-' + t);
+        if (btn) btn.classList.remove('active');
+        if (content) content.classList.remove('active');
+    });
 
-    document.getElementById('tab-btn-' + tabName).classList.add('active');
-    document.getElementById('content-' + tabName).classList.add('active');
+    const activeBtn = document.getElementById('tab-btn-' + tabName);
+    const activeContent = document.getElementById('content-' + tabName);
+    if (activeBtn) activeBtn.classList.add('active');
+    if (activeContent) activeContent.classList.add('active');
 
+    // 프로젝트 탭 열 때 목록 렌더링
+    if (tabName === 'project') {
+        renderProjectList();
+    }
 }
 
 export function unlockHiddenLayers() {
@@ -150,14 +159,14 @@ export function unlockHiddenLayers() {
     input.style.boxSizing = 'border-box';
     input.style.outline = 'none';
     input.style.transition = 'border-color 0.2s';
-    input.onfocus = () => { 
+    input.onfocus = () => {
         input.style.borderColor = '#007aff';
         // 모바일 가상 키보드 회피를 위해 모달을 위로 올림
         if (window.innerWidth <= 768) {
             modal.style.transform = 'translateY(-15vh)';
         }
     };
-    input.onblur = () => { 
+    input.onblur = () => {
         input.style.borderColor = '#e5e5ea';
         modal.style.transform = 'translateY(0)';
     };
@@ -1641,17 +1650,46 @@ export function renderProjectSelector() {
         if (p.id === parseInt(AppState.currentProjectId)) option.selected = true;
         select.appendChild(option);
     });
+
+    // 기록 관리 탭의 현재 프로젝트 배너 갱신
+    const currentProject = AppState.projects.find(p => p.id === parseInt(AppState.currentProjectId));
+    const bannerName = document.getElementById('current-project-name');
+    if (bannerName && currentProject) {
+        bannerName.textContent = currentProject.name;
+    }
+
+    // 지도 상단 중앙의 프로젝트 배지 갱신
+    const mapBadge = document.getElementById('map-active-project-badge');
+    if (mapBadge && currentProject) {
+        mapBadge.textContent = currentProject.name;
+        mapBadge.style.display = 'block';
+    }
+
+    // 프로젝트 목록 카드도 함께 갱신
+    renderProjectList();
 }
 
 export function createNewProject(initialName) {
-    let defaultName = initialName || ("새 프로젝트 " + (AppState.projects.length + 1));
-    if (AppState.projects.some(p => p.name === defaultName)) {
+    let defaultName = initialName;
+    if (!defaultName) {
         let cnt = 1;
-        while (AppState.projects.some(p => p.name === `${defaultName} (${cnt})`)) cnt++;
+        while (AppState.projects.some(p => p.name === `새 프로젝트 ${cnt}`)) {
+            cnt++;
+        }
+        defaultName = `새 프로젝트 ${cnt}`;
+    } else if (AppState.projects.some(p => p.name === defaultName)) {
+        let cnt = 1;
+        while (AppState.projects.some(p => p.name === `${defaultName} (${cnt})`)) {
+            cnt++;
+        }
         defaultName = `${defaultName} (${cnt})`;
     }
     const name = prompt("새 프로젝트 이름을 입력하세요:", defaultName);
     if (!name) return;
+    if (name === "기본 프로젝트") {
+        alert("'기본 프로젝트' 이름은 사용할 수 없습니다.");
+        return;
+    }
     const newProject = {
         id: Date.now(),
         name: name,
@@ -1665,18 +1703,227 @@ export function createNewProject(initialName) {
 export function editProjectName() {
     const p = AppState.projects.find(p => p.id === parseInt(AppState.currentProjectId));
     if (!p) return;
+    if (p.name === "기본 프로젝트") {
+        alert("기본 프로젝트의 이름은 변경할 수 없습니다.");
+        return;
+    }
     const newName = prompt("프로젝트 이름 수정:", p.name);
     if (!newName || newName === p.name) return;
+    if (newName === "기본 프로젝트") {
+        alert("'기본 프로젝트' 이름은 사용할 수 없습니다.");
+        return;
+    }
     p.name = newName;
     saveToStorage();
     renderProjectSelector();
 }
 
 export function deleteCurrentProject() {
+    const projectToDelete = AppState.projects.find(p => p.id === parseInt(AppState.currentProjectId));
+    if (!projectToDelete) return;
+    if (projectToDelete.name === "기본 프로젝트") {
+        alert("기본 프로젝트는 삭제할 수 없습니다.");
+        return;
+    }
     if (AppState.projects.length <= 1) { alert("최소 하나 이상의 프로젝트가 필요합니다."); return; }
-    if (!confirm(`현재 프로젝트 '${AppState.projects.find(p => p.id === parseInt(AppState.currentProjectId)).name}'와 모든 기록이 삭제됩니다. 계속하시겠습니까?`)) return;
+    if (!confirm(`'${projectToDelete.name}' 프로젝트와 모든 기록이 삭제됩니다. 계속하시겠습니까?`)) return;
     AppState.projects = AppState.projects.filter(p => p.id !== parseInt(AppState.currentProjectId));
     window.switchProject(AppState.projects[0].id);
+}
+
+/* 프로젝트 목록 카드 렌더링 (프로젝트 관리 탭) */
+export function renderProjectList() {
+    const container = document.getElementById('project-list-area');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (AppState.projects.length === 0) {
+        container.innerHTML = '<div style="padding:20px; text-align:center; color:#999; font-size:13px;">프로젝트가 없습니다.</div>';
+        return;
+    }
+
+    let defaultProject = null;
+    let otherProjects = [];
+    AppState.projects.forEach(p => {
+        if (p.name === "기본 프로젝트" && !defaultProject) {
+            defaultProject = p;
+        } else {
+            otherProjects.push(p);
+        }
+    });
+
+    // 다른 프로젝트 정렬 적용
+    otherProjects.sort((a, b) => {
+        let valA, valB;
+        if (AppState.projectSortBy === 'name') {
+            valA = (a.name || "").toLowerCase();
+            valB = (b.name || "").toLowerCase();
+        } else {
+            valA = new Date(a.createdAt || 0).getTime();
+            valB = new Date(b.createdAt || 0).getTime();
+        }
+        let diff = 0;
+        if (valA < valB) diff = -1;
+        if (valA > valB) diff = 1;
+
+        return AppState.projectSortOrder === 'asc' ? diff : -diff;
+    });
+
+    const displayProjects = [];
+    if (defaultProject) displayProjects.push(defaultProject);
+    displayProjects.push(...otherProjects);
+
+    displayProjects.forEach((p, index) => {
+        const featureCount = p.features && p.features.features ? p.features.features.length : 0;
+        const isActive = (p.id === parseInt(AppState.currentProjectId));
+        const isDefault = (p.name === "기본 프로젝트" && index === 0);
+
+        if ((defaultProject && index === 1) || (!defaultProject && index === 0)) {
+            const header = document.createElement('div');
+            header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:0 5px;';
+            header.innerHTML = `
+                <span style="font-size:12px; font-weight:bold; color:#777;">생성된 프로젝트</span>
+                <div class="dropdown-container" style="flex-shrink:0;">
+                    <button onclick="openProjectSortModal()" class="btn-more" title="정렬"
+                        style="background:none; border:none; padding:3px; cursor:pointer; color:#9ca3af; border-radius:6px; display:flex; align-items:center; justify-content:center;">
+                        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor;"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z" /></svg>
+                    </button>
+                </div>
+            `;
+            container.appendChild(header);
+        }
+
+        const card = document.createElement('div');
+        card.style.cssText = [
+            'display:flex', 'align-items:center', 'gap:10px',
+            'padding:12px 10px', `margin-bottom:${isDefault ? '20px' : '6px'}`,
+            'border-radius:10px', 'cursor:pointer',
+            'border:1.5px solid ' + (isActive ? '#3B82F6' : '#e5e7eb'),
+            'background:' + (isActive ? '#EFF6FF' : '#fff'),
+            'transition:all 0.15s ease',
+        ].join(';');
+
+        // 아이콘 영역
+        const iconEl = document.createElement('div');
+        iconEl.style.cssText = 'width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:' + (isActive ? '#3B82F6' : '#f3f4f6');
+        iconEl.innerHTML = `<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:${isActive ? '#fff' : '#9ca3af'}"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>`;
+
+        // 텍스트 영역
+        const textEl = document.createElement('div');
+        textEl.style.cssText = 'flex:1; min-width:0;';
+        
+        // 날짜 포맷 (YYYY.MM.DD HH:MM:SS)
+        let dateStr = "";
+        if (p.createdAt) {
+            const d = new Date(p.createdAt);
+            const yy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mins = String(d.getMinutes()).padStart(2, '0');
+            const ss = String(d.getSeconds()).padStart(2, '0');
+            dateStr = `<div style="font-size:11px; color:#9ca3af; margin-top:2px;">${yy}.${mm}.${dd} ${hh}:${mins}:${ss} 생성</div>`;
+        }
+        
+        textEl.innerHTML = `
+            <div style="font-size:14px; font-weight:${isActive ? '700' : '500'}; color:${isActive ? '#1D4ED8' : '#374151'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.name}</div>
+            <div style="font-size:12px; color:#9ca3af; margin-top:2px;">기록 ${featureCount}개</div>
+            ${dateStr}
+        `;
+
+        // 액션 드롭다운 메뉴
+        const dropdownContainer = document.createElement('div');
+        dropdownContainer.className = 'dropdown-container';
+        dropdownContainer.style.cssText = 'flex-shrink:0;';
+        // 카드 클릭(프로젝트 전환) 방지
+        dropdownContainer.onclick = (e) => e.stopPropagation(); 
+
+        const moreBtn = document.createElement('button');
+        moreBtn.className = 'btn-more';
+        moreBtn.title = '더보기';
+        moreBtn.style.cssText = 'background:none; border:none; padding:5px; cursor:pointer; color:#9ca3af; border-radius:6px;';
+        moreBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`;
+        
+        const dropdownMenu = document.createElement('div');
+        dropdownMenu.className = 'dropdown-menu';
+
+        moreBtn.onclick = (e) => {
+            e.stopPropagation();
+            closeAllDropdowns();
+            dropdownMenu.classList.toggle('visible');
+        };
+
+        // 저장 아이템
+        const saveItem = document.createElement('div');
+        saveItem.className = 'dropdown-item';
+        saveItem.innerHTML = `<svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" /></svg> 프로젝트 저장`;
+        saveItem.onclick = (e) => {
+            e.stopPropagation();
+            dropdownMenu.classList.remove('visible');
+            window.switchProject(p.id);
+            if (window.exportCurrentProject) {
+                window.exportCurrentProject();
+            }
+        };
+        dropdownMenu.appendChild(saveItem);
+
+        if (p.name !== "기본 프로젝트") {
+            const editItem = document.createElement('div');
+            editItem.className = 'dropdown-item';
+            editItem.innerHTML = `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> 이름 변경`;
+            editItem.onclick = (e) => {
+                e.stopPropagation();
+                dropdownMenu.classList.remove('visible');
+                window.switchProject(p.id);
+                editProjectName();
+            };
+            dropdownMenu.appendChild(editItem);
+
+            const deleteItem = document.createElement('div');
+            deleteItem.className = 'dropdown-item danger';
+            deleteItem.innerHTML = `<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg> 프로젝트 삭제`;
+            deleteItem.onclick = (e) => {
+                e.stopPropagation();
+                dropdownMenu.classList.remove('visible');
+                window.switchProject(p.id);
+                deleteCurrentProject();
+            };
+            dropdownMenu.appendChild(deleteItem);
+        }
+
+        dropdownContainer.appendChild(moreBtn);
+        dropdownContainer.appendChild(dropdownMenu);
+
+        card.appendChild(iconEl);
+        card.appendChild(textEl);
+        card.appendChild(dropdownContainer);
+
+        // 카드 클릭 시 해당 프로젝트로 전환 (이미 활성이면 기록 관리 탭도 이동)
+        card.onclick = () => {
+            window.switchProject(p.id);
+            if (isActive) {
+                switchSidebarTab('record');
+            }
+        };
+
+        container.appendChild(card);
+    });
+
+    if (defaultProject && otherProjects.length === 0) {
+        const header = document.createElement('div');
+        header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:0 5px;';
+        header.innerHTML = `
+            <span style="font-size:12px; font-weight:bold; color:#777;">생성된 프로젝트</span>
+            <div class="dropdown-container" style="flex-shrink:0;">
+                <button onclick="openProjectSortModal()" class="btn-more" title="정렬"
+                    style="background:none; border:none; padding:3px; cursor:pointer; color:#9ca3af; border-radius:6px; display:flex; align-items:center; justify-content:center;">
+                    <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor;"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z" /></svg>
+                </button>
+            </div>
+        `;
+        container.appendChild(header);
+    }
 }
 
 /* 9-2. 조사 기록 리스트 및 가시성 제어 */
@@ -1725,59 +1972,59 @@ export function renderSurveyList() {
         }
         const div = document.createElement('div');
         div.className = 'survey-item';
-            const displayColor = props.customColor || (layer instanceof L.Marker ? '#FF0000' : '#3388ff');
-            const customEmoji = props.customEmoji || null;
-            
-            let bgStyle = "";
-            let btnContent = "";
-            let buttonStyle = "width:28px; height:28px; border-radius:50%; flex-shrink:0; cursor:pointer; box-sizing:border-box;";
-            
-            if (layer instanceof L.Marker) {
-                // 점 기록은 마커/이모지 자체를 버튼으로 표시
-                buttonStyle = "width:28px; height:28px; border:none; background:transparent; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; padding:0;";
-                bgStyle = "";
-                
-                if (customEmoji) {
-                    btnContent = `<span style="font-size: 22px; line-height: 1;">${customEmoji}</span>`;
-                } else {
-                    const fallbackColor = displayColor === 'transparent' ? '#ccc' : displayColor;
-                    btnContent = `<svg viewBox="0 0 24 24" width="24" height="24" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">
+        const displayColor = props.customColor || (layer instanceof L.Marker ? '#FF0000' : '#3388ff');
+        const customEmoji = props.customEmoji || null;
+
+        let bgStyle = "";
+        let btnContent = "";
+        let buttonStyle = "width:28px; height:28px; border-radius:50%; flex-shrink:0; cursor:pointer; box-sizing:border-box;";
+
+        if (layer instanceof L.Marker) {
+            // 점 기록은 마커/이모지 자체를 버튼으로 표시
+            buttonStyle = "width:28px; height:28px; border:none; background:transparent; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; padding:0;";
+            bgStyle = "";
+
+            if (customEmoji) {
+                btnContent = `<span style="font-size: 22px; line-height: 1;">${customEmoji}</span>`;
+            } else {
+                const fallbackColor = displayColor === 'transparent' ? '#ccc' : displayColor;
+                btnContent = `<svg viewBox="0 0 24 24" width="24" height="24" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">
                         <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" 
                               fill="${fallbackColor}" stroke="white" stroke-width="1"/>
                     </svg>`;
-                }
-            } else if (layer instanceof L.Polygon) {
-                let customFill = props.customFill === true || (props.customFill === undefined && AppState.isPolygonFill);
-                const isNone = props.customDashArray === 'none';
-                const isDashed = props.customDashArray && !isNone;
-                
-                const bStyle = isNone ? 'solid' : (isDashed ? 'dashed' : 'solid');
-                const bColor = isNone ? '#eee' : displayColor;
-                
-                // 선 기록과 동일하게 사각형 모양 (안쪽 여백 포함)
-                buttonStyle = "width:28px; height:28px; border:1px solid #ddd; border-radius:4px; background:transparent; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; box-sizing:border-box; padding:1px;";
-                bgStyle = "";
-                
-                let fillStyle = customFill ? `background:${displayColor}; opacity:0.4;` : "background:transparent;";
-                btnContent = `
+            }
+        } else if (layer instanceof L.Polygon) {
+            let customFill = props.customFill === true || (props.customFill === undefined && AppState.isPolygonFill);
+            const isNone = props.customDashArray === 'none';
+            const isDashed = props.customDashArray && !isNone;
+
+            const bStyle = isNone ? 'solid' : (isDashed ? 'dashed' : 'solid');
+            const bColor = isNone ? '#eee' : displayColor;
+
+            // 선 기록과 동일하게 사각형 모양 (안쪽 여백 포함)
+            buttonStyle = "width:28px; height:28px; border:1px solid #ddd; border-radius:4px; background:transparent; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; box-sizing:border-box; padding:1px;";
+            bgStyle = "";
+
+            let fillStyle = customFill ? `background:${displayColor}; opacity:0.4;` : "background:transparent;";
+            btnContent = `
                     <div style="width:100%; height:100%; border-radius:2px; box-sizing:border-box; border: 2px ${bStyle} ${bColor}; overflow:hidden;">
                         <div style="width:100%; height:100%; ${fillStyle}"></div>
                     </div>`;
-            } else {
-                // 선 (Polyline)
-                const isNone = props.customDashArray === 'none';
-                const isDashed = props.customDashArray && !isNone;
-                
-                const bStyle = isNone ? 'solid' : (isDashed ? 'dashed' : 'solid');
-                const bColor = isNone ? '#eee' : displayColor;
-                
-                // 대각선으로 꽉 차게 변경하여 점선/실선 구분이 잘 되도록 함 (내부 여백 1px 추가)
-                buttonStyle = "width:28px; height:28px; border:1px solid #ddd; border-radius:4px; background:transparent; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; box-sizing:border-box; padding:1px;";
-                btnContent = `<div style="width:100%; height:100%; overflow:hidden; border-radius:2px; display:flex; align-items:center; justify-content:center;"><div style="width:38px; height:0; border-top: 3px ${bStyle} ${bColor}; transform: rotate(-45deg);"></div></div>`;
-            }
-            
-            const styleBtnHTML = `<button class="style-setting-btn" style="${buttonStyle} ${bgStyle}" title="스타일 설정" onclick="openStyleModal(${props.id})">${btnContent}</button>`;
-            
+        } else {
+            // 선 (Polyline)
+            const isNone = props.customDashArray === 'none';
+            const isDashed = props.customDashArray && !isNone;
+
+            const bStyle = isNone ? 'solid' : (isDashed ? 'dashed' : 'solid');
+            const bColor = isNone ? '#eee' : displayColor;
+
+            // 대각선으로 꽉 차게 변경하여 점선/실선 구분이 잘 되도록 함 (내부 여백 1px 추가)
+            buttonStyle = "width:28px; height:28px; border:1px solid #ddd; border-radius:4px; background:transparent; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; box-sizing:border-box; padding:1px;";
+            btnContent = `<div style="width:100%; height:100%; overflow:hidden; border-radius:2px; display:flex; align-items:center; justify-content:center;"><div style="width:38px; height:0; border-top: 3px ${bStyle} ${bColor}; transform: rotate(-45deg);"></div></div>`;
+        }
+
+        const styleBtnHTML = `<button class="style-setting-btn" style="${buttonStyle} ${bgStyle}" title="스타일 설정" onclick="openStyleModal(${props.id})">${btnContent}</button>`;
+
         div.innerHTML = `
         <div class="survey-check-area">
             <input type="checkbox" class="survey-checkbox" ${!isHidden ? "checked" : ""} onchange="toggleLayerVisibility(${props.id})">
@@ -2099,9 +2346,9 @@ export function applyStyleSettings() {
             props.customFill = tempFillStyle === 'on';
         }
 
-        layer.setStyle({ 
-            color: tempStyleColor, 
-            fillColor: tempStyleColor, 
+        layer.setStyle({
+            color: tempStyleColor,
+            fillColor: tempStyleColor,
             dashArray: props.customDashArray === 'none' ? null : props.customDashArray,
             stroke: props.customDashArray !== 'none',
             fillOpacity: currentStyleType === 'polygon' && props.customFill === true ? 0.2 : 0,
@@ -2238,6 +2485,7 @@ window.createNewProject = createNewProject;
 window.createNewProjectAndMove = createNewProjectAndMove;
 window.editProjectName = editProjectName;
 window.deleteCurrentProject = deleteCurrentProject;
+window.renderProjectList = renderProjectList;
 window.openMoveProjectModal = openMoveProjectModal;
 window.openMoveSelectionModal = openMoveSelectionModal;
 window.closeMoveProjectModal = closeMoveProjectModal;
@@ -2328,3 +2576,47 @@ export function applySortSetting() {
 window.openSortModal = openSortModal;
 window.closeSortModal = closeSortModal;
 window.applySortSetting = applySortSetting;
+
+/* --------------------------------------------------------------------------
+   프로젝트 정렬 모달 (Project Sort Modal)
+   -------------------------------------------------------------------------- */
+export function openProjectSortModal() {
+    const overlay = document.getElementById('project-sort-modal-overlay');
+    if (!overlay) return;
+
+    document.querySelectorAll('input[name="project-sort-by"]').forEach(r => {
+        r.checked = (r.value === AppState.projectSortBy);
+    });
+    document.querySelectorAll('input[name="project-sort-order"]').forEach(r => {
+        r.checked = (r.value === AppState.projectSortOrder);
+    });
+
+    overlay.style.display = 'flex';
+    setTimeout(() => overlay.classList.add('visible'), 10);
+}
+
+export function closeProjectSortModal() {
+    const overlay = document.getElementById('project-sort-modal-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+}
+
+export function applyProjectSortSetting() {
+    const byEl = document.querySelector('input[name="project-sort-by"]:checked');
+    const orderEl = document.querySelector('input[name="project-sort-order"]:checked');
+    if (byEl) {
+        AppState.projectSortBy = byEl.value;
+        localStorage.setItem('setting_project_sort_by', byEl.value);
+    }
+    if (orderEl) {
+        AppState.projectSortOrder = orderEl.value;
+        localStorage.setItem('setting_project_sort_order', orderEl.value);
+    }
+    closeProjectSortModal();
+    renderProjectList();
+}
+
+window.openProjectSortModal = openProjectSortModal;
+window.closeProjectSortModal = closeProjectSortModal;
+window.applyProjectSortSetting = applyProjectSortSetting;

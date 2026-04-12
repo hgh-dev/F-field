@@ -4,6 +4,14 @@
 
 이 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.0.0/)를 따릅니다.
 
+## [2.4.3] - 2026-04-13
+
+### 추가 (Added)
+
+- 프로젝트 관리 탭 추가
+
+<br>
+
 ## [2.4.2] - 2026-04-10
 
 ### 변경사항 (Changed)
