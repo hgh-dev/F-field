@@ -165,6 +165,21 @@ export function loadCurrentProjectFeatures() {
     renderSurveyList();
 }
 
+/**
+ * 현재 지도에 표시된(현재 프로젝트) 레이어 전체가 보이도록 뷰를 맞춥니다.
+ * @returns {boolean} 이동 성공 여부
+ */
+export function fitCurrentProjectToMap() {
+    const layers = drawnItems.getLayers();
+    if (!layers || layers.length === 0) return false;
+
+    const bounds = drawnItems.getBounds();
+    if (!bounds || !bounds.isValid()) return false;
+
+    map.fitBounds(bounds, { padding: [60, 60], maxZoom: 19 });
+    return true;
+}
+
 export function restoreFeatures(geoJsonData) {
     // -----------------------------------------------------------
     // [교육용] restoreFeatures

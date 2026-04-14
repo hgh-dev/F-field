@@ -705,6 +705,129 @@ export function toggleBottomSheetMoreMenu(event) {
     }
 }
 
+function isLeafletLatLngPoint(point) {
+    return !!point && typeof point.lat === 'number' && typeof point.lng === 'number';
+}
+
+function isSimplePolygonLayer(layer) {
+    if (!(layer instanceof L.Polygon)) return false;
+    const latlngs = layer.getLatLngs();
+    return Array.isArray(latlngs)
+        && latlngs.length > 0
+        && Array.isArray(latlngs[0])
+        && latlngs[0].length > 0
+        && isLeafletLatLngPoint(latlngs[0][0]);
+}
+
+function cloneRing(ring) {
+    return ring.map(point => L.latLng(point.lat, point.lng));
+}
+
+function normalizeRing(ring) {
+    if (!Array.isArray(ring)) return [];
+    const normalized = cloneRing(ring);
+    if (normalized.length > 1) {
+        const first = normalized[0];
+        const last = normalized[normalized.length - 1];
+        if (first.lat === last.lat && first.lng === last.lng) {
+            normalized.pop();
+        }
+    }
+    return normalized;
+}
+
+function getNormalizedPolygonRings(layer) {
+    if (!isSimplePolygonLayer(layer)) return [];
+    const latlngs = layer.getLatLngs();
+    return latlngs
+        .map(ring => normalizeRing(ring))
+        .filter(ring => ring.length >= 3);
+}
+
+function hasHoleRings(layer) {
+    const rings = getNormalizedPolygonRings(layer);
+    return rings.length > 1;
+}
+
+function getRingOrientationSign(ring) {
+    if (!Array.isArray(ring) || ring.length < 3) return 0;
+    let signedArea2 = 0;
+    for (let i = 0; i < ring.length; i++) {
+        const curr = ring[i];
+        const next = ring[(i + 1) % ring.length];
+        signedArea2 += (curr.lng * next.lat) - (next.lng * curr.lat);
+    }
+    if (Math.abs(signedArea2) < 1e-12) return 0;
+    return signedArea2 > 0 ? 1 : -1;
+}
+
+function hideBottomSheetMoreMenu() {
+    const menu = document.getElementById('bottom-sheet-more-menu');
+    if (!menu) return;
+    menu.classList.remove('visible');
+    setTimeout(() => menu.style.display = 'none', 100);
+}
+
+function syncBottomSheetHoleMenuForLayer(layer) {
+    const holeItem = document.getElementById('bottom-sheet-hole-item');
+    const holeFillItem = document.getElementById('bottom-sheet-hole-fill-item');
+    const rings = getNormalizedPolygonRings(layer);
+
+    if (holeItem) {
+        holeItem.style.display = rings.length === 1 ? 'flex' : 'none';
+    }
+    if (holeFillItem) {
+        holeFillItem.style.display = rings.length > 1 ? 'flex' : 'none';
+    }
+}
+
+function findContainingPolygonForHole(sourceLayer, sourceGeoJson) {
+    const sourceOuterCoords = sourceGeoJson?.geometry?.coordinates?.[0] || [];
+    let bestLayer = null;
+    let bestArea = Infinity;
+
+    drawnItems.getLayers().forEach(candidate => {
+        if (candidate === sourceLayer) return;
+        if (!isSimplePolygonLayer(candidate)) return;
+        if (candidate?.feature?.properties?.isHidden) return;
+
+        const candidateGeoJson = candidate.toGeoJSON();
+        let isInside = false;
+
+        try {
+            isInside = turf.booleanWithin(sourceGeoJson, candidateGeoJson);
+        } catch (err) {
+            isInside = false;
+        }
+
+        if (!isInside && Array.isArray(sourceOuterCoords) && sourceOuterCoords.length > 0) {
+            try {
+                isInside = sourceOuterCoords.every(coord =>
+                    turf.booleanPointInPolygon(turf.point(coord), candidateGeoJson, { ignoreBoundary: false })
+                );
+            } catch (err) {
+                isInside = false;
+            }
+        }
+
+        if (!isInside) return;
+
+        let area = Infinity;
+        try {
+            area = turf.area(candidateGeoJson);
+        } catch (err) {
+            area = Infinity;
+        }
+
+        if (area < bestArea) {
+            bestArea = area;
+            bestLayer = candidate;
+        }
+    });
+
+    return bestLayer;
+}
+
 export function handleBottomSheetEdit() {
     const layerId = currentBottomSheetLayerId;
     closeBottomSheet();
@@ -718,6 +841,181 @@ export function handleBottomSheetDelete() {
         deleteLayerById(currentBottomSheetLayerId);
     } else {
         closeBottomSheet();
+    }
+}
+
+export function handleBottomSheetHole() {
+    hideBottomSheetMoreMenu();
+
+    if (currentBottomSheetLayerId === null) {
+        closeBottomSheet();
+        return;
+    }
+
+    const sourceLayer = drawnItems.getLayers().find(l => l.feature?.properties?.id === currentBottomSheetLayerId);
+    if (!sourceLayer) {
+        alert("선택한 도형을 찾을 수 없습니다.");
+        closeBottomSheet();
+        return;
+    }
+
+    const sourceRings = getNormalizedPolygonRings(sourceLayer);
+    if (sourceRings.length !== 1) {
+        alert("구멍 그리기는 구멍이 없는 단일 폴리곤에서만 사용할 수 있습니다.");
+        return;
+    }
+
+    const sourceOuterRing = sourceRings[0];
+    if (sourceOuterRing.length < 3) {
+        alert("구멍으로 변환할 폴리곤 좌표가 올바르지 않습니다.");
+        return;
+    }
+
+    const sourceGeoJson = sourceLayer.toGeoJSON();
+    const targetLayer = findContainingPolygonForHole(sourceLayer, sourceGeoJson);
+
+    if (!targetLayer) {
+        alert("현재 폴리곤을 포함하는 배경 폴리곤을 찾지 못했습니다.");
+        return;
+    }
+
+    if (!confirm("선택한 폴리곤의 모양으로 배경 폴리곤에 구멍을 그립니다. 선택한 폴리곤은 기록에서 삭제됩니다.")) return;
+
+    const targetLatLngs = targetLayer.getLatLngs();
+    if (!Array.isArray(targetLatLngs) || targetLatLngs.length === 0 || !Array.isArray(targetLatLngs[0])) {
+        alert("배경 폴리곤 좌표를 읽을 수 없습니다.");
+        return;
+    }
+
+    const targetOuterRing = normalizeRing(targetLatLngs[0]);
+    if (targetOuterRing.length < 3) {
+        alert("배경 폴리곤 좌표가 올바르지 않습니다.");
+        return;
+    }
+
+    const holeRing = cloneRing(sourceOuterRing);
+    const outerSign = getRingOrientationSign(targetOuterRing);
+    const holeSign = getRingOrientationSign(holeRing);
+    if (outerSign !== 0 && holeSign !== 0 && outerSign === holeSign) {
+        holeRing.reverse();
+    }
+
+    const nextLatLngs = targetLatLngs.map(ring => normalizeRing(ring));
+    nextLatLngs.push(holeRing);
+
+    targetLayer.setLatLngs(nextLatLngs);
+    updateLayerInfo(targetLayer);
+    drawnItems.removeLayer(sourceLayer);
+
+    closeBottomSheet();
+    saveToStorage();
+    renderSurveyList();
+    scheduleViewportVectorOptimization();
+    targetLayer.openPopup();
+}
+
+export function handleBottomSheetHoleFill() {
+    hideBottomSheetMoreMenu();
+
+    if (currentBottomSheetLayerId === null) {
+        closeBottomSheet();
+        return;
+    }
+
+    const sourceLayer = drawnItems.getLayers().find(l => l.feature?.properties?.id === currentBottomSheetLayerId);
+    if (!sourceLayer) {
+        alert("선택한 도형을 찾을 수 없습니다.");
+        closeBottomSheet();
+        return;
+    }
+
+    if (!hasHoleRings(sourceLayer)) {
+        alert("채울 수 있는 구멍이 없습니다.");
+        return;
+    }
+
+    const rings = getNormalizedPolygonRings(sourceLayer);
+    const outerRing = rings[0];
+    const holeRings = rings.slice(1);
+    const holeCount = holeRings.length;
+
+    if (!confirm(`현재 폴리곤의 구멍 ${holeCount}개를 면 기록으로 생성하고, 원본 폴리곤의 구멍은 채웁니다.`)) return;
+
+    const parentProps = sourceLayer.feature?.properties || {};
+    const parentMemo = parentProps.memo || getTimestampString();
+    const parentColor = parentProps.customColor || getRandomColor();
+
+    const existingIds = new Set(
+        drawnItems.getLayers()
+            .map(layer => layer?.feature?.properties?.id)
+            .filter(id => id !== undefined && id !== null)
+    );
+
+    const makeUniqueId = () => {
+        let id = Date.now() + Math.floor(Math.random() * 1000000);
+        while (existingIds.has(id)) {
+            id += 1;
+        }
+        existingIds.add(id);
+        return id;
+    };
+
+    const newLayers = [];
+
+    holeRings.forEach((holeRing, index) => {
+        const newLayer = L.polygon(cloneRing(holeRing));
+        const customFill = Object.prototype.hasOwnProperty.call(parentProps, 'customFill')
+            ? parentProps.customFill
+            : undefined;
+        const customDashArray = Object.prototype.hasOwnProperty.call(parentProps, 'customDashArray')
+            ? parentProps.customDashArray
+            : null;
+
+        const fillMemo = holeCount === 1
+            ? `${parentMemo} (구멍 채움)`
+            : `${parentMemo} (구멍 채움 ${index + 1})`;
+
+        newLayer.feature = {
+            type: "Feature",
+            properties: {
+                memo: fillMemo,
+                id: makeUniqueId(),
+                isHidden: false,
+                customColor: parentColor,
+                customDashArray: customDashArray,
+                ...(customFill === undefined ? {} : { customFill: customFill })
+            }
+        };
+
+        const fillOpacity = customFill === false
+            ? 0
+            : (customFill === true ? 0.2 : (AppState.isPolygonFill ? 0.2 : 0));
+
+        newLayer.setStyle({
+            color: parentColor,
+            fillColor: parentColor,
+            dashArray: customDashArray === 'none' ? null : customDashArray,
+            stroke: customDashArray !== 'none',
+            fillOpacity: fillOpacity
+        });
+
+        updateLayerInfo(newLayer);
+        drawnItems.addLayer(newLayer);
+        newLayers.push(newLayer);
+    });
+
+    sourceLayer.setLatLngs([cloneRing(outerRing)]);
+    updateLayerInfo(sourceLayer);
+
+    closeBottomSheet();
+    saveToStorage();
+    renderSurveyList();
+    scheduleViewportVectorOptimization();
+
+    if (newLayers.length > 0) {
+        newLayers[0].openPopup();
+    } else {
+        sourceLayer.openPopup();
     }
 }
 
@@ -1531,6 +1829,60 @@ export function closePhotoModal() {
     }, 300);
 }
 
+// 줌아웃일수록 선/면을 더 단순화해 렌더링 부담을 줄임
+function getSmoothFactorForZoom(zoom) {
+    if (zoom >= 15) return 1; // 15레벨 이상은 원본에 가깝게 유지
+    if (zoom === 14) return 2;
+    if (zoom === 13) return 4;
+    if (zoom <= 11) return 10;
+    return 7; // zoom 12
+}
+
+function isLineOrPolygonLayer(layer) {
+    return layer instanceof L.Polyline && !(layer instanceof L.Marker);
+}
+
+function optimizeVectorLayerForViewport(layer, viewBounds, zoom) {
+    if (!isLineOrPolygonLayer(layer)) return;
+
+    const smoothFactor = getSmoothFactorForZoom(zoom);
+    if (layer.options.smoothFactor !== smoothFactor) {
+        layer.options.smoothFactor = smoothFactor;
+        if (typeof layer.redraw === 'function') layer.redraw();
+    }
+
+    const isHidden = layer.feature?.properties?.isHidden === true;
+    const layerBounds = typeof layer.getBounds === 'function' ? layer.getBounds() : null;
+    const isInView = !!(layerBounds && layerBounds.isValid() && viewBounds.intersects(layerBounds));
+    const path = layer._path;
+    if (!path) return;
+
+    // 화면 밖/숨김 상태 도형은 path 자체를 숨겨서 렌더링 비용을 낮춤
+    if (isHidden || !isInView) {
+        path.style.display = 'none';
+        path.style.pointerEvents = 'none';
+    } else {
+        path.style.display = '';
+        path.style.pointerEvents = 'visiblePainted';
+    }
+}
+
+function optimizeViewportVectorRendering() {
+    const viewBounds = map.getBounds();
+    const zoom = map.getZoom();
+    drawnItems.getLayers().forEach(layer => optimizeVectorLayerForViewport(layer, viewBounds, zoom));
+}
+
+let isViewportOptimizationScheduled = false;
+export function scheduleViewportVectorOptimization() {
+    if (isViewportOptimizationScheduled) return;
+    isViewportOptimizationScheduled = true;
+    requestAnimationFrame(() => {
+        isViewportOptimizationScheduled = false;
+        optimizeViewportVectorRendering();
+    });
+}
+
 /* --------------------------------------------------------------------------
    8. 이벤트 리스너 (DOM Events)
    -------------------------------------------------------------------------- */
@@ -1627,10 +1979,14 @@ export function initUiEventListeners() {
         document.addEventListener('mouseup', onDragEnd);
     }
 
-    // 오프라인 지도 확대 레벨 체크 이벤트
+    // 오프라인 지도 확대 레벨 체크 + 선/면 렌더링 최적화
     map.on('zoomend', updateOfflineButton);
     map.on('moveend', updateOfflineButton);
+    map.on('zoomend moveend', scheduleViewportVectorOptimization);
+    drawnItems.on('layeradd layerremove', scheduleViewportVectorOptimization);
+
     setTimeout(updateOfflineButton, 100);
+    setTimeout(scheduleViewportVectorOptimization, 120);
 }
 
 /* --------------------------------------------------------------------------
@@ -1812,7 +2168,7 @@ export function renderProjectList() {
         // 텍스트 영역
         const textEl = document.createElement('div');
         textEl.style.cssText = 'flex:1; min-width:0;';
-        
+
         // 날짜 포맷 (YYYY.MM.DD HH:MM:SS)
         let dateStr = "";
         if (p.createdAt) {
@@ -1825,7 +2181,7 @@ export function renderProjectList() {
             const ss = String(d.getSeconds()).padStart(2, '0');
             dateStr = `<div style="font-size:11px; color:#9ca3af; margin-top:2px;">${yy}.${mm}.${dd} ${hh}:${mins}:${ss} 생성</div>`;
         }
-        
+
         textEl.innerHTML = `
             <div style="font-size:14px; font-weight:${isActive ? '700' : '500'}; color:${isActive ? '#1D4ED8' : '#374151'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.name}</div>
             <div style="font-size:12px; color:#9ca3af; margin-top:2px;">기록 ${featureCount}개</div>
@@ -1837,14 +2193,14 @@ export function renderProjectList() {
         dropdownContainer.className = 'dropdown-container';
         dropdownContainer.style.cssText = 'flex-shrink:0;';
         // 카드 클릭(프로젝트 전환) 방지
-        dropdownContainer.onclick = (e) => e.stopPropagation(); 
+        dropdownContainer.onclick = (e) => e.stopPropagation();
 
         const moreBtn = document.createElement('button');
         moreBtn.className = 'btn-more';
         moreBtn.title = '더보기';
         moreBtn.style.cssText = 'background:none; border:none; padding:5px; cursor:pointer; color:#9ca3af; border-radius:6px;';
         moreBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`;
-        
+
         const dropdownMenu = document.createElement('div');
         dropdownMenu.className = 'dropdown-menu';
 
@@ -2111,6 +2467,7 @@ export function updateLayerInfo(layer) {
         currentBottomSheetLayerId = id;
         const moreBtn = document.getElementById('bottom-sheet-more-btn');
         if (moreBtn) moreBtn.style.display = 'flex';
+        syncBottomSheetHoleMenuForLayer(layer);
         openBottomSheet(memo || '측량 기록', popupContent);
         document.getElementById('bottom-sheet').classList.add('full-open');
     });
@@ -2120,6 +2477,7 @@ export function updateLayerInfo(layer) {
         currentBottomSheetLayerId = id;
         const moreBtn = document.getElementById('bottom-sheet-more-btn');
         if (moreBtn) moreBtn.style.display = 'flex';
+        syncBottomSheetHoleMenuForLayer(layer);
         openBottomSheet(memo || '측량 기록', popupContent);
         document.getElementById('bottom-sheet').classList.add('full-open');
         return this;
@@ -2155,6 +2513,7 @@ export function deleteLayerById(id) {
         if (layer) drawnItems.removeLayer(layer);
         saveToStorage();
         renderSurveyList();
+        scheduleViewportVectorOptimization();
         closeBottomSheet();
     }
 }
@@ -2174,6 +2533,7 @@ export function toggleLayerVisibility(id) {
         }
         saveToStorage();
         renderSurveyList();
+        scheduleViewportVectorOptimization();
     }
 }
 
@@ -2358,6 +2718,7 @@ export function applyStyleSettings() {
 
     saveToStorage();
     renderSurveyList();
+    scheduleViewportVectorOptimization();
     closeStyleModal();
 }
 
@@ -2476,6 +2837,8 @@ window.closeBottomSheet = closeBottomSheet;
 window.toggleBottomSheetState = toggleBottomSheetState;
 window.toggleBottomSheetMoreMenu = toggleBottomSheetMoreMenu;
 window.handleBottomSheetEdit = handleBottomSheetEdit;
+window.handleBottomSheetHole = handleBottomSheetHole;
+window.handleBottomSheetHoleFill = handleBottomSheetHoleFill;
 window.handleBottomSheetDelete = handleBottomSheetDelete;
 window.editLayerDescription = editLayerDescription;
 window.closeMemoModal = closeMemoModal;

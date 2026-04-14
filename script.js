@@ -24,6 +24,7 @@ import {
     saveToStorage, loadFromStorage, loadCurrentProjectFeatures,
     restoreFeatures, exportSingleLayer, exportCurrentProject,
     handleFileSelect, clearAllData, saveCurrentPoint, saveCurrentBoundary,
+    fitCurrentProjectToMap,
     getAddressFromCoords, closeExportFormatModal, exportLayerWithFormat, backupAllProjects
 } from './data.js';
 
@@ -494,6 +495,7 @@ window.switchProject = (id) => {
     saveToStorage();
     AppState.currentProjectId = parseInt(id);
     loadCurrentProjectFeatures();
+    fitCurrentProjectToMap();
     renderProjectSelector();
 };
 window.startTrackRecording = startTrackRecording;
@@ -688,5 +690,4 @@ window.cancelSingleEdit = cancelSingleEdit;
 window.handleFileSelect = handleFileSelect;
 window.forceAppUpdate = forceAppUpdate;
 window.closeExportFormatModal = closeExportFormatModal;
-
 
