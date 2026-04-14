@@ -455,7 +455,7 @@ export function exportCurrentProject() {
 };
 
 export async function backupAllProjects() {
-    if (!confirm('모든 프로젝트와 기록을 하나의 압축파일(ZIP)로 백업하시겠습니까?')) return;
+    if (!confirm('모든 프로젝트 파일(.GeoJSON)이 하나의 압축파일(.ZIP)로 저장됩니다.')) return;
     
     // 현재 작성중인 데이터부터 먼저 저장
     await saveToStorage();
