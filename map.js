@@ -1,43 +1,56 @@
 /* ==========================================================================
-   [모듈] 지도 및 레이어 매니저 (map.js)
-   [역할] Leaflet 지도 객체 생성 및 각종 배경/지적도/오버레이 레이어 관리
+   [모듈] 지도/레이어 관리 모듈 (map.js)
+   [역할]
+   - Leaflet 지도 객체를 생성하고 기본 화면 상태(중심/줌/컨트롤)를 초기화합니다.
+   - 배경지도/지적도/행정경계/규제 오버레이 레이어를 정의하고 ON/OFF를 제어합니다.
+   - 범례(legend) 표시와 오프라인 타일 URL 수집 기능을 제공합니다.
+   [동작 원리 요약]
+   - 지도 자체는 map 인스턴스 1개를 기준으로 동작합니다.
+   - 레이어 제어는 "체크박스/라디오 상태 -> addLayer/removeLayer" 흐름으로 연결됩니다.
+   - 여러 오버레이가 겹칠 때는 Pane z-index와 bringToFront 순서로 표시 우선순위를 보장합니다.
    ========================================================================== */
 import { VWORLD_API_KEY } from './config.js?v=2.4.4';
 import { AppState } from './state.js?v=2.4.4';
 
-/* --------------------------------------------------------------------------
-   1. 지도 초기화 (Map Initialization)
-   -------------------------------------------------------------------------- */
+/* ==========================================================================
+   1) 지도 초기화
+   ========================================================================== */
 /**
- * Leaflet Map 생성
- * - zoomControl: false (기본 줌 버튼 숨김 -> 커스텀 버튼 사용)
- * - tap: false (모바일 터치 더블 클릭 이슈 방지)
- * - maxZoom: 22 (최대 확대 레벨)
+ * 앱 전체에서 공통으로 사용하는 Leaflet 지도 인스턴스를 생성합니다.
+ * 동작 원리:
+ * - 기본 zoom/attribution 컨트롤은 끄고 원하는 위치에 수동 추가합니다.
+ * - renderer를 canvas로 지정해 터치 히트 영역(tolerance)을 늘려 모바일 선택성을 높입니다.
  */
 export const map = L.map('map', {
     zoomControl: false,
     attributionControl: false,
     tap: false,
     maxZoom: 22,
-    doubleClickZoom: false, // 더블 클릭 시 확대되는 기본 기능을 막고, '정보 팝업'을 띄우는 기능으로 대신 사용함
-    renderer: L.canvas({ padding: 0.5, tolerance: 15 }) // 터치 반경 확장(15px)을 위해 캔버스로 원복 (유령 레이어 버그 제거되어 정상작동 예상)
-}).setView([37.245911, 126.960302], 17); // 초기 중심 좌표(수원)와 줌 레벨(17)
+    // 더블클릭은 확대 대신 앱의 정보 조회 동작에 쓰기 위해 비활성화합니다.
+    doubleClickZoom: false,
+    // Canvas renderer는 벡터 클릭 판정 범위를 조절하기 쉬워 모바일 편집에서 유리합니다.
+    renderer: L.canvas({ padding: 0.5, tolerance: 15 })
+    // 기본 시작 위치(수원)와 줌 레벨입니다.
+}).setView([37.245911, 126.960302], 17);
 
-/* --------------------------------------------------------------------------
-   2. 레이어 정의 (Layers Definition)
-   -------------------------------------------------------------------------- */
+/* ==========================================================================
+   2) 레이어 정의
+   ========================================================================== */
 
-// 줌 컨트롤(확대/축소 버튼)을 왼쪽 아래에 추가
+// 기본 컨트롤을 앱 UI 배치에 맞춰 직접 추가합니다.
 L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
-// 스케일 컨트롤(지도 축척 막대) 추가 (imperial: false -> 마일 단위 끔, metric: true -> 미터 단위 켬)
+// 축척 막대는 국내 사용 기준으로 metric만 노출합니다.
 L.control.scale({ imperial: false, metric: true }).addTo(map);
 
-/* 2-1. 커스텀 Pane 설정 */
+/* --------------------------------------------------------------------------
+   2-1) 커스텀 Pane (z-index 계층)
+   -------------------------------------------------------------------------- */
 /**
- * 레이어의 z-index(쌓이는 순서)를 정밀하게 제어하기 위해 사용합니다.
- * - zIndex: 350 (TilePane(200) < nasGukPane(350) < OverlayPane(400))
- * - pointerEvents: 'none' (지도가 클릭 이벤트를 받을 수 있도록 투과시킴)
+ * 오버레이 간 표시 우선순위를 고정하기 위해 pane을 분리합니다.
+ * 동작 원리:
+ * - pane zIndex가 클수록 화면 위쪽에 렌더링됩니다.
+ * - pointerEvents를 none으로 두어 오버레이가 지도 클릭/드로잉 입력을 가로채지 않게 합니다.
  */
 map.createPane('nasGukPane');
 map.getPane('nasGukPane').style.zIndex = 350;
@@ -55,29 +68,20 @@ map.createPane('nasRestrictionPane');
 map.getPane('nasRestrictionPane').style.zIndex = 410; // 산림보호구역(overlayPane 기본 400) 위
 map.getPane('nasRestrictionPane').style.pointerEvents = 'none';
 
-/**
- * [Proj4js 좌표계 정의]
- * - EPSG:4326 (WGS84): GPS 기본 좌표 (위도, 경도)
- * - EPSG:5186 (Korea 2010): 한국 국토지리정보원 표준 (TM, 중부원점)
- * - EPSG:3857 (Web Mercator): 구글/네이버 등 웹 지도 표준
- * 
- * VWorld나 공공데이터는 다양한 좌표계를 쓰므로 변환이 필수적입니다.
- */
+// Proj4 좌표계 정의입니다.
+// 동작 원리: 외부 API 데이터가 EPSG별로 달라질 수 있어 사전에 변환 규칙을 등록해 둡니다.
 proj4.defs("EPSG:5186", "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs");
 proj4.defs("EPSG:5179", "+proj=tmerc +lat_0=38 +lon_0=127.5 +k=0.9996 +x_0=1000000 +y_0=2000000 +ellps=GRS80 +units=m +no_defs");
 
 
 
-/* 2-2. 배경 지도 (Base Maps) */
-// 지도에 표시할 다양한 지도 데이터(타일)를 정의합니다.
+/* --------------------------------------------------------------------------
+   2-2) 배경 지도 (TileLayer)
+   -------------------------------------------------------------------------- */
+// Base map은 타일 URL 템플릿({z}/{x}/{y})으로 요청됩니다.
+// 동작 원리: 현재 화면의 타일 좌표에 맞는 조각 이미지만 받아 붙여서 지도를 그립니다.
 
-/**
- * [TileLayer]
- * 이미지가 타일(조각) 형태로 제공되는 지도 서비스입니다.
- * URL의 {z}, {x}, {y} 부분이 줌 레벨과 좌표로 자동 치환되어 서버에 이미지를 요청합니다.
- */
-
-// 1. VWorld 기본 배경 지도 (일반 지도)
+// VWorld 기본 배경 지도(일반 지도)
 export const vworldBase = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', {
     key: VWORLD_API_KEY,
     layer: 'Base',
@@ -88,7 +92,7 @@ export const vworldBase = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key
     crossOrigin: true
 });
 
-// 2. VWorld 위성(영상) 지도
+// VWorld 위성(영상) 지도
 export const vworldSatellite = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', {
     key: VWORLD_API_KEY,
     layer: 'Satellite',
@@ -99,8 +103,7 @@ export const vworldSatellite = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0
     crossOrigin: true
 });
 
-// 3. VWorld 하이브리드 오버레이 (도로, 지명 등 투명 배경)
-// 위성 지도 위에 겹쳐서 보기 위해 사용합니다. (opacity: 1)
+// VWorld 하이브리드(도로/지명 텍스트 오버레이)
 export const vworldHybrid = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{key}/{layer}/{z}/{y}/{x}.{ext}', {
     key: VWORLD_API_KEY,
     layer: 'Hybrid',
@@ -112,8 +115,7 @@ export const vworldHybrid = L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{k
     crossOrigin: true
 });
 
-// 8. Esri 위성지도 (World Imagery)
-// VWorld 위성 지도가 안 나올 때를 대비한 대체 지도입니다.
+// Esri 위성지도 (VWorld 대체 소스)
 export const esriSatelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'Esri World Imagery',
     maxNativeZoom: 19,
@@ -121,33 +123,36 @@ export const esriSatelliteLayer = L.tileLayer('https://server.arcgisonline.com/A
     crossOrigin: true
 });
 
-/* 2-3. 지적도 및 오버레이 (Overlays) */
-/**
- * 서버가 요청받은 영역(Bounding Box)만큼 이미지를 '생성'해서 보내주는 방식입니다.
- * - 지적도처럼 투명 배경이 필요한 레이어에 적합합니다.
- */
+/* --------------------------------------------------------------------------
+   2-3) 지적도/규제 오버레이 (WMS 포함)
+   -------------------------------------------------------------------------- */
+// WMS는 화면 영역(BBOX) 기준으로 서버가 이미지를 생성해 반환합니다.
+// 동작 원리: 투명 PNG를 겹쳐 다양한 공공 레이어를 배경지도 위에 중첩합니다.
 
-// 4. 지적도 (LX, 편집도)
+// 지적도(LX 편집도)
 export const vworldLxLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY,
-    layers: 'lt_c_landinfobasemap', // 지적편집도 레이어명
+    layers: 'lt_c_landinfobasemap',
     styles: '',
     format: 'image/png',
     transparent: true,
-    opacity: 0.6, // 반투명하게 설정하여 아래 위성지도가 비치도록 함
+    // 반투명으로 두어 위성/기본지도와 함께 읽기 쉽도록 설정
+    opacity: 0.6,
     version: '1.3.0',
     maxZoom: 22,
     maxNativeZoom: 22,
     detectRetina: true,
-    tileSize: 512, // 고해상도 처리를 위해 타일 크기 조정
+    // 타일 크기를 키워 고해상도 환경에서 텍스트/선명도 손실을 줄입니다.
+    tileSize: 512,
     zoomOffset: 0,
-    className: 'cadastral-layer' // CSS로 스타일 제어를 위해 클래스 추가
+    className: 'cadastral-layer'
 });
 
-// 5. 연속 지적도 (실제 지적선)
+// 연속지적도(본번/부번 지적선)
 export const vworldContinuousLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY,
-    layers: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun', // 부번, 본번 레이어 동시 요청
+    // 본번/부번 레이어를 한 번에 요청해 경계 정보를 함께 표시합니다.
+    layers: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun',
     styles: 'lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun',
     format: 'image/png',
     transparent: true,
@@ -161,20 +166,21 @@ export const vworldContinuousLayer = L.tileLayer.wms("https://api.vworld.kr/req/
     className: 'cadastral-layer'
 });
 
-// 6. 국유림 레이어 (직접 호스팅하는 커스텀 타일)
-// GitHub Pages 등에 올려둔 타일 이미지를 불러옵니다.
+// 국유림 커스텀 타일 레이어 (정적 호스팅)
 export const nasGukLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon/guk/{z}/{x}/{y}.png', {
     minZoom: 12,
     maxZoom: 22,
     maxNativeZoom: 18,
-    tms: false, // TMS 방식(Y축 반전)이 아니므로 false
-    pane: 'nasGukPane', // 아까 만든 커스텀 Pane에 배치하여 항상 위에 표시됨
+    // URL이 XYZ 규칙이므로 Y축 반전(TMS)이 아닌 false를 사용합니다.
+    tms: false,
+    // 국유림 오버레이 전용 pane에 올려 다른 오버레이와 겹침 순서를 고정합니다.
+    pane: 'nasGukPane',
     opacity: 1,
     attribution: 'Suwon Guk',
     crossOrigin: true
 });
 
-// 6-1. 임도망도 레이어 (직접 호스팅하는 커스텀 타일)
+// 임도망도 커스텀 타일 레이어
 export const nasImdoLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwon/imdo/{z}/{x}/{y}.png', {
     minZoom: 12,
     maxZoom: 22,
@@ -186,8 +192,7 @@ export const nasImdoLayer = L.tileLayer('https://hgh-dev.github.io/map_data/suwo
     crossOrigin: true
 });
 
-// 7. 행정경계 레이어 (통합 WMS)
-// 시도, 시군구, 읍면동, 리 경계를 한 번에 불러옵니다.
+// 행정경계 통합 WMS (시도/시군구/읍면동/리)
 export const mergedAdminLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY,
     layers: 'lt_c_adsido,lt_c_adsigg,lt_c_ademd,lt_c_adri',
@@ -196,13 +201,14 @@ export const mergedAdminLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms",
     transparent: true,
     opacity: 1,
     version: '1.3.0',
-    minZoom: 6, // 너무 넓은 지역(전국)에서는 데이터 양이 많아 렉이 걸리므로 줌 제한
+    // 매우 저줌에서 경계 데이터가 과도해지는 문제를 줄이기 위해 하한 줌을 둡니다.
+    minZoom: 6,
     maxZoom: 22,
     maxNativeZoom: 18,
     className: 'admin-layer'
 });
 
-// 8. 개발제한구역 (WMS)
+// 개발제한구역 WMS
 export const vworldRestrictionLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY,
     layers: 'lt_c_ud801',
@@ -214,11 +220,11 @@ export const vworldRestrictionLayer = L.tileLayer.wms("https://api.vworld.kr/req
     minZoom: 8,
     maxZoom: 22,
     maxNativeZoom: 19,
-    pane: 'nasRestrictionPane', // 산림보호구역보다 위에 표시
+    pane: 'nasRestrictionPane',
     className: 'restriction-layer'
 });
 
-// 9. 국가유산 지정/보호구역 (WMS)
+// 국가유산 지정/보호구역 WMS
 export const vworldHeritageLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY,
     layers: 'lt_c_uo301',
@@ -230,103 +236,107 @@ export const vworldHeritageLayer = L.tileLayer.wms("https://api.vworld.kr/req/wm
     minZoom: 12,
     maxZoom: 22,
     maxNativeZoom: 19,
-    pane: 'nasHeritagePane', // 산림보호구역보다 아래에 표시
+    pane: 'nasHeritagePane',
     className: 'heritage-layer'
 });
 
-// 산림보호구역 (WMS)
+// 산림보호구역 WMS
 export const vworldForestLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_uf151', styles: 'lt_c_uf151', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'forest-layer'
 });
 
-// 10. 도시자연공원구역 (WMS)
+// 도시자연공원구역 WMS
 export const vworldCityparkLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_uq162', styles: 'lt_c_uq162', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'citypark-layer'
 });
 
-// 11. 임업 및 산촌 진흥권역 (WMS)
+// 임업 및 산촌 진흥권역 WMS
 export const vworldForestryLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_uf602', styles: 'lt_c_uf602', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'forestry-layer'
 });
 
-// 12. 자연환경보전지역 (WMS)
+// 자연환경보전지역 WMS
 export const vworldEnvpreserveLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_uq114', styles: 'lt_c_uq114', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'envpreserve-layer'
 });
 
-// 12-1. 도시지역 (WMS)
+// 도시지역 WMS
 export const vworldCityzoneLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_uq111', styles: 'lt_c_uq111', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'cityzone-layer'
 });
 
-// 12-2. 관리지역 (WMS)
+// 관리지역 WMS
 export const vworldManagezoneLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_uq112', styles: 'lt_c_uq112', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'managezone-layer'
 });
 
-// 12-3. 농림지역 (WMS)
+// 농림지역 WMS
 export const vworldFarmzoneLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_uq113', styles: 'lt_c_uq113', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'farmzone-layer'
 });
 
 
-// 13. 백두대간보호지역 (WMS)
+// 백두대간보호지역 WMS
 export const vworldBaekduLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_uf901', styles: 'lt_c_uf901', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 8, maxZoom: 22, maxNativeZoom: 19, className: 'baekdu-layer'
 });
 
-// 14. 습지보호지역 (WMS)
+// 습지보호지역 WMS
 export const vworldWetlandLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_wgisarwet', styles: 'lt_c_wgisarwet', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'wetland-layer'
 });
 
-// 15. 야생생물보호 (WMS)
+// 야생생물보호 WMS
 export const vworldWildlifeLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_um221', styles: 'lt_c_um221', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'wildlife-layer'
 });
 
-// 16. 상수원보호 (WMS)
+// 상수원보호 WMS
 export const vworldWatersourceLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_um710', styles: 'lt_c_um710', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'watersource-layer'
 });
 
-// 17. 자연공원 (WMS) - 국립, 군립, 도립 묶음
+// 자연공원 WMS (국립/군립/도립 묶음)
 export const vworldNatureparkLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_wgisnpgug,lt_c_wgisnpgun,lt_c_wgisnpdo', styles: 'lt_c_wgisnpgug,lt_c_wgisnpgun,lt_c_wgisnpdo', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 8, maxZoom: 22, maxNativeZoom: 19, className: 'naturepark-layer'
 });
 
-// 18. 도시계획(도로) (WMS)
+// 도시계획(도로) WMS
 export const vworldCityroadLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_upisuq151', styles: 'lt_c_upisuq151', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 12, maxZoom: 22, maxNativeZoom: 19, className: 'cityroad-layer'
 });
 
-// 19. 토지이용계획도 (WMS)
+// 토지이용계획도 WMS
 export const vworldLanduseLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_lhblpn', styles: 'lt_c_lhblpn', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 8, maxZoom: 22, maxNativeZoom: 19, className: 'landuse-layer'
 });
 
-// 20. 사업지구경계도 (WMS)
+// 사업지구경계도 WMS
 export const vworldBizzoneLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_lhzone', styles: 'lt_c_lhzone', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'bizzone-layer'
 });
 
 
-// 초기 레이어 추가 (위성지도 + 연속지적도 + 하이브리드)
+// 앱 기본 시작 레이어 구성입니다.
+// 동작 원리: 위성 + 지적도 + 하이브리드 조합을 먼저 올려 현장 식별성을 높입니다.
 map.addLayer(vworldSatellite);
 map.addLayer(vworldContinuousLayer);
 map.addLayer(vworldHybrid);
 
-// 초기 행정경계 레이어 설정
+// 초기 로드시 체크박스 상태와 실제 지도 레이어 상태를 맞춥니다.
 if (document.getElementById('chk-admin') && document.getElementById('chk-admin').checked) {
     toggleOverlay('admin', true);
 }
 
 
-/* --------------------------------------------------------------------------
-   3. 레이어 제어 함수 (Layer Control Functions)
-   -------------------------------------------------------------------------- */
+/* ==========================================================================
+   3) 레이어 제어 함수
+   ========================================================================== */
 
-// 배경 지도 토글 (ON/OFF)
+/**
+ * 배경지도 표시 전체를 켜거나 끕니다.
+ * 동작 원리: ON이면 현재 라디오 선택값을 기준으로 changeBaseMap을 호출합니다.
+ */
 export function toggleBaseLayer(isChecked) {
     if (isChecked) {
         const selectedValue = document.querySelector('input[name="baseMap"]:checked').value;
@@ -338,11 +348,14 @@ export function toggleBaseLayer(isChecked) {
     }
 }
 
-// 배경 지도 종류 변경 (위성 vs 일반 vs 지형도)
+/**
+ * 배경지도 타입(위성/일반/대체위성)을 전환합니다.
+ * 동작 원리: 먼저 후보 레이어를 전부 remove한 뒤 선택 레이어 1개만 add합니다.
+ */
 export function changeBaseMap(type) {
     if (!document.getElementById('chk-base-layer').checked) return;
 
-    // 우선 모두 제거
+    // 단일 선택 보장을 위해 먼저 후보를 모두 제거합니다.
     map.removeLayer(vworldSatellite);
     map.removeLayer(vworldBase);
     map.removeLayer(esriSatelliteLayer);
@@ -352,34 +365,38 @@ export function changeBaseMap(type) {
     } else if (type === 'esri') {
         map.addLayer(esriSatelliteLayer);
     } else {
-        // base: 일반지도
         map.addLayer(vworldBase);
     }
 
-    // 오버레이 레이어들을 순서대로 맨 위로 올림
+    // 배경 변경 후 오버레이 계층이 깨지지 않게 순서를 다시 맞춥니다.
     updateLayerOrder();
 }
 
-// 레이어 순서 재조정 함수 (하이브리드 < 지적도 < 도시계획도로 < 행정경계)
+/**
+ * 오버레이 렌더링 순서를 재정렬합니다.
+ * 동작 원리: bringToFront를 낮은 우선순위부터 순차 호출해 최종 계층을 고정합니다.
+ */
 export function updateLayerOrder() {
-    // 1. 하이브리드 먼저 (가장 아래)
+    // 1) 하이브리드 (아래)
     if (map.hasLayer(vworldHybrid)) vworldHybrid.bringToFront();
 
-    // 2. 지적도 (하이브리드 위)
+    // 2) 지적도
     if (map.hasLayer(vworldLxLayer)) vworldLxLayer.bringToFront();
     if (map.hasLayer(vworldContinuousLayer)) vworldContinuousLayer.bringToFront();
 
-    // 3. 토지이용계획도 (지적도 위)
+    // 3) 토지이용계획
     if (map.hasLayer(vworldLanduseLayer)) vworldLanduseLayer.bringToFront();
 
-    // 4. 도시계획(도로) (가장 위)
+    // 4) 도시계획(도로)
     if (map.hasLayer(vworldCityroadLayer)) vworldCityroadLayer.bringToFront();
 
-    // 5. 행정경계가 가장 위에 오도록
+    // 5) 행정경계 (최상단)
     if (map.hasLayer(mergedAdminLayer)) mergedAdminLayer.bringToFront();
 }
 
-// 지적도 종류 변경 (연속지적도 vs LX)
+/**
+ * 지적도 타입(LX/연속지적도)을 전환합니다.
+ */
 export function changeCadastralMap(type) {
     if (!document.getElementById('chk-cadastral').checked) return;
 
@@ -387,21 +404,25 @@ export function changeCadastralMap(type) {
         map.addLayer(vworldLxLayer);
         map.removeLayer(vworldContinuousLayer);
     } else {
-        // 기본값: 연속지적도
         map.addLayer(vworldContinuousLayer);
         map.removeLayer(vworldLxLayer);
     }
     updateLayerOrder();
 }
 
-// 오버레이 레이어 켜고 끄기
+/**
+ * 오버레이 타입별로 레이어를 ON/OFF 합니다.
+ * 동작 원리:
+ * - 공통 타입은 layer 변수에 매핑 후 add/remove
+ * - 지적도/행정경계처럼 특수 규칙이 있는 타입은 별도 분기로 처리합니다.
+ */
 export function toggleOverlay(type, isChecked) {
     let layer;
 
     if (type === 'hybrid') {
         layer = vworldHybrid;
     } else if (type === 'cadastral') {
-        // 지적도 메뉴 처리
+        // 지적도는 내부에서 다시 세부 타입(LX/연속)을 선택해야 하므로 전용 처리합니다.
         if (isChecked) {
             const selectedValue = document.querySelector('input[name="cadastralMap"]:checked').value;
             changeCadastralMap(selectedValue);
@@ -411,7 +432,7 @@ export function toggleOverlay(type, isChecked) {
         }
         return;
     } else if (type === 'admin') {
-        // 행정경계 메뉴 처리 (통합 레이어)
+        // 행정경계는 항상 최상단 유지가 중요해 add 시 즉시 bringToFront를 적용합니다.
         if (isChecked) {
             map.addLayer(mergedAdminLayer);
             mergedAdminLayer.bringToFront();
@@ -421,7 +442,7 @@ export function toggleOverlay(type, isChecked) {
         return;
     } else if (type === 'nasGuk') {
         layer = nasGukLayer;
-        // 범례 토글
+        // 국유림 범례는 전용 DOM을 별도로 사용합니다.
         const legend = document.getElementById('nas-guk-legend');
         if (legend) legend.style.display = isChecked ? 'block' : 'none';
 
@@ -464,9 +485,10 @@ export function toggleOverlay(type, isChecked) {
         layer = vworldForestLayer;
     }
 
-    // 일반 레이어 추가/제거
+    // 공통 add/remove 처리입니다.
     if (isChecked) {
         map.addLayer(layer);
+        // 국유림은 pane 고정 우선순위를 쓰므로 일반 순서 재정렬에서 제외합니다.
         if (type !== 'nasGuk') {
             updateLayerOrder();
         }
@@ -474,12 +496,12 @@ export function toggleOverlay(type, isChecked) {
         map.removeLayer(layer);
     }
 
-    // VWorld 범례 표시/숨김
+    // VWorld WMS 타입은 공통 함수로 범례 표시/숨김을 동기화합니다.
     showVworldLegend(type, isChecked);
 }
 
-// VWorld GetLegendGraphic API URL 매핑
-// 자연공원은 3개 레이어 묶음이라 배열로 처리
+// VWorld GetLegendGraphic 대상 레이어 매핑입니다.
+// 동작 원리: 자연공원처럼 복수 레이어 타입은 배열로 묶어 순서대로 렌더링합니다.
 const VWORLD_LEGEND_LAYERS = {
     restriction: ['lt_c_ud801'],
     forest: ['lt_c_uf151'],
@@ -500,7 +522,10 @@ const VWORLD_LEGEND_LAYERS = {
     bizzone: ['lt_c_lhzone'],
 };
 
-// 범례 컨테이너에 VWorld 범례 이미지를 동적으로 삽입/숨김
+/**
+ * VWorld 레이어 범례 이미지를 표시/숨김 처리합니다.
+ * 동작 원리: 첫 로드 때만 HTML을 생성하고, 이후에는 dataset.loaded 캐시를 재사용합니다.
+ */
 function showVworldLegend(type, isChecked) {
     const legendEl = document.getElementById(`legend-${type}`);
     if (!legendEl) return;
@@ -513,13 +538,13 @@ function showVworldLegend(type, isChecked) {
     const layers = VWORLD_LEGEND_LAYERS[type];
     if (!layers) return;
 
-    // 이미 로드된 경우 재사용
+    // 이미 생성한 범례는 DOM 재생성 없이 display만 토글합니다.
     if (legendEl.dataset.loaded === '1') {
         legendEl.style.display = 'block';
         return;
     }
 
-    // 범례 이미지 생성 (레이어가 여러 개면 각각 삽입)
+    // 레이어별 GetLegendGraphic 이미지를 동적으로 삽입합니다.
     legendEl.innerHTML = layers.map(layerName =>
         `<div class="vworld-legend-item">
             <img src="https://api.vworld.kr/req/image?service=image&request=GetLegendGraphic&format=png&layer=${layerName}&style=${layerName}&type=ALL&key=${VWORLD_API_KEY}" alt="${layerName} 범례" loading="lazy" onerror="this.parentNode.style.display='none'">
@@ -531,16 +556,15 @@ function showVworldLegend(type, isChecked) {
 
 
 
-/* --------------------------------------------------------------------------
-   4. 외부 API 연동 (External API Data)
-   -------------------------------------------------------------------------- */
-
-
-/* --------------------------------------------------------------------------
-   5. 오프라인 지도 (Offline Map)
-   -------------------------------------------------------------------------- */
+/* ==========================================================================
+   4) 오프라인 지도 URL 수집
+   ========================================================================== */
 /**
  * 주어진 영역(bounds)과 줌 레벨 범위에 해당하는 타일 URL 배열을 반환합니다.
+ * 동작 원리:
+ * - bounds를 Web Mercator 타일 좌표(x,y,z) 범위로 변환합니다.
+ * - 현재 활성화된 타일 레이어 각각에 getTileUrl(coords)를 호출해 URL을 모읍니다.
+ * - 중복 URL을 제거해 다운로드 대상을 최소화합니다.
  */
 export function getOfflineMapUrls(bounds, minZoom, maxZoom) {
     const urls = [];
@@ -552,7 +576,7 @@ export function getOfflineMapUrls(bounds, minZoom, maxZoom) {
     function lng2tile(lon, zoom) { return Math.floor((lon + 180) / 360 * Math.pow(2, zoom)); }
     function lat2tile(lat, zoom) { return Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom)); }
 
-    // 현재 활성화된 모든 타일 레이어(WMS 포함) 수집
+    // 현재 지도에 켜진 타일 레이어(일반 타일/WMS 타일)를 모두 수집합니다.
     const activeTileLayers = [];
     map.eachLayer((layer) => {
         if (typeof layer.getTileUrl === 'function') {
@@ -563,10 +587,11 @@ export function getOfflineMapUrls(bounds, minZoom, maxZoom) {
     for (let z = minZoom; z <= maxZoom; z++) {
         let xtileMin = lng2tile(minLng, z);
         let xtileMax = lng2tile(maxLng, z);
-        let ytileMin = lat2tile(maxLat, z); // lat은 북쪽이 값이 크므로 y좌표는 북쪽이 최소값
+        // 타일 Y축은 북쪽이 작기 때문에 maxLat가 y 최소값이 됩니다.
+        let ytileMin = lat2tile(maxLat, z);
         let ytileMax = lat2tile(minLat, z);
 
-        // 최대/최소값 오류 보정
+        // 드래그 방향에 상관없이 안전하게 순회하도록 min/max를 재정렬합니다.
         const minX = Math.min(xtileMin, xtileMax);
         const maxX = Math.max(xtileMin, xtileMax);
         const minY = Math.min(ytileMin, ytileMax);
@@ -577,6 +602,7 @@ export function getOfflineMapUrls(bounds, minZoom, maxZoom) {
                 const coords = { x: x, y: y, z: z };
                 activeTileLayers.forEach(layer => {
                     try {
+                        // 레이어 템플릿과 좌표로 실제 요청 URL을 생성합니다.
                         let url = layer.getTileUrl(coords);
                         if (url) urls.push(url);
                     } catch (e) {
@@ -586,6 +612,6 @@ export function getOfflineMapUrls(bounds, minZoom, maxZoom) {
             }
         }
     }
-    // 중복 URL 제거 후 반환
+    // 같은 URL 중복 요청을 방지하기 위해 Set으로 유일값만 반환합니다.
     return [...new Set(urls)];
 }

@@ -1,6 +1,13 @@
 /* ==========================================================================
-   [모듈] 그리기 및 측량 도구 (draw.js)
-   [역할] 지도 위 점, 선, 면 그리기, 도형 편집, GPS 트랙 기록
+   [모듈] 그리기/편집 모듈 (draw.js)
+   [역할]
+   - 지도에서 점/선/면 기록 생성을 시작/완료/취소합니다.
+   - 기존 레이어를 단건 편집(완료/되돌리기/취소)하고 결과를 저장합니다.
+   - GPS 좌표를 그리기 도구의 버텍스로 주입해 현장 기록을 돕습니다.
+   [동작 원리 요약]
+   - Leaflet.Draw 인스턴스를 AppState.currentDrawer로 관리해 모드 충돌을 막습니다.
+   - 생성/편집 이벤트에서 feature 속성을 갱신하고 saveToStorage()로 즉시 동기화합니다.
+   - 렌더링(UI)과 데이터 저장을 같은 지점에서 호출해 상태 불일치를 줄입니다.
    ========================================================================== */
 import { map } from './map.js';
 import { AppState } from './state.js';
@@ -10,33 +17,35 @@ import { saveToStorage } from './data.js';
 
 
 
-/* --------------------------------------------------------------------------
-   1. 초기 설정 및 상태 (Init & State)
-   -------------------------------------------------------------------------- */
-// 지도 위에 점, 선, 면을 그리고 수정하는 기능입니다.
-
-/* [패치] Leaflet 라이브러리의 터치 오류 방지 */
-// 선 그리기 도구 사용 시 모바일에서 터치가 튀는 문제를 해결합니다.
+/* ==========================================================================
+   1) 초기화/공용 상태
+   ========================================================================== */
+// 모바일 환경에서 Polyline 터치 이벤트가 중복 처리되는 문제를 막기 위한 패치입니다.
+// 원리: 내부 _onTouch 핸들러를 noop으로 바꿔 터치 드로잉 오작동을 우회합니다.
 L.Draw.Polyline.prototype._onTouch = function (e) { return; };
 
 
-export const drawnItems = new L.FeatureGroup(); // 그려진 도형들을 담을 그룹
-export let currentEditLayerId = null;  // 현재 수정 모드 중인 레이어 ID
-export let editLayerOriginalLatLng = null; // 마커 수정 전 원래 위치 (되돌리기/취소용)
-// bindPopup 등의 메소드를 그룹 전체에 일괄 적용하거나 이벤트를 전파받을 수 있습니다.
+// 앱에서 관리하는 모든 사용자 도형이 모이는 레이어 그룹입니다.
+// 원리: 개별 레이어 대신 그룹 단위로 add/remove/edit 대상을 통일하면 제어가 단순해집니다.
+export const drawnItems = new L.FeatureGroup();
+// 현재 편집 중인 레이어 ID (없으면 null)
+export let currentEditLayerId = null;
+// 편집 취소/되돌리기용 원본 좌표 스냅샷
+export let editLayerOriginalLatLng = null;
 map.addLayer(drawnItems);
 
 // Leaflet.draw 가상 버텍스(중간점) 아이콘 커스터마이징
-// _createMiddleMarker 오버라이드: 실제 버텍스보다 작고 반투명하게 표시
+// 원리: _createMiddleMarker를 감싸 middle marker를 "+" 형태로 바꿔
+// "새 버텍스 추가 지점"임을 시각적으로 구분합니다.
 (function () {
     if (L.Edit && L.Edit.PolyVerticesEdit) {
         const origCreateMiddleMarker = L.Edit.PolyVerticesEdit.prototype._createMiddleMarker;
         L.Edit.PolyVerticesEdit.prototype._createMiddleMarker = function (marker1, marker2) {
             origCreateMiddleMarker.call(this, marker1, marker2);
-            // Leaflet.draw 1.0.x 버전에서는 marker1._middleRight에 생성된 객체가 할당됨
+            // Leaflet.draw 1.0.x에서는 생성된 middle marker 참조가 marker1._middleRight에 들어갑니다.
             const middleMarker = marker1._middleRight;
             if (middleMarker) {
-                // 기존의 일반(네모) 버텍스 아이콘 정보를 저장
+                // 실제 버텍스로 전환될 때 원복할 수 있도록 기존 아이콘을 보관합니다.
                 const origIcon = middleMarker.options.icon || new L.DivIcon({ iconSize: new L.Point(10, 10), className: 'leaflet-div-icon leaflet-editing-icon' });
 
                 middleMarker.setIcon(L.divIcon({
@@ -44,14 +53,13 @@ map.addLayer(drawnItems);
                     iconSize: new L.Point(14, 14),
                     className: 'leaflet-div-icon leaflet-editing-icon leaflet-middle-icon'
                 }));
-                // CSS 설정이 적용되도록 0.6 투명도 재할당
+                // icon 교체 직후 스타일이 즉시 반영되도록 opacity를 다시 적용합니다.
                 middleMarker.setOpacity(1);
 
-                // 가상 버텍스(+)를 클릭하거나 끌어서(Drag) 실제 버텍스로 전환할 때
-                // 아이콘을 다시 원래의 네모 버텍스로 롤백합니다.
+                // 가상 버텍스(+)가 실제 버텍스로 승격되는 순간 원래 아이콘으로 되돌립니다.
                 middleMarker.once('mousedown touchstart click dragstart', function () {
                     this.setIcon(origIcon);
-                    this.setOpacity(1); // 실제 버텍스이므로 완전 불투명하게
+                    this.setOpacity(1);
                 });
             }
         };
@@ -59,10 +67,11 @@ map.addLayer(drawnItems);
 })();
 
 
-// 기본 아이콘 설정 (파란색)
+// 기본 점 기록 아이콘(파란색)입니다.
 const defaultSurveyIcon = createColoredMarkerIcon('#0040ff');
 
-// 그리기 도구 설정 (Leaflet.Draw)
+// Leaflet.Draw 툴바 설정입니다.
+// 원리: draw 옵션에서 사용 가능한 도형 타입을 제한해 앱 요구사항(점/선/면)만 노출합니다.
 const drawControl = new L.Control.Draw({
     edit: { featureGroup: drawnItems },
     draw: {
@@ -76,16 +85,22 @@ const drawControl = new L.Control.Draw({
 });
 map.addControl(drawControl);
 
+// 그리기 중 액션 버튼(완료/취소 등) 하단 툴바 DOM 참조
 const actionToolbar = document.getElementById('action-toolbar');
 
 
-/* --------------------------------------------------------------------------
-2. 그리기 제어 (Drawing Controls)
--------------------------------------------------------------------------- */
-/* 2-1. 그리기 시작/완료/취소 */
+/* ==========================================================================
+   2) 그리기 제어
+   ========================================================================== */
+/**
+ * 선택한 타입(point/line/polygon)의 그리기 모드를 시작합니다.
+ * 동작 원리: Drawer 인스턴스를 생성해 enable()하고, 완료/취소 UI를 함께 활성화합니다.
+ */
 export function startDraw(type) {
-    if (AppState.currentDrawer || currentEditLayerId !== null) return; // 측량/수정 모드 중 중복 시작 차단
+    // 이미 그리기/편집 모드라면 중복 진입을 막습니다.
+    if (AppState.currentDrawer || currentEditLayerId !== null) return;
 
+    // 도형 1개 단위로 기본 색상을 먼저 고정해 생성/스타일/저장 단계에서 일관되게 사용합니다.
     const randomColor = getRandomColor();
     AppState.currentDrawColor = randomColor;
 
@@ -113,9 +128,11 @@ export function startDraw(type) {
         highlightButton('btn-point');
     }
 
-    document.body.classList.add('recording-mode'); // UI 모드 변경
+    // 기록 모드 시각 상태(비네팅/버튼 강조)를 적용합니다.
+    document.body.classList.add('recording-mode');
 
-    // 수동 종료 처리를 위한 후킹
+    // 수동 완료 버튼으로만 종료되게 _finishShape를 감싸서 제어합니다.
+    // 원리: 자동 finish 호출을 AppState.isManualFinish 플래그로 게이트합니다.
     if (AppState.currentDrawer && (type === 'polygon' || type === 'polyline')) {
         AppState.currentDrawer._originalFinishShape = AppState.currentDrawer._finishShape;
         AppState.currentDrawer._finishShape = function () {
@@ -126,9 +143,13 @@ export function startDraw(type) {
     actionToolbar.style.display = 'flex';
 }
 
-// 그리기 완료
+/**
+ * 현재 그리기를 완료 처리합니다.
+ * 동작 원리: Drawer 구현별 complete API 차이를 순차 fallback으로 흡수합니다.
+ */
 export function completeDrawing() {
     if (AppState.currentDrawer) {
+        // 수동 완료 구간에서만 _finishShape가 동작하도록 임시 플래그를 켭니다.
         AppState.isManualFinish = true;
         if (AppState.currentDrawer.completeShape) AppState.currentDrawer.completeShape();
         else if (AppState.currentDrawer._finishShape) AppState.currentDrawer._finishShape();
@@ -138,7 +159,9 @@ export function completeDrawing() {
     resetDrawingState();
 }
 
-// 그리기 취소
+/**
+ * 현재 그리기를 취소하고 입력 중 상태를 정리합니다.
+ */
 export function cancelDrawing() {
     if (AppState.currentDrawer) {
         AppState.currentDrawer.disable();
@@ -147,88 +170,109 @@ export function cancelDrawing() {
     resetDrawingState();
 }
 
+/**
+ * 그리기 UI/임시 상태를 기본값으로 되돌립니다.
+ * 동작 원리: Drawer 외부 상태(UI class, pendingPhotos, 색상 캐시)를 한 곳에서 정리합니다.
+ */
 function resetDrawingState() {
     document.body.classList.remove('recording-mode');
     actionToolbar.style.display = 'none';
     resetButtonStyles();
 
+    // 점 생성 직전에 보관하던 첨부 사진 임시 버퍼를 비웁니다.
     if (AppState.pendingPhotos) {
         AppState.pendingPhotos = null;
     }
+    // 다음 그리기 시작 시 새 색상을 뽑도록 초기화
     AppState.currentDrawColor = null;
 }
 
 
 
-/* --------------------------------------------------------------------------
-3. 트랙 기록 (GPS Tracking)
--------------------------------------------------------------------------- */
-// GPS 좌표로 점 추가 (그리기 도중)
+/* ==========================================================================
+   3) GPS 입력
+   ========================================================================== */
+/**
+ * 현재 GPS 좌표를 그리기 도구에 추가합니다.
+ * 동작 원리:
+ * - 마커 모드면 즉시 CREATED 이벤트를 강제로 발생시켜 일반 생성 플로우를 재사용합니다.
+ * - 선/면 모드면 addVertex로 꼭짓점만 추가합니다.
+ */
 export function addGpsVertex() {
     if (!AppState.currentDrawer) return;
     if (!navigator.geolocation) { alert("GPS 미지원"); return; }
 
+    // 브라우저 위치 API로 1회 좌표를 가져옵니다.
     navigator.geolocation.getCurrentPosition(function (pos) {
         const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
 
         if (AppState.currentDrawer instanceof L.Draw.Marker) {
             const markerColor = AppState.currentDrawColor || '#0040ff';
             const marker = L.marker(latlng, { icon: createColoredMarkerIcon(markerColor) });
+            // Marker는 "점 1개=완료"이므로 Drawer를 종료한 뒤 CREATED 이벤트로 후속 처리 통일
             AppState.currentDrawer.disable();
             AppState.currentDrawer = null;
             map.fire(L.Draw.Event.CREATED, { layer: marker, layerType: 'marker' });
             resetDrawingState();
         } else {
+            // Polyline/Polygon은 현재 스케치에 버텍스만 누적
             AppState.currentDrawer.addVertex(latlng);
         }
+        // 입력 지점으로 화면 중심을 이동해 현장 사용성을 높입니다.
         map.panTo(latlng);
     }, function () {
         alert("GPS 수신 실패");
+    // 고정밀 옵션은 느릴 수 있지만 위치 정확도를 우선합니다.
     }, { enableHighAccuracy: true });
 }
 
+/**
+ * 현재 스케치의 마지막 버텍스를 삭제합니다.
+ */
 export function deleteLastVertex() {
     if (AppState.currentDrawer && AppState.currentDrawer.deleteLastVertex) AppState.currentDrawer.deleteLastVertex();
 }
 
-/* --------------------------------------------------------------------------
-4. 도형 편집 (Editing Features)
--------------------------------------------------------------------------- */
-// 개별 레이어 수정 (목록에서 "수정" 클릭 시)
+/* ==========================================================================
+   4) 도형 편집
+   ========================================================================== */
+/**
+ * 목록에서 선택한 단일 레이어를 편집 모드로 전환합니다.
+ * 동작 원리: 레이어 타입(마커/선면)에 따라 편집기(Dragging 또는 L.Edit.Poly)를 다르게 적용합니다.
+ */
 export function enableSingleLayerEdit(id) {
 
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (!layer) return;
 
     if (layer instanceof L.Marker) {
-        // 되돌리기를 위해 원래 위치 저장
+        // 마커는 좌표 1개만 관리하므로 원본 LatLng를 그대로 백업합니다.
         editLayerOriginalLatLng = layer.getLatLng();
         layer.dragging.enable();
     } else {
         if (!layer.editing) {
-            // Leaflet.Edit 모듈 초기화 확인
+            // 폴리곤/폴리라인은 Leaflet 편집 모듈 인스턴스를 생성해 편집 핸들을 붙입니다.
             if (L.Edit && L.Edit.Poly) layer.editing = new L.Edit.Poly(layer);
             else { alert("수정 모듈 오류"); return; }
         }
         if (layer.editing) layer.editing.enable();
         else { alert("수정 불가 도형"); return; }
-        // 되돌리기를 위해 원래 좌표 백업 (JSON 직렬화로 불변 복사본 생성)
+        // getLatLngs()는 참조가 섞일 수 있어 깊은 복사본(JSON)으로 원본 상태를 고정합니다.
         editLayerOriginalLatLng = JSON.parse(JSON.stringify(layer.getLatLngs()));
     }
 
     layer.closePopup();
     alert("측량한 기록의 버텍스를 수정합니다. 수정이 완료되면 하단의 [수정 완료] 버튼을 누르세요.");
-    document.body.classList.add('recording-mode'); // 파란 비네팅 유지
+    document.body.classList.add('recording-mode');
 
-    // 현재 편집 레이어 저장 및 하단 완료 버튼 표시
+    // 현재 편집 대상과 편집용 툴바를 함께 활성화합니다.
     currentEditLayerId = id;
     document.getElementById('edit-action-toolbar').style.display = 'flex';
 };
 
 /**
- * [수정 완료]
- * 하단 [수정 완료] 버튼 클릭 시 호출됩니다.
- * 편집을 종료하고 저장, UI를 갱신합니다.
+ * 편집을 확정하고 저장/화면을 갱신합니다.
+ * 동작 원리: 편집 종료 -> 속성 갱신 -> 저장 -> UI 복원 순서로 처리합니다.
  */
 export function completeSingleEdit() {
 
@@ -242,27 +286,28 @@ export function completeSingleEdit() {
         return;
     }
 
-    // 편집 종료
+    // 편집 핸들러를 비활성화해 좌표 수정을 종료합니다.
     if (layer instanceof L.Marker) layer.dragging.disable();
     else if (layer.editing) layer.editing.disable();
 
-    // 화면 및 저장소 갱신
+    // 좌표 변경분을 feature 정보로 재계산하고 즉시 저장합니다.
     updateLayerInfo(layer);
     saveToStorage();
     renderSurveyList();
 
-    // UI 상태 복원
+    // 편집 모드 UI/임시 상태를 정리합니다.
     document.body.classList.remove('recording-mode');
     document.getElementById('edit-action-toolbar').style.display = 'none';
     editLayerOriginalLatLng = null;
     currentEditLayerId = null;
 
-    // 수정한 레이어의 바텀 시트 다시 열기
+    // 편집 완료 직후 상세 바텀시트를 다시 열어 결과 확인 흐름을 유지합니다.
     layer.fire('click');
 };
 
 /**
- * [되돌리기] - 편집 내용을 취소하고 편집 모드는 유지
+ * 편집 내용을 원본으로 되돌리되, 편집 모드는 유지합니다.
+ * 동작 원리: 원본 스냅샷(editLayerOriginalLatLng)을 다시 적용합니다.
  */
 export function revertSingleEdit() {
 
@@ -271,20 +316,20 @@ export function revertSingleEdit() {
     if (!layer) return;
 
     if (layer instanceof L.Marker) {
-        // 마커: 원래 위치로 복원 (편집 모드 유지)
+        // 마커는 단일 좌표 복원만으로 되돌리기가 완료됩니다.
         if (editLayerOriginalLatLng) layer.setLatLng(editLayerOriginalLatLng);
     } else if (editLayerOriginalLatLng) {
-        // 도형: disable() 후 setLatLngs 후 편집 핸들러를 새로 생성
-        // (disable()이 버텍스 위치를 _latlngs에 덮어쓰는 문제를 피하기 위해 새 인스턴스 사용)
+        // 선/면은 편집기 내부 캐시가 있어 "disable -> 좌표복원 -> 편집기 재생성" 순서가 안전합니다.
         if (layer.editing) layer.editing.disable();
-        layer.setLatLngs(editLayerOriginalLatLng); // 선 + _latlngs 원본으로 복원
-        layer.editing = new L.Edit.Poly(layer);    // 이전 상태 완전 초기화
-        layer.editing.enable();                    // 현재 _latlngs(원본)으로 버텍스 생성
+        layer.setLatLngs(editLayerOriginalLatLng);
+        layer.editing = new L.Edit.Poly(layer);
+        layer.editing.enable();
     }
 };
 
 /**
- * [취소] - 편집 내용을 취소하고 편집 모드 종료
+ * 편집 내용을 원복하고 편집 모드를 종료합니다.
+ * 동작 원리: revert 동작 후 툴바/모드 상태까지 함께 닫습니다.
  */
 export function cancelSingleEdit() {
 
@@ -298,20 +343,20 @@ export function cancelSingleEdit() {
     }
 
     if (layer instanceof L.Marker) {
-        // 마커: 원래 위치로 복원 후 드래깅 종료
+        // 마커: 위치 원복 후 드래그 종료
         if (editLayerOriginalLatLng) layer.setLatLng(editLayerOriginalLatLng);
         layer.dragging.disable();
     } else {
-        // 도형: 원본 좌표로 복원 후 편집 종료
+        // 선/면: 원본 좌표 적용 후 편집 종료
         if (layer.editing) layer.editing.disable();
         if (editLayerOriginalLatLng) {
             layer.setLatLngs(editLayerOriginalLatLng);
-            // 편집 핸들러 새로 생성하여 이전 상태 초기화
+            // 다음 편집 시작 시 깨끗한 상태를 보장하도록 편집기를 재생성합니다.
             layer.editing = new L.Edit.Poly(layer);
         }
     }
 
-    // UI 상태 복원
+    // 편집 UI 상태를 초기화합니다.
     document.body.classList.remove('recording-mode');
     document.getElementById('edit-action-toolbar').style.display = 'none';
     editLayerOriginalLatLng = null;
@@ -320,61 +365,72 @@ export function cancelSingleEdit() {
     layer.openPopup();
 };
 
-/* 2-2. 이벤트 리스너 (map.on('draw:created') 등) */
-// 그리기 완료 이벤트 (도형 생성 시)
+/* ==========================================================================
+   5) 이벤트 처리
+   ========================================================================== */
+/**
+ * draw:created
+ * 동작 원리: Leaflet.Draw가 생성한 레이어를 앱 표준 feature 구조로 보강한 뒤
+ * drawnItems/AppState/UI 저장 흐름으로 연결합니다.
+ */
 map.on(L.Draw.Event.CREATED, function (event) {
-    // [교육용] 도형이 다 그려지면 이 이벤트가 발생합니다.
-    // 생성된 레이어에 고유 ID와 커스텀 속성(feature)을 추가하여 관리합니다.
     const layer = event.layer;
     let memo = prompt("기록명 입력:", getTimestampString());
-    if (memo === null) return; // 취소 시 무시
+    // prompt 취소(null)면 생성 자체를 중단합니다.
+    if (memo === null) return;
     if (!memo) memo = getTimestampString();
 
+    // 생성 직후 feature 메타를 붙여 앱 내부 식별/필터/스타일 기준을 통일합니다.
     const randomColor = AppState.currentDrawColor || getRandomColor();
     layer.feature = {
         type: "Feature",
         properties: { memo: memo, id: Date.now(), isHidden: false, customColor: randomColor }
     };
 
-    // 사진 첨부 점 측량 (Pending Photos) 확인
+    // 점 생성 전 임시 보관했던 사진 목록이 있으면 이 레이어에 1회 귀속시킵니다.
     if (AppState.pendingPhotos && AppState.pendingPhotos.length > 0) {
         layer.feature.properties.photos = AppState.pendingPhotos;
         AppState.pendingPhotos = null;
         
-        // 사진 추가로 만든 점은 카메라 이모지를 기본으로 설정
+        // 사진 기반 포인트임을 바로 구분할 수 있게 카메라 이모지를 기본값으로 사용합니다.
         layer.feature.properties.customEmoji = '📷';
         layer.feature.properties.customMarkerSize = 3;
     }
 
     if (event.layerType === 'marker') {
+        // 마커는 아이콘 기반 스타일(색상/이모지/크기)을 적용합니다.
         const emoji = layer.feature.properties.customEmoji || null;
         const size = layer.feature.properties.customMarkerSize || 3;
         layer.setIcon(createColoredMarkerIcon(randomColor, emoji, size));
     } else {
+        // 선/면은 path 스타일(color/fill)을 적용합니다.
         layer.setStyle({ color: randomColor, fillColor: randomColor });
         if (event.layerType === 'polygon' && !AppState.isPolygonFill) {
             layer.setStyle({ fillOpacity: 0 });
         }
     }
 
+    // 속성 반영 -> 그룹 추가 -> 저장 순으로 처리해 상태를 일관되게 유지합니다.
     updateLayerInfo(layer);
     drawnItems.addLayer(layer);
     saveToStorage();
 
+    // 그리기 모드를 종료하고 UI를 기본 상태로 복원합니다.
     resetDrawingState();
     AppState.currentDrawer = null;
 
+    // 생성된 레이어의 상세 확인 흐름을 바로 열어 사용자 피드백을 빠르게 제공합니다.
     layer.openPopup();
     switchSidebarTab('record');
     renderSurveyList();
 });
 
-// 편집 이벤트 핸들러
+/**
+ * draw:edited
+ * 동작 원리: 다중 편집 결과 레이어 집합(e.layers)을 순회해 정보 재계산 후 저장합니다.
+ */
 map.on('draw:edited', function (e) {
     e.layers.eachLayer(updateLayerInfo);
     saveToStorage();
     renderSurveyList();
 });
-
-
-

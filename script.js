@@ -1,6 +1,13 @@
 /* ==========================================================================
-   [모듈] 메인 컨트롤 타워 (script.js)
-   [역할] 초기화 및 모듈 조립 (Entry Point)
+   [모듈] 엔트리/오케스트레이션 모듈 (script.js)
+   [역할]
+   - 앱 시작 시 필요한 모듈을 조립하고 초기화 순서를 관리합니다.
+   - 지도 이벤트, 위치 추적, 트랙 기록, 버전 체크 같은 상위 흐름을 연결합니다.
+   - HTML 인라인 이벤트에서 사용할 window 브리지 함수를 등록합니다.
+   [동작 원리 요약]
+   - 실제 기능은 각 모듈(map/draw/data/ui/utils)에 두고, 이 파일은 연결과 순서 제어를 담당합니다.
+   - 상태는 AppState를 기준으로 공유하며, 저장/렌더링은 중요한 상태 전환 직후 즉시 호출합니다.
+   - DOMContentLoaded 시점에 초기화를 일괄 수행해 UI/데이터/지도 상태를 동기화합니다.
    ========================================================================== */
 
 import { APP_MODE, APP_VERSION, VWORLD_API_KEY, STORAGE_KEY, SEARCH_HISTORY_KEY, SEARCH_SETTING_KEY, SVG_ICONS } from './config.js';
@@ -62,19 +69,34 @@ import {
 } from './ui.js';
 
 
+/* ==========================================================================
+   1) UI 브리지 래퍼
+   ========================================================================== */
+/**
+ * UI 모듈의 목록 렌더 함수를 엔트리에서 재노출합니다.
+ * 동작 원리: 호출 경로를 script.js로 통일해도 실제 구현은 ui.js 단일 소스를 유지합니다.
+ */
 export function renderSurveyList() {
     uiRenderSurveyList();
 }
 
+/**
+ * 레이어 메타 정보 갱신 함수를 엔트리에서 재노출합니다.
+ */
 export function updateLayerInfo(layer) {
     uiUpdateLayerInfo(layer);
 }
 
-// 레이어 상태 변수 노출 (draw.js 등에서 사용)
+// 바텀시트 현재 선택 레이어 상태를 공용으로 노출합니다.
 export { currentBottomSheetLayerId, setCurrentBottomSheetLayerId };
 
-
-
+/* ==========================================================================
+   2) 딥링크/위치 추적
+   ========================================================================== */
+/**
+ * URL 딥링크(lat,lng)를 읽어 해당 좌표로 이동하고 정보 조회를 실행합니다.
+ * 동작 원리: setView 직후 약간 지연 후 조회를 호출해 지도 이동/렌더 타이밍 경합을 줄입니다.
+ */
 async function handleDeepLink() {
     const params = new URLSearchParams(window.location.search);
     const lat = parseFloat(params.get('lat'));
@@ -89,11 +111,19 @@ async function handleDeepLink() {
     }
 }
 
+/**
+ * 위치 추적 성공 콜백입니다.
+ * 동작 원리: 위치 마커/좌표 UI 갱신 후, 팔로우 모드일 때만 지도 중심을 이동합니다.
+ */
 function onTrackSuccess(pos) {
     updateLocationMarker(pos);
     if (AppState.isFollowing) map.panTo([pos.coords.latitude, pos.coords.longitude]);
 }
 
+/**
+ * 현재 위치 관련 시각 요소(정확도 원/방향 마커/좌표/주소)를 갱신합니다.
+ * 동작 원리: heading 값을 회전 아이콘에 반영해 이동 방향을 직관적으로 표시합니다.
+ */
 function updateLocationMarker(pos) {
     if (pos.coords.accuracy === 0) return;
     const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
@@ -122,6 +152,9 @@ function updateLocationMarker(pos) {
     updateCoordDisplay();
 }
 
+/**
+ * 내 위치 자동 추적(팔로우) 모드를 토글합니다.
+ */
 function toggleTracking() {
     const btn = document.getElementById('toggle-track-btn');
     if (!navigator.geolocation) { alert("GPS 미지원"); return; }
@@ -138,6 +171,10 @@ function toggleTracking() {
     }
 }
 
+/**
+ * 현재 위치로 한 번 이동합니다.
+ * 동작 원리: 그리기/편집 중에는 작업 중단을 피하기 위해 동작을 막습니다.
+ */
 function findMe() {
     if (AppState.currentDrawer || currentEditLayerId !== null) return;
     if (!navigator.geolocation) { alert("지역 위치 서비스가 지원되지 않는 디바이스입니다."); return; }
@@ -146,7 +183,10 @@ function findMe() {
     }, function () { alert("위치 정보를 가져오는 데 실패했습니다."); }, { enableHighAccuracy: true });
 }
 
-// 맵 클릭 이벤트 (UI.js로 옮기기엔 map 선언 위치와 엮여있어 여기에 둠)
+/* ==========================================================================
+   3) 지도 인터랙션 이벤트
+   ========================================================================== */
+// 지도 단일 클릭: 임시 경계/검색 마커/바텀시트를 정리합니다.
 map.on('click', function (e) {
     if (AppState.currentDrawer || currentEditLayerId !== null) return;
     if (AppState.isLayerClicked) return;
@@ -163,6 +203,7 @@ map.on('click', function (e) {
     closeBottomSheet();
 });
 
+// 지도 더블클릭: 해당 지점의 정보 팝업/경계 조회를 실행합니다.
 map.on('dblclick', function (e) {
     if (AppState.currentDrawer || currentEditLayerId !== null) return;
     map.panTo(e.latlng, { animate: true, duration: 0.3 });
@@ -170,9 +211,16 @@ map.on('dblclick', function (e) {
     fetchAndHighlightBoundary(e.latlng.lng, e.latlng.lat);
 });
 
-// 트랙 기록 관련 래퍼 (AppState 의존성 때문)
+/* ==========================================================================
+   4) 트랙 기록 + 화면 절전 방지
+   ========================================================================== */
+// Wake Lock 미지원 브라우저 fallback용 무음 비디오 핸들입니다.
 let noSleepVideo = null;
 
+/**
+ * 트랙 기록 중 화면 꺼짐을 방지합니다.
+ * 동작 원리: 지원 브라우저는 Wake Lock API, 미지원은 숨김 비디오 재생으로 대체합니다.
+ */
 export async function requestWakeLock() {
     try {
         if ('wakeLock' in navigator) {
@@ -193,6 +241,9 @@ export async function requestWakeLock() {
     noSleepVideo.play().catch(e => console.error("NoSleep fallback failed", e));
 }
 
+/**
+ * 화면 절전 방지 상태를 해제합니다.
+ */
 export function releaseWakeLock() {
     if (AppState.wakeLock !== null) {
         AppState.wakeLock.release().then(() => { AppState.wakeLock = null; });
@@ -202,12 +253,19 @@ export function releaseWakeLock() {
     }
 }
 
+// 백그라운드 복귀 시 트랙 모드면 wake lock을 다시 요청합니다.
 document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'visible' && AppState.currentDrawer === 'track') {
         requestWakeLock();
     }
 });
 
+/**
+ * GPS 트랙 기록을 시작합니다.
+ * 동작 원리:
+ * - watchPosition으로 연속 좌표를 수집합니다.
+ * - 직전 좌표와의 거리가 trackInterval 이상일 때만 선분 점을 추가합니다.
+ */
 function startTrackRecording() {
     if (AppState.currentDrawer || currentEditLayerId !== null) return;
     if (!navigator.geolocation) { alert('그리기 GPS가 지원되지 않는 기기입니다.'); return; }
@@ -252,6 +310,9 @@ function startTrackRecording() {
     );
 }
 
+/**
+ * 동작 중인 GPS watchPosition 구독을 중지합니다.
+ */
 function stopTrackWatch() {
     if (AppState.trackWatchId !== null) {
         navigator.geolocation.clearWatch(AppState.trackWatchId);
@@ -259,12 +320,19 @@ function stopTrackWatch() {
     }
 }
 
+/**
+ * 트랙 기록을 취소하고 임시 폴리라인을 제거합니다.
+ */
 function cancelTrackRecording() {
     stopTrackWatch();
     if (AppState.trackPolyline) { map.removeLayer(AppState.trackPolyline); AppState.trackPolyline = null; }
     resetTrackUI();
 }
 
+/**
+ * 트랙 기록 UI/상태를 기본값으로 되돌립니다.
+ * 동작 원리: 드로어 상태, 툴바, wake lock, 절전모드까지 한 번에 정리합니다.
+ */
 function resetTrackUI() {
     AppState.currentDrawer = null;
     AppState.lastTrackLatLng = null;
@@ -275,6 +343,10 @@ function resetTrackUI() {
     unlockSleepMode();
 }
 
+/**
+ * 트랙 기록을 확정해 일반 레이어(Polyline)로 저장합니다.
+ * 동작 원리: 임시 trackPolyline을 feature가 있는 영구 레이어로 변환한 뒤 저장합니다.
+ */
 function completeTrackRecording() {
     stopTrackWatch();
     const latlngs = AppState.trackPolyline ? AppState.trackPolyline.getLatLngs() : [];
@@ -303,6 +375,13 @@ function completeTrackRecording() {
     resetTrackUI();
 }
 
+/* ==========================================================================
+   5) 사진 기록 보조
+   ========================================================================== */
+/**
+ * 사진 첨부용 점 기록 시작 메뉴를 엽니다.
+ * 동작 원리: 임시 file input DOM을 만들고 메뉴 선택(촬영/갤러리)으로 분기합니다.
+ */
 export function startPhotoPoint() {
     if (AppState.currentDrawer || currentEditLayerId !== null) return;
 
@@ -319,6 +398,10 @@ export function startPhotoPoint() {
     openPhotoSelectMenu(null, tempId);
 }
 
+/**
+ * 사진 점 기록 전처리(리사이즈/임시저장) 후 마커 그리기를 시작합니다.
+ * 동작 원리: 파일을 base64로 읽고 resizeImage를 거쳐 AppState.pendingPhotos에 보관합니다.
+ */
 export function processPendingPhotoFiles(input) {
     const files = input.files;
     if (!files || files.length === 0) return;
@@ -340,17 +423,21 @@ export function processPendingPhotoFiles(input) {
         });
         Promise.all(promises).then(results => {
             AppState.pendingPhotos = results;
-            input.value = ''; // 초기화
+            input.value = '';
 
             const tempDiv = document.getElementById('temp-inputs-new-photo-point');
             if (tempDiv) tempDiv.remove();
 
-            // 이미지 선택/촬영 후 마커 찍기 그리기 도구 실행
+            // 전처리 완료 후 마커 드로어를 시작하면 created 이벤트에서 사진이 레이어에 귀속됩니다.
             startDraw('marker');
         });
     });
 }
 
+/**
+ * 트랙 기록 중 현재 위치에 사진 포인트를 추가합니다.
+ * 동작 원리: 현재 track 색상을 공유하는 마커를 만들고, 즉시 저장 후 파일 선택 메뉴를 엽니다.
+ */
 function addTrackPhotoPoint(event) {
     if (!AppState.lastTrackLatLng) { alert('GPS 위치 수신 대기 중...'); return; }
     const trackColor = AppState.trackPolyline ? AppState.trackPolyline.options.color : '#3388ff';
@@ -376,45 +463,52 @@ function addTrackPhotoPoint(event) {
     openPhotoSelectMenu(event, markerId);
 }
 
-// ============================================================
-// 버전 체크 및 강제 업데이트
-// ============================================================
+/* ==========================================================================
+   6) 버전 체크/강제 업데이트
+   ========================================================================== */
 
+/**
+ * 현재 앱 버전과 서버 최신 버전을 비교해 업데이트 배지를 표시합니다.
+ * 동작 원리: 캐시 우회를 위해 쿼리 타임스탬프를 붙여 config.js를 가져옵니다.
+ */
 async function checkAppVersion() {
-    // 현재 버전 표시
+    // 현재 실행 중 버전을 UI에 표시합니다.
     const versionEl = document.getElementById('app-version-display');
     if (versionEl) versionEl.textContent = APP_VERSION;
 
     try {
-        // 캐시를 우회하여 서버의 최신 config.js를 가져옴
+        // 캐시 우회 fetch
         const res = await fetch('./config.js?t=' + Date.now());
         if (!res.ok) return;
         const text = await res.text();
 
-        // 정규식으로 APP_VERSION 추출
+        // 파일 텍스트에서 APP_VERSION 값을 추출합니다.
         const match = text.match(/APP_VERSION\s*=\s*"([^"]+)"/);
         if (!match) return;
 
         const serverVersion = match[1];
         if (serverVersion !== APP_VERSION) {
-            // 버전이 다르면 업데이트 배지만 표시 (버전 클릭으로 강제 업데이트 가능)
+            // 버전 차이가 있으면 배지만 노출하고, 실제 업데이트는 사용자 액션으로 수행합니다.
             const badge = document.getElementById('update-badge');
             if (badge) badge.style.display = 'inline';
         }
     } catch (e) {
-        // 네트워크 오류 등은 무시
+        // 버전 체크 실패는 앱 핵심 기능과 무관하므로 로그만 남기고 계속 진행합니다.
         console.warn('버전 체크 실패:', e);
     }
 }
 
+/**
+ * 캐시/서비스워커를 정리한 뒤 앱을 강제 새로고침합니다.
+ */
 async function forceAppUpdate() {
     if (!confirm('최신 버전으로 업데이트합니다.')) return;
     try {
-        // 브라우저의 모든 캐시 삭제
+        // Cache Storage 전체 삭제
         const keys = await caches.keys();
         await Promise.all(keys.map(key => caches.delete(key)));
 
-        // 등록된 모든 서비스 워커 해제
+        // 서비스워커 등록 해제
         if ('serviceWorker' in navigator) {
             const regs = await navigator.serviceWorker.getRegistrations();
             await Promise.all(regs.map(reg => reg.unregister()));
@@ -425,7 +519,13 @@ async function forceAppUpdate() {
     window.location.reload(true);
 }
 
-// 초기화 이벤트
+/* ==========================================================================
+   7) 앱 부트스트랩 (DOMContentLoaded)
+   ========================================================================== */
+/**
+ * 앱 시작 초기화 루틴입니다.
+ * 동작 원리: 모드별 UI 분기 -> 이벤트 바인딩 -> 저장 데이터 로드 -> 지도/UI 동기화 순으로 진행합니다.
+ */
 document.addEventListener('DOMContentLoaded', async () => {
     if (APP_MODE === 'public') {
         document.body.classList.add('has-ad-main');
@@ -475,7 +575,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     syncSidebarUI();
     checkAppVersion();
 
-    // GPS 시작
+    // 위치 추적 시작: 실시간 마커 갱신 + (딥링크가 없을 때만) 초기 중심 이동
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(onTrackSuccess, null, { enableHighAccuracy: true });
         const params = new URLSearchParams(window.location.search);
@@ -489,8 +589,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 
+/* ==========================================================================
+   8) window 브리지 (HTML 인라인 이벤트 연동)
+   ========================================================================== */
+// HTML onclick 등에서 직접 호출할 수 있도록 핵심 함수를 window에 연결합니다.
 window.findMe = findMe;
 window.toggleTracking = toggleTracking;
+// 프로젝트 전환 시 현재 프로젝트를 먼저 저장한 뒤 새 프로젝트를 로드합니다.
 window.switchProject = (id) => {
     saveToStorage();
     AppState.currentProjectId = parseInt(id);
@@ -509,6 +614,7 @@ window.saveCurrentBoundary = saveCurrentBoundary;
 window.openSearchModal = openSearchModal;
 window.closeSearchModal = closeSearchModal;
 window.executeMapSearch = executeMapSearch;
+// 가져오기 경고 모달을 거쳐 파일 입력을 열어줍니다.
 window.triggerFileInput = () => {
     if (localStorage.getItem('hide_import_warning') === 'true') {
         document.getElementById('geoJsonInput').click();
@@ -521,6 +627,7 @@ window.triggerFileInput = () => {
     }
 };
 
+// 가져오기 경고 모달 닫기
 window.closeImportWarningModal = () => {
     const overlay = document.getElementById('import-warning-modal-overlay');
     if (!overlay) return;
@@ -528,6 +635,7 @@ window.closeImportWarningModal = () => {
     setTimeout(() => { overlay.style.display = 'none'; }, 300);
 };
 
+// 경고 확인 후 파일 선택창 열기 (옵션에 따라 이후 경고 숨김 저장)
 window.proceedWithImport = () => {
     const chk = document.getElementById('chk-hide-import-warning');
     if (chk && chk.checked) {
@@ -547,14 +655,14 @@ window.setTrackInterval = (value) => {
     AppState.trackInterval = parseInt(value);
     localStorage.setItem('setting_track_interval', value);
 };
+// 폴리곤 채움 표시 전역 설정을 즉시 지도 레이어 스타일에 반영합니다.
 window.setPolygonFill = (value) => {
     const isFill = (value === 'true' || value === true);
     AppState.isPolygonFill = isFill;
     localStorage.setItem('setting_polygon_fill', isFill.toString());
 
     drawnItems.getLayers().forEach(layer => {
-        // layer.feature.geometry는 새로 그린 직후엔 객체가 없습니다. (새로고침해야 생성됨)
-        // 따라서 L.Polygon 객체인지 여부로 다이렉트 확인합니다.
+        // 새로 생성 직후에는 geometry 메타가 없을 수 있어 Leaflet 타입(L.Polygon)으로 판별합니다.
         if (layer instanceof L.Polygon) {
             if (layer.feature && layer.feature.properties && typeof layer.feature.properties.customFill === 'boolean') {
                 layer.setStyle({ fillOpacity: layer.feature.properties.customFill ? 0.2 : 0 });
@@ -584,9 +692,11 @@ window.shareMyLocation = () => {
         url: shareUrl
     };
     if (navigator.share) navigator.share(shareData);
+    // Web Share API 미지원 브라우저는 텍스트 복사로 대체합니다.
     else copyText(`${shareData.text}\n${shareUrl}`);
 };
 window.clearAllData = clearAllData;
+// 목록 전체 선택/해제를 "isHidden + 레이어 스타일"로 동기화합니다.
 window.toggleAllLayers = (isChecked) => {
     drawnItems.getLayers().forEach(layer => {
         layer.feature.properties.isHidden = !isChecked;
@@ -611,6 +721,7 @@ window.toggleAllLayers = (isChecked) => {
     uiRenderSurveyList();
 };
 
+// 현재 선택된(숨김 아님) 레이어를 일괄 삭제합니다.
 window.deleteSelectedLayers = () => {
     let deletedCount = 0;
     const layersToRemove = [];
@@ -640,8 +751,9 @@ window.deleteSelectedLayers = () => {
     }
 };
 
+// 현재 선택된(숨김 아님) 레이어를 일괄 내보냅니다.
 window.exportSelectedLayers = async () => {
-    // 체크된(화면에 표시된, isHidden이 false인) 레이어 목록 수집
+    // 화면 표시 중(isHidden=false) 레이어를 내보내기 대상으로 수집
     const layers = drawnItems.getLayers().filter(
         l => l.feature && l.feature.properties && !l.feature.properties.isHidden
     );
@@ -651,7 +763,7 @@ window.exportSelectedLayers = async () => {
         return;
     }
 
-    // 파일 형식 선택 모달 표시
+    // 포맷 선택 모달을 Promise로 열고 결과를 받습니다.
     let format;
     try {
         format = await new Promise((resolve, reject) => {
@@ -665,10 +777,10 @@ window.exportSelectedLayers = async () => {
             setTimeout(() => overlay.classList.add('visible'), 10);
         });
     } catch {
-        return; // 취소
+        return;
     }
 
-    // 선택된 형식으로 각 레이어 일괄 저장
+    // 선택된 포맷으로 일괄 저장
     await exportLayerWithFormat(layers, format);
     alert(`${layers.length}개의 기록을 ${format.toUpperCase()} 형식으로 저장합니다.`);
 };
@@ -690,4 +802,3 @@ window.cancelSingleEdit = cancelSingleEdit;
 window.handleFileSelect = handleFileSelect;
 window.forceAppUpdate = forceAppUpdate;
 window.closeExportFormatModal = closeExportFormatModal;
-

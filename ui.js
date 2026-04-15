@@ -1,6 +1,8 @@
 /* ==========================================================================
    [모듈] UI 매니저 (ui.js)
-   [역할] 사이드바, 바텀시트, 모달창 등 화면 시각 요소 제어
+   [역할] 사이드바/바텀시트/모달/목록 렌더링 등 앱의 화면 상호작용을 총괄 제어
+   [입력] AppState, 지도(map), 레이어(drawnItems), 로컬 저장소(localStorage)
+   [출력] DOM 갱신, 지도 이동/스타일 변경, 전역(window) UI 액션 바인딩
    ========================================================================== */
 import { VWORLD_API_KEY, SEARCH_HISTORY_KEY, SEARCH_SETTING_KEY, SVG_ICONS } from './config.js';
 import { AppState } from './state.js';
@@ -20,14 +22,32 @@ export let currentPhotoList = [];
 export let currentPhotoIndex = 0;
 export let currentPhotoLayerId = null;
 export let currentContextId = null;
+let isUiRuntimeInitialized = false;
 
-// 초기화: 저장된 검색 설정 불러오기
-(function initSearchSettings() {
+/**
+ * [함수] initSearchSettings
+ * [역할] 초기 이벤트와 기본 상태를 설정한다.
+ * [원리] 로컬 스토리지의 SEARCH_SETTING_KEY 값을 읽고,
+ *        문자열 true/false를 앱 전역 검색기록 플래그로 변환해 초기 상태를 맞춘다.
+ */
+function initSearchSettings() {
     const setting = localStorage.getItem(SEARCH_SETTING_KEY);
     if (setting !== null) { isSearchHistoryEnabled = (setting === 'true'); }
-})();
+}
 
+/**
+ * [함수] setIsSearchHistoryEnabled
+ * [역할] 외부 입력값으로 내부 상태를 설정한다.
+ * [원리] 외부에서 전달된 값을 내부 상태 변수에 직접 반영해,
+ *        후속 UI 로직이 같은 기준 상태를 참조하도록 만든다.
+ */
 export function setIsSearchHistoryEnabled(val) { isSearchHistoryEnabled = val; }
+/**
+ * [함수] setCurrentBottomSheetLayerId
+ * [역할] 외부 입력값으로 내부 상태를 설정한다.
+ * [원리] 외부에서 전달된 값을 내부 상태 변수에 직접 반영해,
+ *        후속 UI 로직이 같은 기준 상태를 참조하도록 만든다.
+ */
 export function setCurrentBottomSheetLayerId(id) { currentBottomSheetLayerId = id; }
 
 /* --------------------------------------------------------------------------
@@ -35,6 +55,12 @@ export function setCurrentBottomSheetLayerId(id) { currentBottomSheetLayerId = i
    -------------------------------------------------------------------------- */
 /* 1-1. 열기 및 닫기 */
 
+/**
+ * [함수] openSidebar
+ * [역할] 관련 UI를 열고 상호작용 가능한 상태로 만든다.
+ * [원리] 대상 DOM/레이어 존재 여부를 확인한 뒤 display 값을 열고,
+ *        requestAnimationFrame 또는 setTimeout으로 visible 클래스를 붙여 전환 애니메이션을 시작한다.
+ */
 export function openSidebar() {
     if (AppState.currentDrawer || currentEditLayerId !== null) return;
     syncSidebarUI();
@@ -44,6 +70,12 @@ export function openSidebar() {
     setTimeout(() => { overlay.classList.add('visible'); }, 10);
 }
 
+/**
+ * [함수] closeSidebar
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closeSidebar() {
     const overlay = document.getElementById('sidebar-overlay');
     overlay.classList.remove('visible');
@@ -51,6 +83,12 @@ export function closeSidebar() {
 }
 
 /* 1-2. 탭 전환 및 UI 동기화 */
+/**
+ * [함수] syncSidebarUI
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 export function syncSidebarUI() {
     const hasBase = map.hasLayer(vworldBase);
     const hasSat = map.hasLayer(vworldSatellite);
@@ -87,8 +125,14 @@ export function syncSidebarUI() {
     if (chkNasGuk) chkNasGuk.checked = map.hasLayer(nasGukLayer);
 }
 
+/**
+ * [함수] switchSidebarTab
+ * [역할] 활성 대상(탭/모드)을 바꾸고 연관 UI를 동기화한다.
+ * [원리] 선택된 탭/모드 값을 기준으로 active 클래스와 표시 대상을 재설정하고,
+ *        필요한 후속 렌더링 함수를 호출해 화면과 상태가 같은 기준을 보게 만든다.
+ */
 export function switchSidebarTab(tabName) {
-    // 모든 탭 버튼과 콘텐츠 비활성수
+    // 모든 탭 버튼과 콘텐츠 비활성화
     ['map', 'project', 'record'].forEach(t => {
         const btn = document.getElementById('tab-btn-' + t);
         const content = document.getElementById('content-' + t);
@@ -107,6 +151,12 @@ export function switchSidebarTab(tabName) {
     }
 }
 
+/**
+ * [함수] unlockHiddenLayers
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 export function unlockHiddenLayers() {
     const section = document.getElementById('hidden-layer-section');
     const btnLock = document.getElementById('btn-lock');
@@ -235,6 +285,12 @@ export function unlockHiddenLayers() {
    -------------------------------------------------------------------------- */
 /* 2-1. 검색창 제어 및 API 호출 */
 
+/**
+ * [함수] toggleSearchBox
+ * [역할] 현재 상태를 기준으로 표시/동작을 반전 전환한다.
+ * [원리] 현재 클래스/상태 플래그를 읽어 분기한 뒤 반대 상태로 전환하고,
+ *        연관 메뉴·패널의 표시 상태를 함께 동기화해 UI 충돌을 방지한다.
+ */
 export function toggleSearchBox() {
     if (AppState.currentDrawer || currentEditLayerId !== null) return;
     const box = document.getElementById('search-container');
@@ -261,6 +317,12 @@ export function toggleSearchBox() {
     }
 }
 
+/**
+ * [함수] switchSearchTab
+ * [역할] 활성 대상(탭/모드)을 바꾸고 연관 UI를 동기화한다.
+ * [원리] 선택된 탭/모드 값을 기준으로 active 클래스와 표시 대상을 재설정하고,
+ *        필요한 후속 렌더링 함수를 호출해 화면과 상태가 같은 기준을 보게 만든다.
+ */
 export function switchSearchTab(tabId) {
     document.querySelectorAll('.search-tab-btn').forEach(btn => {
         btn.classList.remove('active');
@@ -293,6 +355,12 @@ export function switchSearchTab(tabId) {
     }
 }
 
+/**
+ * [함수] renderCoordSearchInputs
+ * [역할] 현재 데이터 상태를 화면 요소로 재구성해 렌더링한다.
+ * [원리] 원본 데이터(AppState/레이어 컬렉션)를 정렬·필터링해 표시 순서를 정하고,
+ *        DOM 노드 또는 HTML을 재구성해 현재 상태를 화면에 다시 그린다.
+ */
 export function renderCoordSearchInputs() {
     const container = document.getElementById('search-coord-inputs');
     if (!container) return;
@@ -337,6 +405,12 @@ export function renderCoordSearchInputs() {
     }
 }
 
+/**
+ * [함수] callVworldSearchApi
+ * [역할] 외부 API 호출을 래핑해 비동기 결과를 반환한다.
+ * [원리] JSONP 콜백 이름을 동적으로 만들고 script 요청을 발행한 뒤,
+ *        응답 콜백에서 정제된 결과 배열을 Promise resolve로 반환한다.
+ */
 export function callVworldSearchApi(query, type) {
     return new Promise(resolve => {
         const callbackName = 'vworld_search_' + type + '_' + Math.floor(Math.random() * 100000);
@@ -358,6 +432,12 @@ export function callVworldSearchApi(query, type) {
     });
 }
 
+/**
+ * [함수] callVworldCoordApi
+ * [역할] 외부 API 호출을 래핑해 비동기 결과를 반환한다.
+ * [원리] JSONP 콜백 이름을 동적으로 만들고 script 요청을 발행한 뒤,
+ *        응답 콜백에서 정제된 결과 배열을 Promise resolve로 반환한다.
+ */
 export function callVworldCoordApi(query, type) {
     return new Promise(resolve => {
         const callbackName = 'vworld_coord_' + Math.floor(Math.random() * 100000);
@@ -387,6 +467,12 @@ export function callVworldCoordApi(query, type) {
     });
 }
 
+/**
+ * [함수] executeSearch
+ * [역할] 사용자 선택에 따라 실제 동작(이동/저장/연결)을 수행한다.
+ * [원리] 검색 타입(주소/국가지점번호/좌표)에 따라 입력 파싱 경로를 분기하고,
+ *        VWorld 조회 결과를 병합·중복제거·정렬한 뒤 지도 이동과 결과 패널 표시를 제어한다.
+ */
 export async function executeSearch(typeStr = 'address') {
     if (typeStr === 'national') {
         const query = document.getElementById('search-input-national').value;
@@ -446,8 +532,6 @@ export async function executeSearch(typeStr = 'address') {
     // address type
     const queryEl = document.getElementById('search-input-address');
     let query = queryEl ? queryEl.value : "";
-
-    // (이전에 검색창에서 string을 넘겼을 때의 하위호환이었으나 제거 후 완전 분리)
 
     if (!query) return;
 
@@ -509,6 +593,12 @@ export async function executeSearch(typeStr = 'address') {
     }
 }
 
+/**
+ * [함수] handleSearchResults
+ * [역할] 이벤트 입력을 받아 분기 처리하고 후속 함수를 호출한다.
+ * [원리] 이벤트 컨텍스트를 해석해 예외/가드 조건을 먼저 처리하고,
+ *        조건에 맞는 작업 함수로 분기해 사용자 의도에 맞는 동작을 실행한다.
+ */
 function handleSearchResults(items) {
     if (items.length === 1) {
         moveToSearchResult(items[0]);
@@ -518,6 +608,12 @@ function handleSearchResults(items) {
     }
 }
 
+/**
+ * [함수] renderSearchResultList
+ * [역할] 현재 데이터 상태를 화면 요소로 재구성해 렌더링한다.
+ * [원리] 원본 데이터(AppState/레이어 컬렉션)를 정렬·필터링해 표시 순서를 정하고,
+ *        DOM 노드 또는 HTML을 재구성해 현재 상태를 화면에 다시 그린다.
+ */
 export function renderSearchResultList(items) {
     const listEl = document.getElementById('search-result-list');
     if (!listEl) return;
@@ -550,6 +646,12 @@ export function renderSearchResultList(items) {
     });
 }
 
+/**
+ * [함수] closeSearchResult
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closeSearchResult() {
     const panel = document.getElementById('search-result-panel');
     if (panel) panel.style.display = 'none';
@@ -557,6 +659,12 @@ export function closeSearchResult() {
     if (input) input.focus();
 }
 
+/**
+ * [함수] moveToSearchResult
+ * [역할] 대상을 다른 위치/컨텍스트로 이동시킨다.
+ * [원리] 대상 좌표 또는 엔티티를 기준으로 이동 목적을 계산하고,
+ *        지도 위치 또는 데이터 소속을 실제로 이동한 뒤 연관 UI를 정리한다.
+ */
 function moveToSearchResult(result) {
     const point = result.point;
     map.flyTo([point.y, point.x], 16, { duration: 1.5 });
@@ -575,15 +683,39 @@ function moveToSearchResult(result) {
 }
 
 /* 2-3. 검색 기록 관리 */
+/**
+ * [함수] getActiveHistoryKey
+ * [역할] 현재 조건에 맞는 값을 조회해 반환한다.
+ * [원리] 현재 활성 탭/상태를 기준으로 조회 키를 계산하고,
+ *        해당 키에 대응하는 값을 읽어 호출자에 반환한다.
+ */
 function getActiveHistoryKey() {
     const activeTab = document.querySelector('.search-tab-btn.active');
     const tabId = activeTab ? activeTab.dataset.tab : 'address';
     return tabId === 'national' ? SEARCH_HISTORY_KEY + '_national' : SEARCH_HISTORY_KEY;
 }
 
+/**
+ * [함수] getHistory
+ * [역할] 현재 조건에 맞는 값을 조회해 반환한다.
+ * [원리] 현재 활성 탭/상태를 기준으로 조회 키를 계산하고,
+ *        해당 키에 대응하는 값을 읽어 호출자에 반환한다.
+ */
 export function getHistory() { const json = localStorage.getItem(getActiveHistoryKey()); return json ? JSON.parse(json) : []; }
+/**
+ * [함수] saveHistory
+ * [역할] 변경된 내용을 저장소 또는 상태에 기록한다.
+ * [원리] 현재 편집 대상과 입력값 유효성을 확인한 뒤,
+ *        속성 반영 후 저장소 업데이트와 관련 UI 리렌더를 함께 실행한다.
+ */
 export function saveHistory(list) { localStorage.setItem(getActiveHistoryKey(), JSON.stringify(list)); }
 
+/**
+ * [함수] addToHistory
+ * [역할] 새 항목을 중복 규칙에 맞게 추가한다.
+ * [원리] 기존 목록에서 중복 여부를 정리한 뒤 새 항목을 선두에 추가하고,
+ *        최대 개수 제한을 적용해 기록 데이터가 과도하게 커지지 않도록 유지한다.
+ */
 export function addToHistory(keyword) {
     let list = getHistory();
     list = list.filter(item => item !== keyword);
@@ -592,6 +724,12 @@ export function addToHistory(keyword) {
     saveHistory(list);
 }
 
+/**
+ * [함수] toggleHistorySave
+ * [역할] 현재 상태를 기준으로 표시/동작을 반전 전환한다.
+ * [원리] 현재 클래스/상태 플래그를 읽어 분기한 뒤 반대 상태로 전환하고,
+ *        연관 메뉴·패널의 표시 상태를 함께 동기화해 UI 충돌을 방지한다.
+ */
 export function toggleHistorySave(checked) {
     isSearchHistoryEnabled = checked;
     localStorage.setItem(SEARCH_SETTING_KEY, checked);
@@ -601,6 +739,12 @@ export function toggleHistorySave(checked) {
     if (clearBtn) clearBtn.style.display = checked ? 'inline-block' : 'none';
 }
 
+/**
+ * [함수] clearHistoryAll
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 export function clearHistoryAll() {
     if (confirm("검색 기록을 모두 삭제하시겠습니까?")) {
         saveHistory([]);
@@ -608,6 +752,12 @@ export function clearHistoryAll() {
     }
 }
 
+/**
+ * [함수] deleteHistoryItem
+ * [역할] 대상을 삭제하고 후속 UI/저장 상태를 정리한다.
+ * [원리] 삭제 대상 존재와 사용자 확인을 먼저 검증한 뒤,
+ *        컬렉션에서 제거하고 저장·리스트 갱신·선택 상태 정리를 순서대로 수행한다.
+ */
 export function deleteHistoryItem(index) {
     const list = getHistory();
     list.splice(index, 1);
@@ -615,6 +765,12 @@ export function deleteHistoryItem(index) {
     renderHistoryList();
 }
 
+/**
+ * [함수] showHistoryPanel
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 export function showHistoryPanel() {
     const chk = document.getElementById('chk-history-save');
     if (chk) chk.checked = isSearchHistoryEnabled;
@@ -630,6 +786,12 @@ export function showHistoryPanel() {
     document.getElementById('history-panel').style.display = 'block';
 }
 
+/**
+ * [함수] renderHistoryList
+ * [역할] 현재 데이터 상태를 화면 요소로 재구성해 렌더링한다.
+ * [원리] 원본 데이터(AppState/레이어 컬렉션)를 정렬·필터링해 표시 순서를 정하고,
+ *        DOM 노드 또는 HTML을 재구성해 현재 상태를 화면에 다시 그린다.
+ */
 export function renderHistoryList() {
     const list = getHistory();
     const ul = document.getElementById('history-list');
@@ -666,12 +828,24 @@ export function renderHistoryList() {
    3. 바텀시트 제어 (BottomSheet)
    -------------------------------------------------------------------------- */
 /* 3-1. 바텀시트 열기/닫기 및 상태 제어 */
+/**
+ * [함수] openBottomSheet
+ * [역할] 관련 UI를 열고 상호작용 가능한 상태로 만든다.
+ * [원리] 대상 DOM/레이어 존재 여부를 확인한 뒤 display 값을 열고,
+ *        requestAnimationFrame 또는 setTimeout으로 visible 클래스를 붙여 전환 애니메이션을 시작한다.
+ */
 export function openBottomSheet(title, bodyHtml) {
     document.getElementById('bottom-sheet-body').innerHTML = bodyHtml;
     document.getElementById('bottom-sheet').classList.remove('full-open');
     document.getElementById('bottom-sheet').classList.add('open');
 }
 
+/**
+ * [함수] closeBottomSheet
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closeBottomSheet() {
     const bs = document.getElementById('bottom-sheet');
     if (!bs) return;
@@ -685,6 +859,12 @@ export function closeBottomSheet() {
     currentBottomSheetLayerId = null;
 }
 
+/**
+ * [함수] toggleBottomSheetState
+ * [역할] 현재 상태를 기준으로 표시/동작을 반전 전환한다.
+ * [원리] 현재 클래스/상태 플래그를 읽어 분기한 뒤 반대 상태로 전환하고,
+ *        연관 메뉴·패널의 표시 상태를 함께 동기화해 UI 충돌을 방지한다.
+ */
 export function toggleBottomSheetState() {
     const bottomSheet = document.getElementById('bottom-sheet');
     if (bottomSheet.classList.contains('open')) {
@@ -692,6 +872,12 @@ export function toggleBottomSheetState() {
     }
 }
 
+/**
+ * [함수] toggleBottomSheetMoreMenu
+ * [역할] 현재 상태를 기준으로 표시/동작을 반전 전환한다.
+ * [원리] 현재 클래스/상태 플래그를 읽어 분기한 뒤 반대 상태로 전환하고,
+ *        연관 메뉴·패널의 표시 상태를 함께 동기화해 UI 충돌을 방지한다.
+ */
 export function toggleBottomSheetMoreMenu(event) {
     if (event) event.stopPropagation();
     const menu = document.getElementById('bottom-sheet-more-menu');
@@ -705,10 +891,22 @@ export function toggleBottomSheetMoreMenu(event) {
     }
 }
 
+/**
+ * [함수] isLeafletLatLngPoint
+ * [역할] 입력 대상이 조건을 만족하는지 불리언으로 판별한다.
+ * [원리] 입력 객체의 타입과 필수 필드를 순서대로 검사해,
+ *        후속 로직 분기에서 재사용할 불리언 판정 결과를 반환한다.
+ */
 function isLeafletLatLngPoint(point) {
     return !!point && typeof point.lat === 'number' && typeof point.lng === 'number';
 }
 
+/**
+ * [함수] isSimplePolygonLayer
+ * [역할] 입력 대상이 조건을 만족하는지 불리언으로 판별한다.
+ * [원리] 입력 객체의 타입과 필수 필드를 순서대로 검사해,
+ *        후속 로직 분기에서 재사용할 불리언 판정 결과를 반환한다.
+ */
 function isSimplePolygonLayer(layer) {
     if (!(layer instanceof L.Polygon)) return false;
     const latlngs = layer.getLatLngs();
@@ -719,10 +917,22 @@ function isSimplePolygonLayer(layer) {
         && isLeafletLatLngPoint(latlngs[0][0]);
 }
 
+/**
+ * [함수] cloneRing
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 function cloneRing(ring) {
     return ring.map(point => L.latLng(point.lat, point.lng));
 }
 
+/**
+ * [함수] normalizeRing
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 function normalizeRing(ring) {
     if (!Array.isArray(ring)) return [];
     const normalized = cloneRing(ring);
@@ -736,6 +946,12 @@ function normalizeRing(ring) {
     return normalized;
 }
 
+/**
+ * [함수] getNormalizedPolygonRings
+ * [역할] 현재 조건에 맞는 값을 조회해 반환한다.
+ * [원리] 현재 활성 탭/상태를 기준으로 조회 키를 계산하고,
+ *        해당 키에 대응하는 값을 읽어 호출자에 반환한다.
+ */
 function getNormalizedPolygonRings(layer) {
     if (!isSimplePolygonLayer(layer)) return [];
     const latlngs = layer.getLatLngs();
@@ -744,11 +960,23 @@ function getNormalizedPolygonRings(layer) {
         .filter(ring => ring.length >= 3);
 }
 
+/**
+ * [함수] hasHoleRings
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 function hasHoleRings(layer) {
     const rings = getNormalizedPolygonRings(layer);
     return rings.length > 1;
 }
 
+/**
+ * [함수] getRingOrientationSign
+ * [역할] 현재 조건에 맞는 값을 조회해 반환한다.
+ * [원리] 현재 활성 탭/상태를 기준으로 조회 키를 계산하고,
+ *        해당 키에 대응하는 값을 읽어 호출자에 반환한다.
+ */
 function getRingOrientationSign(ring) {
     if (!Array.isArray(ring) || ring.length < 3) return 0;
     let signedArea2 = 0;
@@ -761,6 +989,12 @@ function getRingOrientationSign(ring) {
     return signedArea2 > 0 ? 1 : -1;
 }
 
+/**
+ * [함수] hideBottomSheetMoreMenu
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 function hideBottomSheetMoreMenu() {
     const menu = document.getElementById('bottom-sheet-more-menu');
     if (!menu) return;
@@ -768,6 +1002,12 @@ function hideBottomSheetMoreMenu() {
     setTimeout(() => menu.style.display = 'none', 100);
 }
 
+/**
+ * [함수] syncBottomSheetHoleMenuForLayer
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 function syncBottomSheetHoleMenuForLayer(layer) {
     const holeItem = document.getElementById('bottom-sheet-hole-item');
     const holeFillItem = document.getElementById('bottom-sheet-hole-fill-item');
@@ -781,6 +1021,12 @@ function syncBottomSheetHoleMenuForLayer(layer) {
     }
 }
 
+/**
+ * [함수] findContainingPolygonForHole
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 function findContainingPolygonForHole(sourceLayer, sourceGeoJson) {
     const sourceOuterCoords = sourceGeoJson?.geometry?.coordinates?.[0] || [];
     let bestLayer = null;
@@ -828,6 +1074,12 @@ function findContainingPolygonForHole(sourceLayer, sourceGeoJson) {
     return bestLayer;
 }
 
+/**
+ * [함수] handleBottomSheetEdit
+ * [역할] 이벤트 입력을 받아 분기 처리하고 후속 함수를 호출한다.
+ * [원리] 이벤트 컨텍스트를 해석해 예외/가드 조건을 먼저 처리하고,
+ *        조건에 맞는 작업 함수로 분기해 사용자 의도에 맞는 동작을 실행한다.
+ */
 export function handleBottomSheetEdit() {
     const layerId = currentBottomSheetLayerId;
     closeBottomSheet();
@@ -836,6 +1088,12 @@ export function handleBottomSheetEdit() {
     }
 }
 
+/**
+ * [함수] handleBottomSheetDelete
+ * [역할] 이벤트 입력을 받아 분기 처리하고 후속 함수를 호출한다.
+ * [원리] 이벤트 컨텍스트를 해석해 예외/가드 조건을 먼저 처리하고,
+ *        조건에 맞는 작업 함수로 분기해 사용자 의도에 맞는 동작을 실행한다.
+ */
 export function handleBottomSheetDelete() {
     if (currentBottomSheetLayerId !== null) {
         deleteLayerById(currentBottomSheetLayerId);
@@ -844,6 +1102,12 @@ export function handleBottomSheetDelete() {
     }
 }
 
+/**
+ * [함수] handleBottomSheetHole
+ * [역할] 이벤트 입력을 받아 분기 처리하고 후속 함수를 호출한다.
+ * [원리] 선택 폴리곤과 포함 관계를 turf로 판정해 대상 폴리곤을 찾고,
+ *        링 방향(orientation)을 보정해 hole ring을 삽입한 뒤 저장/리스트/UI를 연쇄 갱신한다.
+ */
 export function handleBottomSheetHole() {
     hideBottomSheetMoreMenu();
 
@@ -914,6 +1178,12 @@ export function handleBottomSheetHole() {
     targetLayer.openPopup();
 }
 
+/**
+ * [함수] handleBottomSheetHoleFill
+ * [역할] 이벤트 입력을 받아 분기 처리하고 후속 함수를 호출한다.
+ * [원리] 홀 링 목록을 분리해 개별 면 레이어를 생성하고 속성을 상속한 뒤,
+ *        원본 폴리곤은 외곽 링만 남겨 복구하면서 저장·렌더·최적화를 함께 실행한다.
+ */
 export function handleBottomSheetHoleFill() {
     hideBottomSheetMoreMenu();
 
@@ -1020,6 +1290,12 @@ export function handleBottomSheetHoleFill() {
 }
 
 /* 3-2. 정보 팝업 및 지적도 조회 */
+/**
+ * [함수] showInfoPopup
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 역지오코딩 JSONP 결과에서 지번/도로명/우편번호를 추출하고,
+ *        현재 좌표 표시 모드에 맞는 텍스트를 구성해 바텀시트 콘텐츠로 조립한다.
+ */
 export function showInfoPopup(lat, lng) {
     const callbackName = 'vworld_popup_' + Math.floor(Math.random() * 100000);
     window[callbackName] = function (data) {
@@ -1127,6 +1403,12 @@ export function showInfoPopup(lat, lng) {
     document.body.appendChild(script);
 }
 
+/**
+ * [함수] fetchAndHighlightBoundary
+ * [역할] 외부 데이터를 조회해 결과를 지도/화면에 반영한다.
+ * [원리] 외부 API 응답 상태와 결과 유효성을 검증하고,
+ *        성공 시 지도 레이어/버튼을 갱신하고 실패 시 재시도 가능한 상태로 되돌린다.
+ */
 export function fetchAndHighlightBoundary(x, y) {
     const callbackName = 'vworld_boundary_' + Math.floor(Math.random() * 100000);
     const btn = document.getElementById('btn-landeum-popup');
@@ -1166,6 +1448,12 @@ export function fetchAndHighlightBoundary(x, y) {
     document.body.appendChild(script);
 }
 
+/**
+ * [함수] updatePopupLandEumButton
+ * [역할] 상태값 또는 표시값을 최신 값으로 갱신한다.
+ * [원리] 현재 상태값을 화면 표현값으로 재계산한 뒤,
+ *        DOM 텍스트·버튼 상태·레이어 스타일에 즉시 반영해 표시를 최신으로 유지한다.
+ */
 export function updatePopupLandEumButton(pnu) {
     const btn = document.getElementById('btn-landeum-popup');
     if (btn) {
@@ -1185,8 +1473,14 @@ export function updatePopupLandEumButton(pnu) {
    4. 모달 및 팝업 제어 (Modal & Popup)
    -------------------------------------------------------------------------- */
 /* 4-1. 메모, 프로젝트 이동 및 설정 모달 */
-/* 3-1. 설정, 내비게이션 등 공통 모달 */
+/* 4-2. 설정, 내비게이션 등 공통 모달 */
 
+/**
+ * [함수] editLayerDescription
+ * [역할] 기존 데이터 편집 흐름을 시작하거나 변경값을 반영한다.
+ * [원리] 대상 엔티티를 조회해 기존 값을 입력 UI에 채운 뒤,
+ *        사용자 확정값을 속성에 반영하고 저장/리렌더 흐름으로 후처리한다.
+ */
 export function editLayerDescription(id) {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (!layer) return;
@@ -1204,6 +1498,12 @@ export function editLayerDescription(id) {
     }, 10);
 }
 
+/**
+ * [함수] closeMemoModal
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closeMemoModal() {
     const overlay = document.getElementById('memo-modal-overlay');
     const container = document.getElementById('memo-modal-container');
@@ -1216,6 +1516,12 @@ export function closeMemoModal() {
     currentMemoLayerId = null;
 }
 
+/**
+ * [함수] saveMemoAction
+ * [역할] 변경된 내용을 저장소 또는 상태에 기록한다.
+ * [원리] 현재 편집 대상과 입력값 유효성을 확인한 뒤,
+ *        속성 반영 후 저장소 업데이트와 관련 UI 리렌더를 함께 실행한다.
+ */
 export function saveMemoAction() {
     if (currentMemoLayerId === null) return;
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === currentMemoLayerId);
@@ -1229,6 +1535,12 @@ export function saveMemoAction() {
     closeMemoModal();
 }
 
+/**
+ * [함수] editLayerMemo
+ * [역할] 기존 데이터 편집 흐름을 시작하거나 변경값을 반영한다.
+ * [원리] 대상 엔티티를 조회해 기존 값을 입력 UI에 채운 뒤,
+ *        사용자 확정값을 속성에 반영하고 저장/리렌더 흐름으로 후처리한다.
+ */
 export function editLayerMemo(id) {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (!layer) return;
@@ -1242,6 +1554,12 @@ export function editLayerMemo(id) {
     layer.fire('click');
 }
 
+/**
+ * [함수] openMoveProjectModal
+ * [역할] 관련 UI를 열고 상호작용 가능한 상태로 만든다.
+ * [원리] 대상 DOM/레이어 존재 여부를 확인한 뒤 display 값을 열고,
+ *        requestAnimationFrame 또는 setTimeout으로 visible 클래스를 붙여 전환 애니메이션을 시작한다.
+ */
 export function openMoveProjectModal(layerId) {
     if (layerId) {
         moveTargetLayerIds = [layerId];
@@ -1287,6 +1605,12 @@ export function openMoveProjectModal(layerId) {
     setTimeout(() => { overlay.classList.add('visible'); }, 10);
 }
 
+/**
+ * [함수] createNewProjectAndMove
+ * [역할] 새 데이터를 만들고 목록/상태에 반영한다.
+ * [원리] 이름/ID/생성시각 같은 기본값 규칙을 적용해 새 객체를 만들고,
+ *        목록·선택 상태를 갱신해 방금 생성한 항목이 즉시 UI에 반영되게 한다.
+ */
 export function createNewProjectAndMove() {
     let defaultName = "새 프로젝트 " + (AppState.projects.length + 1);
     if (AppState.projects.some(p => p.name === defaultName)) {
@@ -1309,6 +1633,12 @@ export function createNewProjectAndMove() {
     executeMoveProject(newProject.id);
 }
 
+/**
+ * [함수] executeMoveProject
+ * [역할] 사용자 선택에 따라 실제 동작(이동/저장/연결)을 수행한다.
+ * [원리] 사용자 선택값을 실제 실행 경로(URL/이동/저장 작업)로 변환하고,
+ *        완료 후 모달 닫기·화면 갱신 등 후속 UI 정리까지 한 흐름으로 처리한다.
+ */
 function executeMoveProject(targetProjectId) {
     if (moveTargetLayerIds.length === 0) return;
     const targetProject = AppState.projects.find(p => p.id === parseInt(targetProjectId));
@@ -1334,10 +1664,22 @@ function executeMoveProject(targetProjectId) {
     }
 }
 
+/**
+ * [함수] openMoveSelectionModal
+ * [역할] 관련 UI를 열고 상호작용 가능한 상태로 만든다.
+ * [원리] 대상 DOM/레이어 존재 여부를 확인한 뒤 display 값을 열고,
+ *        requestAnimationFrame 또는 setTimeout으로 visible 클래스를 붙여 전환 애니메이션을 시작한다.
+ */
 export function openMoveSelectionModal() {
     openMoveProjectModal(null);
 }
 
+/**
+ * [함수] closeMoveProjectModal
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closeMoveProjectModal() {
     const overlay = document.getElementById('project-move-modal-overlay');
     overlay.classList.remove('visible');
@@ -1345,6 +1687,12 @@ export function closeMoveProjectModal() {
     moveTargetLayerIds = [];
 }
 
+/**
+ * [함수] openLocationActionModal
+ * [역할] 관련 UI를 열고 상호작용 가능한 상태로 만든다.
+ * [원리] 대상 DOM/레이어 존재 여부를 확인한 뒤 display 값을 열고,
+ *        requestAnimationFrame 또는 setTimeout으로 visible 클래스를 붙여 전환 애니메이션을 시작한다.
+ */
 export function openLocationActionModal() {
     if (AppState.currentDrawer || currentEditLayerId !== null) return;
     const overlay = document.getElementById('location-action-modal-overlay');
@@ -1352,12 +1700,24 @@ export function openLocationActionModal() {
     setTimeout(() => { overlay.classList.add('visible'); }, 10);
 }
 
+/**
+ * [함수] closeLocationActionModal
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closeLocationActionModal() {
     const overlay = document.getElementById('location-action-modal-overlay');
     overlay.classList.remove('visible');
     setTimeout(() => { overlay.style.display = 'none'; }, 300);
 }
 
+/**
+ * [함수] openSettingsModal
+ * [역할] 관련 UI를 열고 상호작용 가능한 상태로 만든다.
+ * [원리] 대상 DOM/레이어 존재 여부를 확인한 뒤 display 값을 열고,
+ *        requestAnimationFrame 또는 setTimeout으로 visible 클래스를 붙여 전환 애니메이션을 시작한다.
+ */
 export function openSettingsModal() {
     closeSidebar();
     document.getElementsByName('coord-mode-select').forEach(r => { if (parseInt(r.value) === AppState.coordMode) r.checked = true; });
@@ -1368,12 +1728,24 @@ export function openSettingsModal() {
     setTimeout(() => { overlay.classList.add('visible'); }, 10);
 }
 
+/**
+ * [함수] closeSettingsModal
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closeSettingsModal() {
     const overlay = document.getElementById('settings-modal-overlay');
     overlay.classList.remove('visible');
     setTimeout(() => { overlay.style.display = 'none'; }, 300);
 }
 
+/**
+ * [함수] openNavModal
+ * [역할] 관련 UI를 열고 상호작용 가능한 상태로 만든다.
+ * [원리] 대상 DOM/레이어 존재 여부를 확인한 뒤 display 값을 열고,
+ *        requestAnimationFrame 또는 setTimeout으로 visible 클래스를 붙여 전환 애니메이션을 시작한다.
+ */
 export function openNavModal(name, lat, lng) {
     navTarget = { name: name || "목적지", lat: lat, lng: lng };
     const overlay = document.getElementById('nav-modal-overlay');
@@ -1381,12 +1753,24 @@ export function openNavModal(name, lat, lng) {
     setTimeout(() => { overlay.classList.add('visible'); }, 10);
 }
 
+/**
+ * [함수] closeNavModal
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closeNavModal() {
     const overlay = document.getElementById('nav-modal-overlay');
     overlay.classList.remove('visible');
     setTimeout(() => { overlay.style.display = 'none'; }, 300);
 }
 
+/**
+ * [함수] executeNavigation
+ * [역할] 사용자 선택에 따라 실제 동작(이동/저장/연결)을 수행한다.
+ * [원리] 사용자 선택값을 실제 실행 경로(URL/이동/저장 작업)로 변환하고,
+ *        완료 후 모달 닫기·화면 갱신 등 후속 UI 정리까지 한 흐름으로 처리한다.
+ */
 export function executeNavigation(type) {
     const { name, lat, lng } = navTarget;
     let url = "";
@@ -1399,6 +1783,12 @@ export function executeNavigation(type) {
 
 export let searchTarget = { name: "" };
 
+/**
+ * [함수] openSearchModal
+ * [역할] 관련 UI를 열고 상호작용 가능한 상태로 만든다.
+ * [원리] 대상 DOM/레이어 존재 여부를 확인한 뒤 display 값을 열고,
+ *        requestAnimationFrame 또는 setTimeout으로 visible 클래스를 붙여 전환 애니메이션을 시작한다.
+ */
 export function openSearchModal(name) {
     searchTarget = { name: name || "검색" };
     const overlay = document.getElementById('search-modal-overlay');
@@ -1407,6 +1797,12 @@ export function openSearchModal(name) {
     setTimeout(() => { overlay.classList.add('visible'); }, 10);
 }
 
+/**
+ * [함수] closeSearchModal
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closeSearchModal() {
     const overlay = document.getElementById('search-modal-overlay');
     if (!overlay) return;
@@ -1414,6 +1810,12 @@ export function closeSearchModal() {
     setTimeout(() => { overlay.style.display = 'none'; }, 300);
 }
 
+/**
+ * [함수] executeMapSearch
+ * [역할] 사용자 선택에 따라 실제 동작(이동/저장/연결)을 수행한다.
+ * [원리] 사용자 선택값을 실제 실행 경로(URL/이동/저장 작업)로 변환하고,
+ *        완료 후 모달 닫기·화면 갱신 등 후속 UI 정리까지 한 흐름으로 처리한다.
+ */
 export function executeMapSearch(type) {
     const { name } = searchTarget;
     let url = "";
@@ -1443,10 +1845,22 @@ export function executeMapSearch(type) {
    -------------------------------------------------------------------------- */
 /* 5-1. 버튼 스타일 및 토스트 */
 
+/**
+ * [함수] resetButtonStyles
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 export function resetButtonStyles() {
     document.querySelectorAll('.bottom-btn').forEach(btn => btn.classList.remove('active-btn'));
 }
 
+/**
+ * [함수] highlightButton
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 export function highlightButton(btnId) {
     resetButtonStyles();
     const btn = document.getElementById(btnId);
@@ -1458,6 +1872,12 @@ export function highlightButton(btnId) {
    -------------------------------------------------------------------------- */
 /* 6-1. 전체화면, 좌표 표시 및 절전 모드 */
 
+/**
+ * [함수] updateCoordDisplay
+ * [역할] 상태값 또는 표시값을 최신 값으로 갱신한다.
+ * [원리] 현재 상태값을 화면 표현값으로 재계산한 뒤,
+ *        DOM 텍스트·버튼 상태·레이어 스타일에 즉시 반영해 표시를 최신으로 유지한다.
+ */
 export function updateCoordDisplay() {
     let lat = AppState.lastGpsLat;
     let lng = AppState.lastGpsLng;
@@ -1471,6 +1891,12 @@ export function updateCoordDisplay() {
     if (el) el.innerText = text;
 }
 
+/**
+ * [함수] initSleepSlider
+ * [역할] 초기 이벤트와 기본 상태를 설정한다.
+ * [원리] 초기 1회 실행 구간에서 기본값과 이벤트 연결을 세팅하고,
+ *        중복 등록/중복 실행을 방지하는 가드 조건으로 안정성을 확보한다.
+ */
 export function initSleepSlider() {
     const sliderThumb = document.getElementById('sleep-slider-thumb');
     if (!sliderThumb) return;
@@ -1479,6 +1905,12 @@ export function initSleepSlider() {
     document.addEventListener('touchend', onSleepSliderTouchEnd);
 }
 
+/**
+ * [함수] onSleepSliderTouchStart
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 function onSleepSliderTouchStart(e) {
     const overlay = document.getElementById('sleep-mode-overlay');
     if (!overlay || overlay.style.display === 'none') return;
@@ -1489,6 +1921,12 @@ function onSleepSliderTouchStart(e) {
     AppState.sleepMaxDragX = sliderThumb.parentElement.offsetWidth - 60;
 }
 
+/**
+ * [함수] onSleepSliderTouchMove
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 function onSleepSliderTouchMove(e) {
     if (!AppState.isDraggingSleepSlider) return;
     e.preventDefault();
@@ -1499,6 +1937,12 @@ function onSleepSliderTouchMove(e) {
     sliderThumb.style.transform = `translateX(${AppState.sleepCurrentX}px)`;
 }
 
+/**
+ * [함수] onSleepSliderTouchEnd
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 function onSleepSliderTouchEnd(e) {
     if (!AppState.isDraggingSleepSlider) return;
     AppState.isDraggingSleepSlider = false;
@@ -1511,6 +1955,12 @@ function onSleepSliderTouchEnd(e) {
     }
 }
 
+/**
+ * [함수] startSleepMode
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 export function startSleepMode() {
     const overlay = document.getElementById('sleep-mode-overlay');
     if (overlay) {
@@ -1525,6 +1975,12 @@ export function startSleepMode() {
     }
 }
 
+/**
+ * [함수] unlockSleepMode
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 export function unlockSleepMode() {
     const overlay = document.getElementById('sleep-mode-overlay');
     if (overlay) {
@@ -1541,6 +1997,12 @@ export function unlockSleepMode() {
 
 /* 6-2. 컨텍스트 메뉴 */
 
+/**
+ * [함수] initContextMenu
+ * [역할] 초기 이벤트와 기본 상태를 설정한다.
+ * [원리] 초기 1회 실행 구간에서 기본값과 이벤트 연결을 세팅하고,
+ *        중복 등록/중복 실행을 방지하는 가드 조건으로 안정성을 확보한다.
+ */
 export function initContextMenu() {
     if (document.getElementById('global-context-menu')) return;
     const menu = document.createElement('div');
@@ -1569,6 +2031,12 @@ export function initContextMenu() {
     }, true);
 }
 
+/**
+ * [함수] openContextMenu
+ * [역할] 관련 UI를 열고 상호작용 가능한 상태로 만든다.
+ * [원리] 대상 DOM/레이어 존재 여부를 확인한 뒤 display 값을 열고,
+ *        requestAnimationFrame 또는 setTimeout으로 visible 클래스를 붙여 전환 애니메이션을 시작한다.
+ */
 export function openContextMenu(e, id) {
     e.stopPropagation();
     e.preventDefault();
@@ -1585,6 +2053,12 @@ export function openContextMenu(e, id) {
     requestAnimationFrame(() => menu.classList.add('visible'));
 }
 
+/**
+ * [함수] closeContextMenu
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closeContextMenu() {
     const menu = document.getElementById('global-context-menu');
     if (menu) {
@@ -1596,6 +2070,12 @@ export function closeContextMenu() {
     currentContextId = null;
 }
 
+/**
+ * [함수] handleMenuAction
+ * [역할] 이벤트 입력을 받아 분기 처리하고 후속 함수를 호출한다.
+ * [원리] 이벤트 컨텍스트를 해석해 예외/가드 조건을 먼저 처리하고,
+ *        조건에 맞는 작업 함수로 분기해 사용자 의도에 맞는 동작을 실행한다.
+ */
 export function handleMenuAction(action) {
     const id = currentContextId;
     if (!id) return;
@@ -1613,6 +2093,12 @@ export function handleMenuAction(action) {
     }, 50);
 }
 
+/**
+ * [함수] toggleAccordion
+ * [역할] 현재 상태를 기준으로 표시/동작을 반전 전환한다.
+ * [원리] 현재 클래스/상태 플래그를 읽어 분기한 뒤 반대 상태로 전환하고,
+ *        연관 메뉴·패널의 표시 상태를 함께 동기화해 UI 충돌을 방지한다.
+ */
 export function toggleAccordion(contentId, headerElement) {
     const content = document.getElementById(contentId);
     if (!content) return;
@@ -1626,6 +2112,12 @@ export function toggleAccordion(contentId, headerElement) {
     }
 }
 
+/**
+ * [함수] toggleMoreMenu
+ * [역할] 현재 상태를 기준으로 표시/동작을 반전 전환한다.
+ * [원리] 현재 클래스/상태 플래그를 읽어 분기한 뒤 반대 상태로 전환하고,
+ *        연관 메뉴·패널의 표시 상태를 함께 동기화해 UI 충돌을 방지한다.
+ */
 export function toggleMoreMenu(event) {
     event.stopPropagation();
     closeAllDropdowns();
@@ -1633,6 +2125,12 @@ export function toggleMoreMenu(event) {
     if (menu) menu.classList.toggle('visible');
 }
 
+/**
+ * [함수] toggleProjectMenu
+ * [역할] 현재 상태를 기준으로 표시/동작을 반전 전환한다.
+ * [원리] 현재 클래스/상태 플래그를 읽어 분기한 뒤 반대 상태로 전환하고,
+ *        연관 메뉴·패널의 표시 상태를 함께 동기화해 UI 충돌을 방지한다.
+ */
 export function toggleProjectMenu(event) {
     event.stopPropagation();
     closeAllDropdowns();
@@ -1640,6 +2138,12 @@ export function toggleProjectMenu(event) {
     if (menu) menu.classList.toggle('visible');
 }
 
+/**
+ * [함수] closeAllDropdowns
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closeAllDropdowns() {
     const dropdowns = document.querySelectorAll('.dropdown-menu');
     dropdowns.forEach(menu => {
@@ -1652,9 +2156,14 @@ export function closeAllDropdowns() {
 /* --------------------------------------------------------------------------
    7. 사진 관리 UI (Photo Management)
    -------------------------------------------------------------------------- */
+/* 7-1. 사진 선택/업로드 모달 */
 /* 7-2. 사진 확대 및 갤러리 */
-
-/* 3-2. 사진 및 메모 모달 */
+/**
+ * [함수] openPhotoSelectMenu
+ * [역할] 관련 UI를 열고 상호작용 가능한 상태로 만든다.
+ * [원리] 대상 DOM/레이어 존재 여부를 확인한 뒤 display 값을 열고,
+ *        requestAnimationFrame 또는 setTimeout으로 visible 클래스를 붙여 전환 애니메이션을 시작한다.
+ */
 export function openPhotoSelectMenu(e, id) {
     if (e) {
         e.stopPropagation();
@@ -1673,6 +2182,12 @@ export function openPhotoSelectMenu(e, id) {
     }
 }
 
+/**
+ * [함수] closePhotoSelectMenu
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closePhotoSelectMenu() {
     const overlay = document.getElementById('photo-modal-overlay');
     const container = document.getElementById('photo-modal-container');
@@ -1689,6 +2204,12 @@ export function closePhotoSelectMenu() {
     currentPhotoLayerId = null;
 }
 
+/**
+ * [함수] handlePhotoMenuAction
+ * [역할] 이벤트 입력을 받아 분기 처리하고 후속 함수를 호출한다.
+ * [원리] 이벤트 컨텍스트를 해석해 예외/가드 조건을 먼저 처리하고,
+ *        조건에 맞는 작업 함수로 분기해 사용자 의도에 맞는 동작을 실행한다.
+ */
 export function handlePhotoMenuAction(type) {
     if (!currentPhotoLayerId) return;
     const targetId = currentPhotoLayerId;
@@ -1704,6 +2225,12 @@ export function handlePhotoMenuAction(type) {
     }, 100);
 }
 
+/**
+ * [함수] processPhotoFiles
+ * [역할] 입력 데이터를 후처리한 뒤 저장/표시에 반영한다.
+ * [원리] 입력 데이터(파일/값)를 비동기로 변환·검증한 뒤,
+ *        대상 속성에 반영하고 저장 및 화면 갱신을 연쇄 실행한다.
+ */
 export function processPhotoFiles(input, layerId) {
     const files = input.files;
     if (!files || files.length === 0) return;
@@ -1749,6 +2276,12 @@ export function processPhotoFiles(input, layerId) {
     });
 }
 
+/**
+ * [함수] deletePhoto
+ * [역할] 대상을 삭제하고 후속 UI/저장 상태를 정리한다.
+ * [원리] 삭제 대상 존재와 사용자 확인을 먼저 검증한 뒤,
+ *        컬렉션에서 제거하고 저장·리스트 갱신·선택 상태 정리를 순서대로 수행한다.
+ */
 export function deletePhoto(layerId, index) {
     if (!confirm("이 사진을 삭제하시겠습니까?")) return;
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === layerId);
@@ -1760,6 +2293,12 @@ export function deletePhoto(layerId, index) {
     }
 }
 
+/**
+ * [함수] openPhotoModal
+ * [역할] 관련 UI를 열고 상호작용 가능한 상태로 만든다.
+ * [원리] 대상 DOM/레이어 존재 여부를 확인한 뒤 display 값을 열고,
+ *        requestAnimationFrame 또는 setTimeout으로 visible 클래스를 붙여 전환 애니메이션을 시작한다.
+ */
 export function openPhotoModal(layerId, index) {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === layerId);
     if (!layer || !layer.feature.properties.photos) return;
@@ -1771,6 +2310,12 @@ export function openPhotoModal(layerId, index) {
     setTimeout(() => { modal.classList.add('visible'); }, 10);
 }
 
+/**
+ * [함수] updateModalImage
+ * [역할] 상태값 또는 표시값을 최신 값으로 갱신한다.
+ * [원리] 현재 상태값을 화면 표현값으로 재계산한 뒤,
+ *        DOM 텍스트·버튼 상태·레이어 스타일에 즉시 반영해 표시를 최신으로 유지한다.
+ */
 export function updateModalImage() {
     const img = document.getElementById('photo-modal-img');
     const prevBtn = document.getElementById('photo-prev-btn');
@@ -1789,18 +2334,36 @@ export function updateModalImage() {
     counter.innerText = `${currentPhotoIndex + 1} / ${currentPhotoList.length}`;
 }
 
+/**
+ * [함수] nextPhoto
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 export function nextPhoto() {
     if (currentPhotoList.length <= 1) return;
     currentPhotoIndex = (currentPhotoIndex + 1) % currentPhotoList.length;
     updateModalImage();
 }
 
+/**
+ * [함수] prevPhoto
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 export function prevPhoto() {
     if (currentPhotoList.length <= 1) return;
     currentPhotoIndex = (currentPhotoIndex - 1 + currentPhotoList.length) % currentPhotoList.length;
     updateModalImage();
 }
 
+/**
+ * [함수] downloadCurrentPhoto
+ * [역할] 현재 데이터를 파일 형태로 내려받게 한다.
+ * [원리] 현재 선택 대상에서 파일/리소스 정보를 구성해 내려받기를 시작하고,
+ *        진행 상태와 완료 후 UI 복구를 함께 처리해 사용자 피드백을 유지한다.
+ */
 export function downloadCurrentPhoto() {
     if (currentPhotoList.length === 0) return;
     const base64Str = currentPhotoList[currentPhotoIndex];
@@ -1819,6 +2382,12 @@ export function downloadCurrentPhoto() {
     document.body.removeChild(link);
 }
 
+/**
+ * [함수] closePhotoModal
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closePhotoModal() {
     const modal = document.getElementById('photo-modal');
     if (!modal) return;
@@ -1830,6 +2399,12 @@ export function closePhotoModal() {
 }
 
 // 줌아웃일수록 선/면을 더 단순화해 렌더링 부담을 줄임
+/**
+ * [함수] getSmoothFactorForZoom
+ * [역할] 현재 조건에 맞는 값을 조회해 반환한다.
+ * [원리] 현재 활성 탭/상태를 기준으로 조회 키를 계산하고,
+ *        해당 키에 대응하는 값을 읽어 호출자에 반환한다.
+ */
 function getSmoothFactorForZoom(zoom) {
     if (zoom >= 15) return 1; // 15레벨 이상은 원본에 가깝게 유지
     if (zoom === 14) return 2;
@@ -1838,10 +2413,22 @@ function getSmoothFactorForZoom(zoom) {
     return 7; // zoom 12
 }
 
+/**
+ * [함수] isLineOrPolygonLayer
+ * [역할] 입력 대상이 조건을 만족하는지 불리언으로 판별한다.
+ * [원리] 입력 객체의 타입과 필수 필드를 순서대로 검사해,
+ *        후속 로직 분기에서 재사용할 불리언 판정 결과를 반환한다.
+ */
 function isLineOrPolygonLayer(layer) {
     return layer instanceof L.Polyline && !(layer instanceof L.Marker);
 }
 
+/**
+ * [함수] optimizeVectorLayerForViewport
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 function optimizeVectorLayerForViewport(layer, viewBounds, zoom) {
     if (!isLineOrPolygonLayer(layer)) return;
 
@@ -1867,6 +2454,12 @@ function optimizeVectorLayerForViewport(layer, viewBounds, zoom) {
     }
 }
 
+/**
+ * [함수] optimizeViewportVectorRendering
+ * [역할] 해당 기능의 UI 상태와 데이터 흐름을 제어한다.
+ * [원리] 입력 인자와 현재 상태를 먼저 검증한 뒤 안전한 분기 경로를 고르고,
+ *        필요한 UI 갱신·저장·후속 호출을 순차 실행해 상태 일관성을 유지한다.
+ */
 function optimizeViewportVectorRendering() {
     const viewBounds = map.getBounds();
     const zoom = map.getZoom();
@@ -1874,6 +2467,12 @@ function optimizeViewportVectorRendering() {
 }
 
 let isViewportOptimizationScheduled = false;
+/**
+ * [함수] scheduleViewportVectorOptimization
+ * [역할] 비용이 큰 작업을 지연 예약해 호출 빈도를 제어한다.
+ * [원리] requestAnimationFrame 예약 플래그를 사용해 연속 호출을 하나로 합치고,
+ *        고비용 렌더 작업을 프레임 단위로 지연 실행해 성능 부담을 줄인다.
+ */
 export function scheduleViewportVectorOptimization() {
     if (isViewportOptimizationScheduled) return;
     isViewportOptimizationScheduled = true;
@@ -1886,6 +2485,12 @@ export function scheduleViewportVectorOptimization() {
 /* --------------------------------------------------------------------------
    8. 이벤트 리스너 (DOM Events)
    -------------------------------------------------------------------------- */
+/**
+ * [함수] initUiEventListeners
+ * [역할] 초기 이벤트와 기본 상태를 설정한다.
+ * [원리] 문서/지도/레이어 이벤트를 한 번에 등록해 외부 클릭 닫기와 스와이프 동작을 처리하고,
+ *        zoom/move 변화 시 오프라인 버튼 상태 및 벡터 렌더 최적화를 예약 호출한다.
+ */
 export function initUiEventListeners() {
     // 검색창 외부 클릭 시 닫기
     document.addEventListener('mousedown', function (e) {
@@ -1994,6 +2599,12 @@ export function initUiEventListeners() {
    -------------------------------------------------------------------------- */
 /* 9-1. 프로젝트 관리 */
 
+/**
+ * [함수] renderProjectSelector
+ * [역할] 현재 데이터 상태를 화면 요소로 재구성해 렌더링한다.
+ * [원리] 원본 데이터(AppState/레이어 컬렉션)를 정렬·필터링해 표시 순서를 정하고,
+ *        DOM 노드 또는 HTML을 재구성해 현재 상태를 화면에 다시 그린다.
+ */
 export function renderProjectSelector() {
     const select = document.getElementById('project-select');
     if (!select) return;
@@ -2025,6 +2636,12 @@ export function renderProjectSelector() {
     renderProjectList();
 }
 
+/**
+ * [함수] createNewProject
+ * [역할] 새 데이터를 만들고 목록/상태에 반영한다.
+ * [원리] 이름/ID/생성시각 같은 기본값 규칙을 적용해 새 객체를 만들고,
+ *        목록·선택 상태를 갱신해 방금 생성한 항목이 즉시 UI에 반영되게 한다.
+ */
 export function createNewProject(initialName) {
     let defaultName = initialName;
     if (!defaultName) {
@@ -2056,6 +2673,12 @@ export function createNewProject(initialName) {
     window.switchProject(newProject.id);
 }
 
+/**
+ * [함수] editProjectName
+ * [역할] 기존 데이터 편집 흐름을 시작하거나 변경값을 반영한다.
+ * [원리] 대상 엔티티를 조회해 기존 값을 입력 UI에 채운 뒤,
+ *        사용자 확정값을 속성에 반영하고 저장/리렌더 흐름으로 후처리한다.
+ */
 export function editProjectName() {
     const p = AppState.projects.find(p => p.id === parseInt(AppState.currentProjectId));
     if (!p) return;
@@ -2074,6 +2697,12 @@ export function editProjectName() {
     renderProjectSelector();
 }
 
+/**
+ * [함수] deleteCurrentProject
+ * [역할] 대상을 삭제하고 후속 UI/저장 상태를 정리한다.
+ * [원리] 삭제 대상 존재와 사용자 확인을 먼저 검증한 뒤,
+ *        컬렉션에서 제거하고 저장·리스트 갱신·선택 상태 정리를 순서대로 수행한다.
+ */
 export function deleteCurrentProject() {
     const projectToDelete = AppState.projects.find(p => p.id === parseInt(AppState.currentProjectId));
     if (!projectToDelete) return;
@@ -2088,6 +2717,12 @@ export function deleteCurrentProject() {
 }
 
 /* 프로젝트 목록 카드 렌더링 (프로젝트 관리 탭) */
+/**
+ * [함수] renderProjectList
+ * [역할] 현재 데이터 상태를 화면 요소로 재구성해 렌더링한다.
+ * [원리] 기본 프로젝트와 일반 프로젝트를 분리한 뒤 정렬 옵션을 적용하고,
+ *        카드·드롭다운 액션 DOM을 동적으로 구성해 프로젝트 전환/관리 동선을 연결한다.
+ */
 export function renderProjectList() {
     const container = document.getElementById('project-list-area');
     if (!container) return;
@@ -2283,6 +2918,12 @@ export function renderProjectList() {
 }
 
 /* 9-2. 조사 기록 리스트 및 가시성 제어 */
+/**
+ * [함수] renderSurveyList
+ * [역할] 현재 데이터 상태를 화면 요소로 재구성해 렌더링한다.
+ * [원리] 레이어 목록을 정렬 기준으로 재배열하고 각 타입별 스타일 프리뷰를 생성해,
+ *        가시성 토글·줌 이동·컨텍스트 메뉴 동작을 리스트 아이템에 연결한다.
+ */
 export function renderSurveyList() {
     const listContainer = document.getElementById('survey-list-area');
     if (!listContainer) return;
@@ -2398,6 +3039,12 @@ export function renderSurveyList() {
     });
 }
 
+/**
+ * [함수] updateLayerInfo
+ * [역할] 상태값 또는 표시값을 최신 값으로 갱신한다.
+ * [원리] 레이어 타입(점/선/면)에 따라 좌표·거리·면적 표시값을 계산하고,
+ *        팝업 이벤트와 바텀시트 동작을 재바인딩해 선택/편집 흐름을 일관되게 유지한다.
+ */
 export function updateLayerInfo(layer) {
     const memo = layer.feature.properties.memo || "";
     let infoText = "";
@@ -2484,6 +3131,12 @@ export function updateLayerInfo(layer) {
     };
     layer.closePopup = function () { closeBottomSheet(); return this; };
 }
+/**
+ * [함수] shareLocationText
+ * [역할] 공유용 텍스트/링크를 구성해 전달한다.
+ * [원리] 현재 좌표 표시 모드에 맞는 공유 문구를 조합하고,
+ *        Web Share 지원 여부에 따라 시스템 공유 또는 클립보드 복사로 분기한다.
+ */
 export function shareLocationText(address, lat, lng) {
     let coordText = `${lat}, ${lng}`;
     if (AppState.coordMode === 2) {
@@ -2506,6 +3159,12 @@ export function shareLocationText(address, lat, lng) {
     else copyText(`${shareData.text}\n${shareUrl}`);
 }
 
+/**
+ * [함수] deleteLayerById
+ * [역할] 대상을 삭제하고 후속 UI/저장 상태를 정리한다.
+ * [원리] 삭제 대상 존재와 사용자 확인을 먼저 검증한 뒤,
+ *        컬렉션에서 제거하고 저장·리스트 갱신·선택 상태 정리를 순서대로 수행한다.
+ */
 export function deleteLayerById(id) {
 
     if (confirm("정말로 이 기록을 삭제하시겠습니까?")) {
@@ -2518,6 +3177,12 @@ export function deleteLayerById(id) {
     }
 }
 
+/**
+ * [함수] toggleLayerVisibility
+ * [역할] 현재 상태를 기준으로 표시/동작을 반전 전환한다.
+ * [원리] 현재 클래스/상태 플래그를 읽어 분기한 뒤 반대 상태로 전환하고,
+ *        연관 메뉴·패널의 표시 상태를 함께 동기화해 UI 충돌을 방지한다.
+ */
 export function toggleLayerVisibility(id) {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (layer) {
@@ -2537,6 +3202,12 @@ export function toggleLayerVisibility(id) {
     }
 }
 
+/**
+ * [함수] zoomToLayer
+ * [역할] 지도 화면을 대상 위치/범위로 이동·확대한다.
+ * [원리] 대상 레이어 타입에 맞춰 flyTo/fitBounds 중 적절한 이동 방식을 선택하고,
+ *        이동 완료 타이밍에 맞춰 상세 정보 UI를 열어 탐색 흐름을 이어준다.
+ */
 export function zoomToLayer(id) {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (!layer) return;
@@ -2550,6 +3221,12 @@ export function zoomToLayer(id) {
     }
 }
 
+/**
+ * [함수] updateLayerColor
+ * [역할] 상태값 또는 표시값을 최신 값으로 갱신한다.
+ * [원리] 현재 상태값을 화면 표현값으로 재계산한 뒤,
+ *        DOM 텍스트·버튼 상태·레이어 스타일에 즉시 반영해 표시를 최신으로 유지한다.
+ */
 export function updateLayerColor(id, newColor) {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (!layer) return;
@@ -2562,7 +3239,7 @@ export function updateLayerColor(id, newColor) {
 }
 
 /* --------------------------------------------------------------------------
-   스타일 설정 모달 로직
+   9-3. 스타일 설정 모달 (Style Modal)
    -------------------------------------------------------------------------- */
 let currentStyleLayerId = null;
 let currentStyleType = null;
@@ -2572,6 +3249,12 @@ let tempMarkerStyle = '';
 let tempMarkerSize = 3;
 let tempFillStyle = 'on';
 
+/**
+ * [함수] openStyleModal
+ * [역할] 관련 UI를 열고 상호작용 가능한 상태로 만든다.
+ * [원리] 대상 DOM/레이어 존재 여부를 확인한 뒤 display 값을 열고,
+ *        requestAnimationFrame 또는 setTimeout으로 visible 클래스를 붙여 전환 애니메이션을 시작한다.
+ */
 export function openStyleModal(id) {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (!layer) return;
@@ -2625,6 +3308,12 @@ export function openStyleModal(id) {
     }
 }
 
+/**
+ * [함수] closeStyleModal
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closeStyleModal() {
     const overlay = document.getElementById('style-modal-overlay');
     if (overlay) {
@@ -2633,6 +3322,12 @@ export function closeStyleModal() {
     }
 }
 
+/**
+ * [함수] updateStyleModalUI
+ * [역할] 상태값 또는 표시값을 최신 값으로 갱신한다.
+ * [원리] 현재 상태값을 화면 표현값으로 재계산한 뒤,
+ *        DOM 텍스트·버튼 상태·레이어 스타일에 즉시 반영해 표시를 최신으로 유지한다.
+ */
 function updateStyleModalUI() {
     document.querySelectorAll('#style-color-palette .color-circle').forEach(btn => {
         btn.classList.toggle('selected', btn.dataset.color === tempStyleColor);
@@ -2653,6 +3348,12 @@ function updateStyleModalUI() {
     if (sizeLabel) sizeLabel.innerText = tempMarkerSize;
 }
 
+/**
+ * [함수] selectStyleColor
+ * [역할] 선택값을 임시 상태로 반영하고 UI를 동기화한다.
+ * [원리] 사용자 선택값을 임시 상태(temp*)에 기록하고,
+ *        선택 UI를 다시 칠해 현재 선택 항목이 시각적으로 즉시 반영되게 한다.
+ */
 export function selectStyleColor(color) {
     tempStyleColor = color;
     updateStyleModalUI();
@@ -2662,30 +3363,66 @@ export function selectStyleColor(color) {
     }
 }
 
+/**
+ * [함수] selectLineStyle
+ * [역할] 선택값을 임시 상태로 반영하고 UI를 동기화한다.
+ * [원리] 사용자 선택값을 임시 상태(temp*)에 기록하고,
+ *        선택 UI를 다시 칠해 현재 선택 항목이 시각적으로 즉시 반영되게 한다.
+ */
 export function selectLineStyle(style) {
     tempLineStyle = style;
     updateStyleModalUI();
 }
 
+/**
+ * [함수] selectFillStyle
+ * [역할] 선택값을 임시 상태로 반영하고 UI를 동기화한다.
+ * [원리] 사용자 선택값을 임시 상태(temp*)에 기록하고,
+ *        선택 UI를 다시 칠해 현재 선택 항목이 시각적으로 즉시 반영되게 한다.
+ */
 export function selectFillStyle(fill) {
     tempFillStyle = fill;
     updateStyleModalUI();
 }
 
+/**
+ * [함수] selectMarkerStyle
+ * [역할] 선택값을 임시 상태로 반영하고 UI를 동기화한다.
+ * [원리] 사용자 선택값을 임시 상태(temp*)에 기록하고,
+ *        선택 UI를 다시 칠해 현재 선택 항목이 시각적으로 즉시 반영되게 한다.
+ */
 export function selectMarkerStyle(emoji) {
     tempMarkerStyle = emoji;
     updateStyleModalUI();
 }
 
+/**
+ * [함수] updateMarkerSizeLabel
+ * [역할] 상태값 또는 표시값을 최신 값으로 갱신한다.
+ * [원리] 현재 상태값을 화면 표현값으로 재계산한 뒤,
+ *        DOM 텍스트·버튼 상태·레이어 스타일에 즉시 반영해 표시를 최신으로 유지한다.
+ */
 export function updateMarkerSizeLabel(val) {
     const sizeLabel = document.getElementById('style-marker-size-label');
     if (sizeLabel) sizeLabel.innerText = val;
 }
 
+/**
+ * [함수] selectMarkerSize
+ * [역할] 선택값을 임시 상태로 반영하고 UI를 동기화한다.
+ * [원리] 사용자 선택값을 임시 상태(temp*)에 기록하고,
+ *        선택 UI를 다시 칠해 현재 선택 항목이 시각적으로 즉시 반영되게 한다.
+ */
 export function selectMarkerSize(val) {
     tempMarkerSize = parseInt(val, 10);
 }
 
+/**
+ * [함수] applyStyleSettings
+ * [역할] 임시 설정값을 실제 상태와 화면에 확정 반영한다.
+ * [원리] 임시 상태로 보관한 설정값을 실제 데이터/레이어 속성에 커밋한 뒤,
+ *        저장과 목록 재렌더를 수행해 적용 결과를 전체 UI에 동기화한다.
+ */
 export function applyStyleSettings() {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === currentStyleLayerId);
     if (!layer) return;
@@ -2726,6 +3463,12 @@ export function applyStyleSettings() {
 /* --------------------------------------------------------------------------
    10. 오프라인 지도 기능 (Offline Map)
    -------------------------------------------------------------------------- */
+/**
+ * [함수] updateOfflineButton
+ * [역할] 상태값 또는 표시값을 최신 값으로 갱신한다.
+ * [원리] 현재 상태값을 화면 표현값으로 재계산한 뒤,
+ *        DOM 텍스트·버튼 상태·레이어 스타일에 즉시 반영해 표시를 최신으로 유지한다.
+ */
 export function updateOfflineButton() {
     const btn = document.getElementById('btn-offline-map');
     const textSpan = document.getElementById('btn-offline-map-text');
@@ -2742,6 +3485,12 @@ export function updateOfflineButton() {
     }
 }
 
+/**
+ * [함수] downloadOfflineMap
+ * [역할] 현재 데이터를 파일 형태로 내려받게 한다.
+ * [원리] 현재 지도 범위를 패딩 확장해 타일 URL 목록을 만들고 Cache Storage에 청크 저장하며,
+ *        진행률 모달·오류 처리·버튼 잠금/해제를 함께 관리해 다운로드 과정을 시각화한다.
+ */
 export async function downloadOfflineMap() {
     const zoom = map.getZoom();
     if (zoom < 15) return;
@@ -2819,89 +3568,20 @@ export async function downloadOfflineMap() {
    11. 토스트 알림 및 로딩 (Toast & Loading)
    -------------------------------------------------------------------------- */
 
-/* --- 전역 바인딩 (UI 관련) --- */
-window.openSidebar = openSidebar;
-window.closeSidebar = closeSidebar;
-window.switchSearchTab = switchSearchTab;
-window.renderCoordSearchInputs = renderCoordSearchInputs;
-window.switchSidebarTab = switchSidebarTab;
-window.unlockHiddenLayers = unlockHiddenLayers;
-window.toggleSearchBox = toggleSearchBox;
-window.executeSearch = executeSearch;
-window.closeSearchResult = closeSearchResult;
-window.showHistoryPanel = showHistoryPanel;
-window.toggleHistorySave = toggleHistorySave;
-window.clearHistoryAll = clearHistoryAll;
-window.deleteHistoryItem = deleteHistoryItem;
-window.closeBottomSheet = closeBottomSheet;
-window.toggleBottomSheetState = toggleBottomSheetState;
-window.toggleBottomSheetMoreMenu = toggleBottomSheetMoreMenu;
-window.handleBottomSheetEdit = handleBottomSheetEdit;
-window.handleBottomSheetHole = handleBottomSheetHole;
-window.handleBottomSheetHoleFill = handleBottomSheetHoleFill;
-window.handleBottomSheetDelete = handleBottomSheetDelete;
-window.editLayerDescription = editLayerDescription;
-window.closeMemoModal = closeMemoModal;
-window.saveMemoAction = saveMemoAction;
-window.editLayerMemo = editLayerMemo;
-window.createNewProject = createNewProject;
-window.createNewProjectAndMove = createNewProjectAndMove;
-window.editProjectName = editProjectName;
-window.deleteCurrentProject = deleteCurrentProject;
-window.renderProjectList = renderProjectList;
-window.openMoveProjectModal = openMoveProjectModal;
-window.openMoveSelectionModal = openMoveSelectionModal;
-window.closeMoveProjectModal = closeMoveProjectModal;
-window.startSleepMode = startSleepMode;
-window.unlockSleepMode = unlockSleepMode;
-window.toggleAccordion = toggleAccordion;
-window.toggleMoreMenu = toggleMoreMenu;
-window.toggleProjectMenu = toggleProjectMenu;
-window.openPhotoSelectMenu = openPhotoSelectMenu;
-window.closePhotoSelectMenu = closePhotoSelectMenu;
-window.handlePhotoMenuAction = handlePhotoMenuAction;
-window.processPhotoFiles = processPhotoFiles;
-window.deletePhoto = deletePhoto;
-window.openPhotoModal = openPhotoModal;
-window.nextPhoto = nextPhoto;
-window.prevPhoto = prevPhoto;
-window.downloadCurrentPhoto = downloadCurrentPhoto;
-window.closePhotoModal = closePhotoModal;
-window.openNavModal = openNavModal;
-window.closeNavModal = closeNavModal;
-window.executeNavigation = executeNavigation;
-window.fetchAndHighlightBoundary = fetchAndHighlightBoundary;
-window.copyText = copyText;
-window.deleteLayerById = deleteLayerById;
-window.toggleLayerVisibility = toggleLayerVisibility;
-window.zoomToLayer = zoomToLayer;
-window.updateLayerColor = updateLayerColor;
-window.openLocationActionModal = openLocationActionModal;
-window.closeLocationActionModal = closeLocationActionModal;
-window.openSettingsModal = openSettingsModal;
-window.closeSettingsModal = closeSettingsModal;
-window.shareLocationText = shareLocationText;
-window.openContextMenu = openContextMenu;
-window.handleMenuAction = handleMenuAction;
-window.downloadOfflineMap = downloadOfflineMap;
-window.openStyleModal = openStyleModal;
-window.closeStyleModal = closeStyleModal;
-window.selectStyleColor = selectStyleColor;
-window.selectLineStyle = selectLineStyle;
-window.selectFillStyle = selectFillStyle;
-window.selectMarkerStyle = selectMarkerStyle;
-window.updateMarkerSizeLabel = updateMarkerSizeLabel;
-window.selectMarkerSize = selectMarkerSize;
-window.applyStyleSettings = applyStyleSettings;
-
 /* --------------------------------------------------------------------------
-   정렬 모달 (Sort Modal)
+   11-1. 조사 기록 정렬 모달 (Sort Modal)
    -------------------------------------------------------------------------- */
+/**
+ * [함수] openSortModal
+ * [역할] 관련 UI를 열고 상호작용 가능한 상태로 만든다.
+ * [원리] 대상 DOM/레이어 존재 여부를 확인한 뒤 display 값을 열고,
+ *        requestAnimationFrame 또는 setTimeout으로 visible 클래스를 붙여 전환 애니메이션을 시작한다.
+ */
 export function openSortModal() {
     const overlay = document.getElementById('sort-modal-overlay');
     if (!overlay) return;
 
-    // \ud604\uc7ac \uc815\ub82c \uc0c1\ud0dc\ub97c \ub77c\ub514\uc624 \ubc84\ud2bc\uc5d0 \ubc18\uc601
+    // 현재 정렬 상태를 라디오 버튼에 반영
     document.querySelectorAll('input[name="sort-by"]').forEach(r => {
         r.checked = (r.value === AppState.sortBy);
     });
@@ -2913,6 +3593,12 @@ export function openSortModal() {
     setTimeout(() => overlay.classList.add('visible'), 10);
 }
 
+/**
+ * [함수] closeSortModal
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closeSortModal() {
     const overlay = document.getElementById('sort-modal-overlay');
     if (!overlay) return;
@@ -2920,8 +3606,14 @@ export function closeSortModal() {
     setTimeout(() => { overlay.style.display = 'none'; }, 300);
 }
 
+/**
+ * [함수] applySortSetting
+ * [역할] 임시 설정값을 실제 상태와 화면에 확정 반영한다.
+ * [원리] 임시 상태로 보관한 설정값을 실제 데이터/레이어 속성에 커밋한 뒤,
+ *        저장과 목록 재렌더를 수행해 적용 결과를 전체 UI에 동기화한다.
+ */
 export function applySortSetting() {
-    // \ubaa8\ub2ec \ub0b4 \ub77c\ub514\uc624 \ubc84\ud2bc\uc5d0\uc11c \uc120\ud0dd\ub41c \uac12 \uc77d\uae30
+    // 모달 내 라디오 버튼에서 선택한 정렬 옵션 읽기
     const byEl = document.querySelector('input[name="sort-by"]:checked');
     const orderEl = document.querySelector('input[name="sort-order"]:checked');
     if (byEl) {
@@ -2933,16 +3625,18 @@ export function applySortSetting() {
         localStorage.setItem('setting_sort_order', orderEl.value);
     }
     closeSortModal();
-    renderSurveyList(); // \ub9ac\uc2a4\ud2b8 \uc7ac\ub80c\ub354\ub9c1
+    renderSurveyList(); // 정렬 옵션 적용 후 목록 다시 그리기
 }
 
-window.openSortModal = openSortModal;
-window.closeSortModal = closeSortModal;
-window.applySortSetting = applySortSetting;
-
 /* --------------------------------------------------------------------------
-   프로젝트 정렬 모달 (Project Sort Modal)
+   11-2. 프로젝트 정렬 모달 (Project Sort Modal)
    -------------------------------------------------------------------------- */
+/**
+ * [함수] openProjectSortModal
+ * [역할] 관련 UI를 열고 상호작용 가능한 상태로 만든다.
+ * [원리] 대상 DOM/레이어 존재 여부를 확인한 뒤 display 값을 열고,
+ *        requestAnimationFrame 또는 setTimeout으로 visible 클래스를 붙여 전환 애니메이션을 시작한다.
+ */
 export function openProjectSortModal() {
     const overlay = document.getElementById('project-sort-modal-overlay');
     if (!overlay) return;
@@ -2958,6 +3652,12 @@ export function openProjectSortModal() {
     setTimeout(() => overlay.classList.add('visible'), 10);
 }
 
+/**
+ * [함수] closeProjectSortModal
+ * [역할] 관련 UI를 닫고 임시 상태를 정리한다.
+ * [원리] 대상 UI에서 visible 클래스를 먼저 제거해 닫힘 전환을 시작하고,
+ *        지연 후 display를 none으로 바꿔 클릭 영역과 임시 상태를 정리한다.
+ */
 export function closeProjectSortModal() {
     const overlay = document.getElementById('project-sort-modal-overlay');
     if (!overlay) return;
@@ -2965,6 +3665,12 @@ export function closeProjectSortModal() {
     setTimeout(() => { overlay.style.display = 'none'; }, 300);
 }
 
+/**
+ * [함수] applyProjectSortSetting
+ * [역할] 임시 설정값을 실제 상태와 화면에 확정 반영한다.
+ * [원리] 임시 상태로 보관한 설정값을 실제 데이터/레이어 속성에 커밋한 뒤,
+ *        저장과 목록 재렌더를 수행해 적용 결과를 전체 UI에 동기화한다.
+ */
 export function applyProjectSortSetting() {
     const byEl = document.querySelector('input[name="project-sort-by"]:checked');
     const orderEl = document.querySelector('input[name="project-sort-order"]:checked');
@@ -2980,6 +3686,112 @@ export function applyProjectSortSetting() {
     renderProjectList();
 }
 
-window.openProjectSortModal = openProjectSortModal;
-window.closeProjectSortModal = closeProjectSortModal;
-window.applyProjectSortSetting = applyProjectSortSetting;
+/* --------------------------------------------------------------------------
+   12. 런타임 초기화 및 전역 바인딩 (Runtime Bootstrap)
+   -------------------------------------------------------------------------- */
+
+/**
+ * [함수] bindUiActionsToWindow
+ * [역할] 함수와 전역/이벤트 엔트리포인트를 연결한다.
+ * [원리] HTML 인라인 이벤트에서 호출되는 함수를 Object.assign으로 한 번에 등록해,
+ *        전역 바인딩 누락을 줄이고 UI 엔트리포인트를 단일 블록에서 관리한다.
+ */
+function bindUiActionsToWindow() {
+    Object.assign(window, {
+        openSidebar,
+        closeSidebar,
+        switchSearchTab,
+        renderCoordSearchInputs,
+        switchSidebarTab,
+        unlockHiddenLayers,
+        toggleSearchBox,
+        executeSearch,
+        closeSearchResult,
+        showHistoryPanel,
+        toggleHistorySave,
+        clearHistoryAll,
+        deleteHistoryItem,
+        closeBottomSheet,
+        toggleBottomSheetState,
+        toggleBottomSheetMoreMenu,
+        handleBottomSheetEdit,
+        handleBottomSheetHole,
+        handleBottomSheetHoleFill,
+        handleBottomSheetDelete,
+        editLayerDescription,
+        closeMemoModal,
+        saveMemoAction,
+        editLayerMemo,
+        createNewProject,
+        createNewProjectAndMove,
+        editProjectName,
+        deleteCurrentProject,
+        renderProjectList,
+        openMoveProjectModal,
+        openMoveSelectionModal,
+        closeMoveProjectModal,
+        startSleepMode,
+        unlockSleepMode,
+        toggleAccordion,
+        toggleMoreMenu,
+        toggleProjectMenu,
+        openPhotoSelectMenu,
+        closePhotoSelectMenu,
+        handlePhotoMenuAction,
+        processPhotoFiles,
+        deletePhoto,
+        openPhotoModal,
+        nextPhoto,
+        prevPhoto,
+        downloadCurrentPhoto,
+        closePhotoModal,
+        openNavModal,
+        closeNavModal,
+        executeNavigation,
+        fetchAndHighlightBoundary,
+        copyText,
+        deleteLayerById,
+        toggleLayerVisibility,
+        zoomToLayer,
+        updateLayerColor,
+        openLocationActionModal,
+        closeLocationActionModal,
+        openSettingsModal,
+        closeSettingsModal,
+        shareLocationText,
+        openContextMenu,
+        handleMenuAction,
+        downloadOfflineMap,
+        openStyleModal,
+        closeStyleModal,
+        selectStyleColor,
+        selectLineStyle,
+        selectFillStyle,
+        selectMarkerStyle,
+        updateMarkerSizeLabel,
+        selectMarkerSize,
+        applyStyleSettings,
+        openSortModal,
+        closeSortModal,
+        applySortSetting,
+        openProjectSortModal,
+        closeProjectSortModal,
+        applyProjectSortSetting,
+    });
+}
+
+/**
+ * [함수] initializeUiRuntime
+ * [역할] 초기 이벤트와 기본 상태를 설정한다.
+ * [원리] 초기화 가드 플래그로 중복 실행을 막고,
+ *        검색 설정 로드 후 전역 액션 바인딩 순서로 런타임 시작 상태를 확정한다.
+ */
+function initializeUiRuntime() {
+    if (isUiRuntimeInitialized) return;
+    isUiRuntimeInitialized = true;
+
+    initSearchSettings();
+    bindUiActionsToWindow();
+}
+
+initializeUiRuntime();

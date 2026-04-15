@@ -1,18 +1,29 @@
 /* ==========================================================================
-   [모듈] 유틸리티 함수 (utils.js)
-   [역할] 날짜 포맷, 좌표 변환, 랜덤 색상 생성 등 순수 계산용 헬퍼 함수 모음
+   [모듈] 공통 유틸리티 (utils.js)
+   [역할]
+   - 날짜/문자열 포맷, 좌표 변환, 아이콘 생성, 복사/이미지 전처리 같은 보조 기능을 제공합니다.
+   [동작 원리 요약]
+   - 가능하면 입력값 -> 결과값 형태의 순수 함수로 구성해 다른 모듈에서 재사용합니다.
+   - 브라우저 API(clipboard/canvas/proj4)가 필요한 함수는 fallback이나 예외 처리로 안정성을 보강합니다.
    ========================================================================== */
 import { SVG_ICONS } from './config.js';
 
-/* 1. 데이터 포맷 및 생성 */
+/* ==========================================================================
+   1) 포맷/생성 유틸
+   ========================================================================== */
 
-// 타임스탬프 생성 (YYMMDD_HHMMSS 형식)
+/**
+ * 현재 시각을 파일명에 쓰기 쉬운 문자열(YYMMDD_HHMMSS)로 반환합니다.
+ */
 export function getTimestampString() {
     const now = new Date();
     return now.toISOString().slice(2, 10).replace(/-/g, "") + "_" + now.toTimeString().slice(0, 8).replace(/:/g, "");
 }
 
-// 랜덤 색상 생성
+/**
+ * 랜덤 HEX 색상 문자열(#RRGGBB)을 생성합니다.
+ * 동작 원리: 16진수 문자 6자리를 무작위로 뽑아 결합합니다.
+ */
 export function getRandomColor() {
     const letters = '0123456789ABCDEF';
     let color = '#';
@@ -20,8 +31,13 @@ export function getRandomColor() {
     return color;
 }
 
-// 컬러 마커 아이콘 생성
-// 컬러 마커 아이콘 생성 (이모지 지원)
+/**
+ * 색상/이모지/크기 옵션으로 Leaflet divIcon을 생성합니다.
+ * 동작 원리:
+ * - emoji가 있으면 텍스트 이모지 아이콘을 사용합니다.
+ * - 없으면 SVG 핀 아이콘을 사용합니다.
+ * - sizeMap으로 아이콘 크기와 anchor를 함께 맞춰 팝업 위치 오차를 줄입니다.
+ */
 export function createColoredMarkerIcon(color, emoji = null, size = 3) {
     const sizeMap = {
         1: { emojiSize: 14, iconSize: 26, anchor: 13 },
@@ -64,7 +80,10 @@ export function createColoredMarkerIcon(color, emoji = null, size = 3) {
     });
 }
 
-// 텍스 복사 헬퍼 함수
+/**
+ * 텍스트를 클립보드에 복사합니다.
+ * 동작 원리: 우선 navigator.clipboard를 사용하고, 실패 시 textarea+execCommand로 fallback 합니다.
+ */
 export function copyText(text, silent = false, itemLabel = "주소") {
     const msg = `${itemLabel}가 복사되었습니다.`;
 
@@ -86,7 +105,9 @@ export function copyText(text, silent = false, itemLabel = "주소") {
     }
 }
 
-// 주소 요약 (동, 리, 가 위주)
+/**
+ * 주소 문자열에서 뒤쪽 핵심 구간(동/리/가)을 우선 추출해 짧은 주소를 만듭니다.
+ */
 export function getShortAddress(addressName) {
     if (!addressName) return "";
     const parts = addressName.split(' ');
@@ -96,21 +117,31 @@ export function getShortAddress(addressName) {
     return parts.length >= 2 ? parts.slice(parts.length - 2).join(' ') : addressName;
 }
 
-/* 2. 좌표 및 변환 */
-// 좌표 변환 (WGS84 -> TM)
+/* ==========================================================================
+   2) 좌표/변환 유틸
+   ========================================================================== */
+/**
+ * WGS84(lat,lng)를 TM(EPSG:5186) 좌표로 변환합니다.
+ * 동작 원리: proj4 변환 결과를 반올림해 정수 미터 좌표로 반환합니다.
+ */
 export function getTmCoords(lat, lng) {
-    // proj4는 전역 객체로 가정 (index.html에서 로드)
+    // proj4는 index.html에서 전역으로 로드되어 있다고 가정합니다.
     const xy = proj4("EPSG:4326", "EPSG:5186", [lng, lat]);
     return { x: Math.round(xy[0]), y: Math.round(xy[1]) };
 }
 
-// 좌표 변환 (TM -> WGS84)
+/**
+ * TM(EPSG:5186) 좌표를 WGS84(lat,lng)로 변환합니다.
+ */
 export function getWgs84FromTm(x, y) {
     const coords = proj4("EPSG:5186", "EPSG:4326", [x, y]);
     return { lat: coords[1], lng: coords[0] };
 }
 
-// 도분초(DMS) 변환
+/**
+ * Decimal 좌표를 도분초(DMS) 문자열로 변환합니다.
+ * type은 'lat' 또는 'lng'를 받아 방향 문자(N/S/E/W)를 결정합니다.
+ */
 export function convertToDms(val, type) {
     const valAbs = Math.abs(val);
     const deg = Math.floor(valAbs);
@@ -120,7 +151,9 @@ export function convertToDms(val, type) {
     return (val >= 0 ? (type === 'lat' ? "N" : "E") : (type === 'lat' ? "S" : "W")) + " " + deg + "° " + min + "' " + sec + "\"";
 }
 
-// 도분초 배열을 소수점(Decimal)으로 변환
+/**
+ * 도/분/초 + 방향 문자를 Decimal 좌표로 변환합니다.
+ */
 export function dmsToDecimal(deg, min, sec, type) {
     let dec = parseFloat(deg) + parseFloat(min) / 60 + parseFloat(sec) / 3600;
     if (type === 'S' || type === 'W') {
@@ -129,7 +162,13 @@ export function dmsToDecimal(deg, min, sec, type) {
     return dec;
 }
 
-// 이미지 리사이징 (Canvas 사용)
+/* ==========================================================================
+   3) 미디어/입력 유틸
+   ========================================================================== */
+/**
+ * base64 이미지를 최대 폭 기준으로 리사이즈하고 JPEG base64로 반환합니다.
+ * 동작 원리: Image -> Canvas drawImage -> toDataURL 순서로 재인코딩합니다.
+ */
 export function resizeImage(base64Str, maxWidth = 1024, quality = 0.8) {
     return new Promise((resolve) => {
         const img = new Image();
@@ -154,7 +193,13 @@ export function resizeImage(base64Str, maxWidth = 1024, quality = 0.8) {
     });
 }
 
-// 국가지점번호 -> 위경도 변환 함수
+/**
+ * 국가지점번호(예: 가나 1234 5678)를 WGS84 좌표로 변환합니다.
+ * 동작 원리:
+ * - 한글 격자 문자를 인덱스로 바꿔 TM 격자 좌표를 계산합니다.
+ * - 계산한 좌표(EPSG:5179)를 proj4로 WGS84로 변환합니다.
+ * @returns {[number, number] | null} [lng, lat] 또는 변환 실패 시 null
+ */
 export function parseNationalPointNumber(text) {
     const match = text.match(/^([가-하])([가-하])\s*(\d{4})\s*(\d{4})$/);
     if (!match) return null;

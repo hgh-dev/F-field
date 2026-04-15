@@ -18,14 +18,14 @@ export const VWORLD_API_KEY = "EE6276F5-3176-37ED-8478-85C820FB8529";
  * - STORAGE_KEY: 사용자가 그린 도형(측량 기록)과 프로젝트 데이터를 저장함
  * - SEARCH_HISTORY_KEY: 주소 검색 기록을 저장함
  * - SEARCH_SETTING_KEY: 검색 기록 저장 기능의 켜짐/꺼짐 상태를 저장함
- */
+ **/
 export const STORAGE_KEY = "my_survey_data_v4";
 export const SEARCH_HISTORY_KEY = 'my_search_history';
 export const SEARCH_SETTING_KEY = 'my_search_setting_enabled';
 
 
 /* --------------------------------------------------------------------------
-   3. 리소스 (Resources)
+   1. 리소스 (Resources)
    -------------------------------------------------------------------------- */
 // 앱에서 사용하는 아이콘(그림)들을 SVG 코드로 정리한 객체입니다.
 export const SVG_ICONS = {
