@@ -4,6 +4,20 @@
 
 이 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.0.0/)를 따릅니다.
 
+## [2.4.5] - 2026-04-17
+
+### 추가 (Added)
+
+- 지도 화면 드래그앤드롭 파일 불러오기 기능 추가
+
+### 수정 (Fixed)
+
+- 선 기록 shp파일 저장 오류 수정
+- 선 기록 SHP 불러오기 시 `Trying to access beyond buffer length` 오류 수정
+- 점 SHP 불러오기 시 지도 마커 색상과 기록 리스트 색상 불일치 수정
+
+<br>
+
 ## [2.4.4] - 2026-04-15
 
 ### 추가 (Added)

@@ -16,7 +16,7 @@ import { renderSurveyList, updateLayerInfo, renderProjectSelector, closeSidebar,
 import { getRandomColor, createColoredMarkerIcon, getShortAddress, getTimestampString } from './utils.js';
 import { VWORLD_API_KEY } from './config.js';
 import { map } from './map.js';
-import { download as shpDownload, zip as shpZip } from '@crmackey/shp-write';
+import { zip as shpZip } from '@crmackey/shp-write';
 
 
 /* ==========================================================================
@@ -203,6 +203,54 @@ export function fitCurrentProjectToMap() {
 }
 
 /**
+ * SHP/DBF 불러오기 시 잘릴 수 있는 속성명(최대 10자)을 표준 키로 보정합니다.
+ * 동작 원리:
+ * - DBF 필드 길이 제한으로 `customColor -> customcolo`처럼 잘린 키를 원래 키로 매핑합니다.
+ * - 타입(숫자/불리언)으로 쓰이는 값은 후속 렌더링 충돌을 막기 위해 한 번 더 정규화합니다.
+ */
+function normalizeImportedFeatureProperties(feature) {
+    if (!feature || typeof feature !== 'object') return;
+    const props = feature.properties || (feature.properties = {});
+
+    const pickFirstDefined = (keys) => {
+        for (const key of keys) {
+            if (Object.prototype.hasOwnProperty.call(props, key) && props[key] !== undefined && props[key] !== null && props[key] !== '') {
+                return props[key];
+            }
+        }
+        return undefined;
+    };
+
+    const assignIfMissing = (targetKey, aliasKeys) => {
+        if (props[targetKey] !== undefined && props[targetKey] !== null && props[targetKey] !== '') return;
+        const value = pickFirstDefined(aliasKeys);
+        if (value !== undefined) props[targetKey] = value;
+    };
+
+    assignIfMissing('customColor', ['customcolo', 'CUSTOMCOLO', 'customcolor', 'CUSTOMCOLOR', 'color', 'COLOR']);
+    assignIfMissing('customEmoji', ['customemoj', 'CUSTOMEMOJ']);
+    assignIfMissing('customMarkerSize', ['custommarke', 'CUSTOMMARKE']);
+    assignIfMissing('customDashArray', ['customdash', 'CUSTOMDASH']);
+    assignIfMissing('description', ['descriptio', 'DESCRIPTIO']);
+
+    if (props.customMarkerSize !== undefined) {
+        const parsed = parseInt(props.customMarkerSize, 10);
+        if (!Number.isNaN(parsed)) {
+            props.customMarkerSize = Math.min(5, Math.max(1, parsed));
+        }
+    }
+
+    if (typeof props.isHidden === 'string') {
+        const v = props.isHidden.trim().toLowerCase();
+        props.isHidden = (v === 'true' || v === 't' || v === '1' || v === 'y');
+    }
+    if (typeof props.customFill === 'string') {
+        const v = props.customFill.trim().toLowerCase();
+        props.customFill = (v === 'true' || v === 't' || v === '1' || v === 'y');
+    }
+}
+
+/**
  * GeoJSON을 Leaflet 레이어로 복원해 현재 프로젝트 레이어 그룹(drawnItems)에 추가합니다.
  * 동작 원리: L.geoJSON의 콜백(pointToLayer/style/onEachFeature)으로
  * 지오메트리 타입별 생성 규칙, 스타일 규칙, 속성 후처리를 분리합니다.
@@ -212,13 +260,18 @@ export function restoreFeatures(geoJsonData) {
         pointToLayer: function (feature, latlng) {
             // Point는 pointToLayer 콜백이 호출될 때마다 개별 마커로 생성됩니다.
             // 이때 색상/이모지/크기를 아이콘 옵션에 주입해 시각 상태를 복원합니다.
-            const color = feature.properties.customColor || getRandomColor();
-            const emoji = feature.properties.customEmoji || null;
-            const size = feature.properties.customMarkerSize || 3;
+            normalizeImportedFeatureProperties(feature);
+            const props = feature.properties || (feature.properties = {});
+            if (!props.customColor) props.customColor = getRandomColor();
+
+            const color = props.customColor;
+            const emoji = props.customEmoji || null;
+            const size = props.customMarkerSize || 3;
             const marker = L.marker(latlng, { icon: createColoredMarkerIcon(color, emoji, size) });
             return marker;
         },
         style: function (feature) {
+            normalizeImportedFeatureProperties(feature);
             // style 콜백은 Point를 제외한 지오메트리에 적용됩니다.
             // 반환한 styleObj가 Leaflet path 옵션으로 적용됩니다.
             if (feature.geometry.type !== 'Point') {
@@ -247,14 +300,15 @@ export function restoreFeatures(geoJsonData) {
             }
         },
         onEachFeature: function (feature, layer) {
+            normalizeImportedFeatureProperties(feature);
             // onEachFeature는 레이어 생성 직후 1회 호출되며, 속성 연결/후처리를 수행합니다.
             if (feature.properties) {
                 // 필수 속성(id, customColor)이 없으면 기본값을 채웁니다.
                 if (!feature.properties.id) feature.properties.id = Date.now() + Math.floor(Math.random() * 1000);
                 if (!feature.properties.customColor) {
                     if (layer.options.icon) {
-                        // 마커 아이콘은 렌더링 결과물이라 원본 색상을 역산하기 어려워 기본 규칙으로 재설정합니다.
-                        feature.properties.customColor = feature.properties.customColor || getRandomColor();
+                        // 마커는 pointToLayer에서 이미 customColor를 보정합니다.
+                        feature.properties.customColor = feature.properties.customColor || '#FF0000';
                     } else {
                         feature.properties.customColor = layer.options.color || getRandomColor();
                     }
@@ -274,6 +328,96 @@ export function restoreFeatures(geoJsonData) {
 /* ==========================================================================
    2) 파일 내보내기
    ========================================================================== */
+/**
+ * Shapefile 내보내기 옵션을 생성합니다.
+ * 동작 원리:
+ * - zip 파일명(name)과 내부 shp/shx/dbf/prj 파일 basename(types)을 같은 값으로 고정합니다.
+ * - @crmackey/shp-write는 선 타입 키로 `polyline`을 사용하므로 line/ polyline 둘 다 설정합니다.
+ */
+function buildShpExportOptions(baseName) {
+    return {
+        name: baseName,
+        types: {
+            point: baseName,
+            multipoint: baseName,
+            line: baseName,
+            polyline: baseName,
+            polygon: baseName,
+            pointz: baseName,
+            multipointz: baseName,
+            polylinez: baseName,
+            polygonz: baseName
+        }
+    };
+}
+
+/**
+ * Blob/ArrayBuffer/TypedArray 입력을 ArrayBuffer로 정규화합니다.
+ */
+async function toArrayBuffer(data) {
+    if (data instanceof ArrayBuffer) return data;
+    if (ArrayBuffer.isView(data)) return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+    if (data && typeof data.arrayBuffer === "function") return await data.arrayBuffer();
+    throw new Error("지원하지 않는 바이너리 형식입니다.");
+}
+
+/**
+ * SHP ZIP 내부의 .shp/.shx 쌍을 검사해, 뒤쪽 0 패딩이 있으면 자동 보정합니다.
+ * 동작 원리:
+ * - SHX 인덱스로 SHP 유효 길이를 계산한 뒤 0 패딩 꼬리를 제거합니다.
+ * - 보정이 발생한 경우에만 ZIP을 재생성합니다.
+ */
+async function sanitizeShpZipPaddingIfNeeded(rawZipData) {
+    if (typeof JSZip === "undefined") return rawZipData;
+
+    const zipArrayBuffer = await toArrayBuffer(rawZipData);
+    const zip = await JSZip.loadAsync(zipArrayBuffer);
+    const allEntries = Object.values(zip.files).filter(entry => !entry.dir);
+    const shpEntries = allEntries.filter(entry => /\.shp$/i.test(entry.name));
+    if (shpEntries.length === 0) return rawZipData;
+
+    const findSiblingEntry = (baseName, ext) => {
+        const target = `${baseName}.${ext}`.toLowerCase();
+        return allEntries.find(entry => entry.name.toLowerCase() === target) || null;
+    };
+
+    let hasAnyFix = false;
+
+    for (const shpEntry of shpEntries) {
+        const baseName = shpEntry.name.replace(/\.shp$/i, '');
+        const shxEntry = findSiblingEntry(baseName, 'shx');
+        if (!shxEntry) continue;
+
+        const shpBuffer = await shpEntry.async('arraybuffer');
+        const shxBuffer = await shxEntry.async('arraybuffer');
+        const fixedShpBuffer = trimShpPaddingByShx(shpBuffer, shxBuffer, shpEntry.name);
+
+        if (fixedShpBuffer.byteLength !== shpBuffer.byteLength) {
+            hasAnyFix = true;
+            zip.file(shpEntry.name, fixedShpBuffer);
+        }
+    }
+
+    if (!hasAnyFix) return rawZipData;
+    return await zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE" });
+}
+
+/**
+ * SHP ZIP을 생성하고, 필요 시 패딩 보정을 적용해 안정적인 결과를 반환합니다.
+ */
+async function generateStableShpZip(featureCollection, baseName) {
+    const rawZip = await shpZip(featureCollection, buildShpExportOptions(baseName));
+    return await sanitizeShpZipPaddingIfNeeded(rawZip);
+}
+
+/**
+ * 단일 SHP ZIP을 생성해 파일로 저장합니다.
+ */
+async function exportShpFile(featureCollection, baseName) {
+    const stableZip = await generateStableShpZip(featureCollection, baseName);
+    saveOrShareFile(stableZip, `${baseName}.zip`, "application/zip");
+}
+
 /**
  * 현재 프로젝트에서 선택한 단일 레이어를 원하는 포맷으로 저장합니다.
  * 동작 원리: 사용자가 포맷을 고르면 동일한 레이어를 포맷별 변환기(GeoJSON/GPX/SHP)로 보냅니다.
@@ -308,7 +452,7 @@ export async function exportSingleLayer(id) {
             features: [layer.toGeoJSON()]
         };
         try {
-            await shpDownload(featureCollection, { name: safeMemo });
+            await exportShpFile(featureCollection, safeMemo);
         } catch (e) {
             alert('Shapefile 내보내기 실패: ' + e);
         }
@@ -349,7 +493,7 @@ export async function exportLayerWithFormat(layers, format) {
                     }
 
                     const featureCollection = { type: "FeatureCollection", features: [layer.toGeoJSON()] };
-                    const shpBuffer = await shpZip(featureCollection);
+                    const shpBuffer = await generateStableShpZip(featureCollection, safeMemo);
                     masterZip.file(safeMemo + ".zip", shpBuffer);
                 }
                 const content = await masterZip.generateAsync({ type: "blob" });
@@ -405,7 +549,7 @@ export async function exportLayerWithFormat(layers, format) {
         } else if (format === 'shp') {
             const featureCollection = { type: "FeatureCollection", features: [layer.toGeoJSON()] };
             try {
-                await shpDownload(featureCollection, { name: safeMemo });
+                await exportShpFile(featureCollection, safeMemo);
             } catch (e) {
                 alert(`"${safeMemo}" Shapefile 내보내기 실패: ${e}`);
             }
@@ -731,6 +875,178 @@ function saveToDevice(content, fileName, mimeType = "application/geo+json") {
    4) 파일 가져오기
    ========================================================================== */
 /**
+ * shpjs 파싱 결과를 FeatureCollection으로 정규화합니다.
+ * 동작 원리:
+ * - 단일 FeatureCollection은 그대로 사용합니다.
+ * - 배열/객체(레이어 맵) 형태는 FeatureCollection들만 추려 하나로 병합합니다.
+ */
+function normalizeShpGeoJsonResult(rawResult) {
+    const isFeatureCollection = (obj) => {
+        return !!obj && obj.type === "FeatureCollection" && Array.isArray(obj.features);
+    };
+
+    if (isFeatureCollection(rawResult)) {
+        return rawResult;
+    }
+
+    if (Array.isArray(rawResult)) {
+        const collections = rawResult.filter(isFeatureCollection);
+        if (collections.length === 0) return null;
+        if (collections.length === 1) return collections[0];
+        return {
+            type: "FeatureCollection",
+            features: collections.flatMap(fc => fc.features)
+        };
+    }
+
+    if (rawResult && typeof rawResult === "object") {
+        const collections = Object.values(rawResult).filter(isFeatureCollection);
+        if (collections.length === 0) return null;
+        if (collections.length === 1) return collections[0];
+        return {
+            type: "FeatureCollection",
+            features: collections.flatMap(fc => fc.features)
+        };
+    }
+
+    return null;
+}
+
+/**
+ * 값이 Promise인지 여부와 관계없이 최종 값을 반환합니다.
+ */
+async function resolveMaybePromise(value) {
+    if (value && typeof value.then === "function") {
+        return await value;
+    }
+    return value;
+}
+
+/**
+ * SHX 인덱스를 이용해 SHP에서 유효한 마지막 레코드 끝 위치(byte)를 계산합니다.
+ * 동작 원리:
+ * - SHX의 각 엔트리(offset/contentLength)는 16-bit word 단위입니다.
+ * - end = (offset * 2) + 8(record header) + (contentLength * 2)
+ * - 모든 레코드 end 중 최댓값을 실제 유효 데이터 끝으로 사용합니다.
+ */
+function getExpectedShpEndFromShx(shxBuffer) {
+    if (!(shxBuffer instanceof ArrayBuffer) || shxBuffer.byteLength < 100) return null;
+
+    const view = new DataView(shxBuffer);
+    const declaredShxBytes = view.getUint32(24, false) * 2;
+    const usableBytes = (declaredShxBytes >= 100 && declaredShxBytes <= shxBuffer.byteLength)
+        ? declaredShxBytes
+        : shxBuffer.byteLength;
+    const recordCount = Math.floor((usableBytes - 100) / 8);
+    if (recordCount <= 0) return null;
+
+    let maxEnd = 100;
+    for (let i = 0; i < recordCount; i++) {
+        const offset = 100 + (i * 8);
+        const recordOffsetWords = view.getUint32(offset, false);
+        const contentLengthWords = view.getUint32(offset + 4, false);
+        const recordEndBytes = (recordOffsetWords * 2) + 8 + (contentLengthWords * 2);
+        if (Number.isFinite(recordEndBytes) && recordEndBytes > maxEnd) {
+            maxEnd = recordEndBytes;
+        }
+    }
+
+    return maxEnd > 100 ? maxEnd : null;
+}
+
+/**
+ * 일부 선 SHP에서 뒤쪽 0 패딩 때문에 shpjs가 빈 레코드로 오해하는 문제를 방지합니다.
+ * 동작 원리:
+ * - SHX 기반 유효 끝 위치가 SHP 실제 길이보다 짧고
+ * - 잘려나갈 꼬리 바이트가 모두 0이면, 해당 패딩만 제거해 파싱합니다.
+ */
+function trimShpPaddingByShx(shpBuffer, shxBuffer, shpNameForLog = "") {
+    if (!(shpBuffer instanceof ArrayBuffer)) return shpBuffer;
+
+    const expectedEnd = getExpectedShpEndFromShx(shxBuffer);
+    if (!expectedEnd || expectedEnd <= 100 || expectedEnd >= shpBuffer.byteLength) {
+        return shpBuffer;
+    }
+
+    const tailBytes = new Uint8Array(shpBuffer, expectedEnd);
+    const hasNonZeroTail = tailBytes.some(byte => byte !== 0);
+    if (hasNonZeroTail) return shpBuffer;
+
+    const trimmed = shpBuffer.slice(0, expectedEnd);
+    if (trimmed.byteLength >= 28) {
+        // SHP 헤더의 file length(16-bit word 단위)를 실제 바이트 길이에 맞춰 갱신합니다.
+        new DataView(trimmed).setUint32(24, Math.floor(trimmed.byteLength / 2), false);
+    }
+    return trimmed;
+}
+
+/**
+ * shp(arrayBuffer) 파싱 실패 시 ZIP 내부를 직접 파싱하는 폴백입니다.
+ * 동작 원리:
+ * - .shp/.prj는 우선 파싱하고, .dbf는 실패해도 빈 속성으로 대체합니다.
+ * - 최종 결과는 FeatureCollection(또는 배열) 형태로 반환해 기존 흐름과 호환합니다.
+ */
+async function parseShpZipWithDbfFallback(arrayBuffer, originalError) {
+    if (typeof JSZip === "undefined" || !shp || typeof shp.parseShp !== "function" || typeof shp.combine !== "function") {
+        throw originalError;
+    }
+
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const allEntries = Object.values(zip.files).filter(entry => !entry.dir);
+    const shpEntries = allEntries.filter(entry => /\.shp$/i.test(entry.name));
+    if (shpEntries.length === 0) throw originalError;
+
+    const findSiblingEntry = (baseName, ext) => {
+        const target = `${baseName}.${ext}`.toLowerCase();
+        return allEntries.find(entry => entry.name.toLowerCase() === target) || null;
+    };
+
+    const collections = [];
+
+    for (const shpEntry of shpEntries) {
+        const baseName = shpEntry.name.replace(/\.shp$/i, '');
+        const prjEntry = findSiblingEntry(baseName, 'prj');
+        const dbfEntry = findSiblingEntry(baseName, 'dbf');
+        const shxEntry = findSiblingEntry(baseName, 'shx');
+
+        let shpBuffer = await shpEntry.async('arraybuffer');
+        const prjText = prjEntry ? await prjEntry.async('text') : undefined;
+        if (shxEntry) {
+            try {
+                const shxBuffer = await shxEntry.async('arraybuffer');
+                shpBuffer = trimShpPaddingByShx(shpBuffer, shxBuffer, shpEntry.name);
+            } catch {}
+        }
+
+        const geometryRows = await resolveMaybePromise(shp.parseShp(shpBuffer, prjText));
+
+        let propertyRows = [];
+        if (dbfEntry) {
+            try {
+                const dbfBuffer = await dbfEntry.async('arraybuffer');
+                propertyRows = await resolveMaybePromise(shp.parseDbf(dbfBuffer));
+            } catch (dbfErr) {
+                propertyRows = [];
+            }
+        }
+
+        // DBF가 없거나 파싱 실패해도 geometry 개수만큼 빈 속성을 맞춰 결합합니다.
+        const safeProperties = Array.isArray(propertyRows) && propertyRows.length > 0
+            ? propertyRows
+            : (Array.isArray(geometryRows) ? geometryRows.map(() => ({})) : []);
+
+        const combined = await resolveMaybePromise(shp.combine([geometryRows, safeProperties]));
+        if (combined && combined.type === "FeatureCollection" && Array.isArray(combined.features)) {
+            collections.push(combined);
+        }
+    }
+
+    if (collections.length === 0) throw originalError;
+    if (collections.length === 1) return collections[0];
+    return collections;
+}
+
+/**
  * 선택한 파일(GeoJSON/GPX/SHP ZIP)을 읽어 현재 앱 데이터에 반영합니다.
  * 동작 원리: 파일 확장자로 파서를 결정한 뒤, 결과를 GeoJSON으로 통일해
  * "프로젝트 단위 추가"와 "현재 프로젝트 레이어 추가"를 분기 처리합니다.
@@ -744,6 +1060,7 @@ export async function handleFileSelect(input) {
     let singleLayerCount = 0;
     let mergedDefaultCount = 0;
     let errorCount = 0;
+    let firstErrorMessage = "";
 
     // 여러 프로젝트 파일을 가져올 수 있으므로 마지막 프로젝트 ID를 따로 추적합니다.
     let lastImportedProjectId = null;
@@ -766,13 +1083,16 @@ export async function handleFileSelect(input) {
                 }
 
                 const arrayBuffer = await file.arrayBuffer();
-                const geoJsonResult = await shp(arrayBuffer);
-                // shpjs는 다중 레이어를 배열로 반환할 수 있어 결과 타입을 먼저 판별합니다.
-                if (Array.isArray(geoJsonResult)) {
-                    // 다중 레이어가 들어오면 첫 레이어를 사용합니다.
-                    json = geoJsonResult[0];
-                } else {
-                    json = geoJsonResult;
+                let geoJsonResult;
+                try {
+                    geoJsonResult = await shp(arrayBuffer);
+                } catch (shpErr) {
+                    geoJsonResult = await parseShpZipWithDbfFallback(arrayBuffer, shpErr);
+                }
+
+                json = normalizeShpGeoJsonResult(geoJsonResult);
+                if (!json) {
+                    throw new Error("SHP 파싱 결과를 FeatureCollection으로 변환하지 못했습니다.");
                 }
 
                 // DBF 인코딩 차이로 속성 문자열이 깨질 수 있어, memo를 파일명으로 보정합니다.
@@ -874,6 +1194,9 @@ export async function handleFileSelect(input) {
         } catch (err) {
             console.error(`파일 처리 실패 [${file.name}]:`, err);
             errorCount++;
+            if (!firstErrorMessage) {
+                firstErrorMessage = `${file.name}: ${err?.message || err}`;
+            }
         }
     }
 
@@ -894,6 +1217,7 @@ export async function handleFileSelect(input) {
     if (mergedDefaultCount > 0) msgs.push(`기본 프로젝트 기록 ${mergedDefaultCount}건이 앱의 기본 프로젝트에 병합되었습니다.`);
     if (newProjectCount > 0) msgs.push(`프로젝트 ${newProjectCount}개가 새로 추가되었습니다.`);
     if (errorCount > 0) msgs.push(`${errorCount}개 파일 처리 중 오류가 발생했습니다.`);
+    if (firstErrorMessage) msgs.push(`오류 상세: ${firstErrorMessage}`);
 
     if (msgs.length > 0) alert(msgs.join('\n'));
 
