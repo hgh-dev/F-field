@@ -9,8 +9,8 @@
    - 레이어 제어는 "체크박스/라디오 상태 -> addLayer/removeLayer" 흐름으로 연결됩니다.
    - 여러 오버레이가 겹칠 때는 Pane z-index와 bringToFront 순서로 표시 우선순위를 보장합니다.
    ========================================================================== */
-import { VWORLD_API_KEY } from './config.js?v=2.4.6';
-import { AppState } from './state.js?v=2.4.6';
+import { VWORLD_API_KEY } from './config.js?v=2.4.7';
+import { AppState } from './state.js?v=2.4.7';
 
 /* ==========================================================================
    1) 지도 초기화

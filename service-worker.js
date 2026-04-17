@@ -8,7 +8,7 @@
    - fetch 이벤트에서 요청 종류를 구분해 캐시/네트워크 전략을 선택하고, 새 워커는 메시지로 즉시 활성화할 수 있습니다.
    ========================================================================== */
 
-const STATIC_CACHE_NAME = 'F-field-v2.4.6';
+const STATIC_CACHE_NAME = 'F-field-v2.4.7';
 const MAP_CACHE_NAME = 'F-field-map-v1';
 
 // 1. 설치: 기본 뼈대만 캐싱 (라이브러리 등 변하지 않는 것들)
@@ -24,19 +24,19 @@ const STATIC_URLS = [
     './icon-512.png',
     './manifest.json',
     './index.html',
-    './config.js',
-    './state.js',
-    './map.js',
-    './draw.js',
-    './data.js',
-    './ui.js',
-    './ui-search.js',
-    './ui-bottomsheet.js',
-    './ui-project.js',
-    './ui-photo.js',
-    './ui-core.js',
-    './utils.js',
-    './script.js'
+    './config.js?v=2.4.7',
+    './state.js?v=2.4.7',
+    './map.js?v=2.4.7',
+    './draw.js?v=2.4.7',
+    './data.js?v=2.4.7',
+    './ui.js?v=2.4.7',
+    './ui-search.js?v=2.4.7',
+    './ui-bottomsheet.js?v=2.4.7',
+    './ui-project.js?v=2.4.7',
+    './ui-photo.js?v=2.4.7',
+    './ui-core.js?v=2.4.7',
+    './utils.js?v=2.4.7',
+    './script.js?v=2.4.7'
 ];
 
 self.addEventListener('install', (event) => {

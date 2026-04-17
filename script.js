@@ -10,19 +10,19 @@
    - DOMContentLoaded 시점에 초기화를 일괄 수행해 UI/데이터/지도 상태를 동기화합니다.
    ========================================================================== */
 
-import { APP_MODE, APP_VERSION } from './config.js';
-import { AppState } from './state.js';
+import { APP_MODE, APP_VERSION } from './config.js?v=2.4.7';
+import { AppState } from './state.js?v=2.4.7';
 
 import {
     map,
     toggleBaseLayer, changeBaseMap, updateLayerOrder, changeCadastralMap,
     toggleOverlay
-} from './map.js';
+} from './map.js?v=2.4.7';
 import {
     drawnItems, startDraw, completeDrawing, cancelDrawing,
     addGpsVertex, deleteLastVertex, currentEditLayerId,
     completeSingleEdit, revertSingleEdit, cancelSingleEdit
-} from './draw.js';
+} from './draw.js?v=2.4.7';
 
 
 
@@ -32,12 +32,12 @@ import {
     handleFileSelect, clearAllData, saveCurrentPoint, saveCurrentBoundary,
     fitCurrentProjectToMap,
     getAddressFromCoords, closeExportFormatModal, exportLayerWithFormat, backupAllProjects
-} from './data.js';
+} from './data.js?v=2.4.7';
 
 import {
     getRandomColor, getTimestampString, createColoredMarkerIcon,
     copyText
-} from './utils.js';
+} from './utils.js?v=2.4.7';
 
 import {
     switchSidebarTab, closeBottomSheet,
@@ -51,7 +51,7 @@ import {
     updateLayerInfo as uiUpdateLayerInfo,
     currentBottomSheetLayerId,
     setCurrentBottomSheetLayerId
-} from './ui.js';
+} from './ui.js?v=2.4.7';
 
 
 /* ==========================================================================
@@ -501,7 +501,8 @@ async function forceAppUpdate() {
     } catch (e) {
         console.warn('캐시 삭제 실패:', e);
     }
-    window.location.reload(true);
+    const separator = window.location.search ? '&' : '?';
+    window.location.replace(`${window.location.pathname}${window.location.search}${separator}update=${Date.now()}`);
 }
 
 /**

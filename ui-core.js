@@ -4,12 +4,12 @@
    [입력] AppState, 지도(map), 레이어(drawnItems), 로컬 저장소(localStorage)
    [출력] DOM 갱신, 지도 이동/스타일 변경, 전역(window) UI 액션 바인딩
    ========================================================================== */
-import { SVG_ICONS } from './config.js';
-import { AppState } from './state.js';
-import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, getOfflineMapUrls } from './map.js';
-import { drawnItems, currentEditLayerId } from './draw.js';
-import { createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js';
-import { saveToStorage, exportSingleLayer } from './data.js';
+import { SVG_ICONS } from './config.js?v=2.4.7';
+import { AppState } from './state.js?v=2.4.7';
+import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, getOfflineMapUrls } from './map.js?v=2.4.7';
+import { drawnItems, currentEditLayerId } from './draw.js?v=2.4.7';
+import { createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.7';
+import { saveToStorage, exportSingleLayer } from './data.js?v=2.4.7';
 import {
     initSearchSettings,
     toggleSearchBox,
@@ -21,7 +21,7 @@ import {
     clearHistoryAll,
     deleteHistoryItem,
     showHistoryPanel,
-} from './ui-search.js';
+} from './ui-search.js?v=2.4.7';
 import {
     setCurrentBottomSheetLayerId,
     openBottomSheet,
@@ -35,7 +35,7 @@ import {
     handleBottomSheetHoleFill,
     showInfoPopup,
     fetchAndHighlightBoundary,
-} from './ui-bottomsheet.js';
+} from './ui-bottomsheet.js?v=2.4.7';
 import {
     createNewProject,
     editProjectName,
@@ -52,7 +52,7 @@ import {
     openProjectSortModal,
     closeProjectSortModal,
     applyProjectSortSetting
-} from './ui-project.js';
+} from './ui-project.js?v=2.4.7';
 import {
     createLayerPhotoSection,
     openPhotoSelectMenu,
@@ -65,7 +65,7 @@ import {
     prevPhoto,
     downloadCurrentPhoto,
     closePhotoModal
-} from './ui-photo.js';
+} from './ui-photo.js?v=2.4.7';
 
 
 // --- 전역 UI 상태 ---
