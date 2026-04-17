@@ -489,10 +489,10 @@ export function handleBottomSheetHoleFill() {
 
 /**
  * [함수] createAddressInfoSection
- * [역할] 주소/우편 정보 영역 HTML을 생성한다.
- * [원리] 지번, 도로명, 우편번호 존재 여부에 따라 각 블록을 조건부로 조합해 반환한다.
+ * [역할] 주소 정보 영역 HTML을 생성한다.
+ * [원리] 지번과 도로명 주소 블록을 조건부로 조합해 반환한다.
  */
-function createAddressInfoSection(parcelAddr, roadAddr, zipcode) {
+function createAddressInfoSection(parcelAddr, roadAddr) {
     return `<div style="display:flex; justify-content:space-between; align-items:center;">
                 <div style="display:flex; align-items:center; gap:5px;">
                     <b onclick="copyText(this.innerText, false, '지번 주소')" style="color:#3B82F6; font-size: 16px; line-height: 1.2; word-break: keep-all; cursor: pointer;">${parcelAddr}</b>
@@ -503,11 +503,6 @@ function createAddressInfoSection(parcelAddr, roadAddr, zipcode) {
             <div style="display:flex; align-items:baseline; font-size: 14px; color: #555; margin-bottom: 8px;">
                 <span class="badge-road" style="flex-shrink:0; width:33px; display:inline-block; text-align:center;">도로명</span>
                 <span onclick="copyText(this.innerText, false, '도로명 주소')" style="margin-left: 5px; line-height: 1.5; word-break: keep-all; cursor: pointer;">${roadAddr}</span>
-            </div>` : ''}
-            ${zipcode ? `
-            <div style="display:flex; align-items:baseline; font-size: 14px; color: #555; margin-bottom: 30px;">
-                <span style="background:#f3f4f6; color:#4b5563; padding:2px 4px; border-radius:3px; font-size:10px; width:33px; display:inline-block; text-align:center; flex-shrink:0;">우편</span>
-                <span onclick="copyText(this.innerText, false, '우편번호')" style="margin-left: 5px; line-height: 1.5; cursor: pointer;">${zipcode}</span>
             </div>` : ''}`;
 }
 
@@ -520,6 +515,20 @@ function createCoordInfoSection(infoText, zipcode) {
     return `<div style="display:flex; align-items:baseline; font-size: 14px; color: #555; margin-bottom: ${zipcode ? '8px' : '30px'};">
                 <span class="badge-coord" style="flex-shrink:0; width:33px; display:inline-block; text-align:center;">좌표</span>
                 <div onclick="copyText(this.innerText, false, '좌표')" style="margin-left: 5px; line-height: 1.5; cursor: pointer;">${infoText}</div>
+            </div>`;
+}
+
+/**
+ * [함수] createZipcodeInfoSection
+ * [역할] 우편번호 정보 영역 HTML을 생성한다.
+ * [원리] 우편번호가 있을 때만 기존 스타일을 유지한 채 하단 블록으로 반환한다.
+ */
+function createZipcodeInfoSection(zipcode) {
+    if (!zipcode) return '';
+
+    return `<div style="display:flex; align-items:baseline; font-size: 14px; color: #555; margin-bottom: 30px;">
+                <span style="background:#f3f4f6; color:#4b5563; padding:2px 4px; border-radius:3px; font-size:10px; width:33px; display:inline-block; text-align:center; flex-shrink:0;">우편</span>
+                <span onclick="copyText(this.innerText, false, '우편번호')" style="margin-left: 5px; line-height: 1.5; cursor: pointer;">${zipcode}</span>
             </div>`;
 }
 
@@ -585,8 +594,9 @@ function createActionButtonsSection(parcelAddr, lat, lng) {
  */
 function createInfoPopupContent(parcelAddr, roadAddr, zipcode, infoText, lat, lng) {
     return `<div style="min-width: 210px;">
-                ${createAddressInfoSection(parcelAddr, roadAddr, zipcode)}
+                ${createAddressInfoSection(parcelAddr, roadAddr)}
                 ${createCoordInfoSection(infoText, zipcode)}
+                ${createZipcodeInfoSection(zipcode)}
             </div>
             ${createActionButtonsSection(parcelAddr, lat, lng)}`;
 }
