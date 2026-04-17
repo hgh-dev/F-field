@@ -10,26 +10,25 @@
    - DOMContentLoaded 시점에 초기화를 일괄 수행해 UI/데이터/지도 상태를 동기화합니다.
    ========================================================================== */
 
-import { APP_MODE, APP_VERSION, VWORLD_API_KEY, STORAGE_KEY, SEARCH_HISTORY_KEY, SEARCH_SETTING_KEY, SVG_ICONS } from './config.js';
+import { APP_MODE, APP_VERSION } from './config.js';
 import { AppState } from './state.js';
 
 import {
-    map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer,
-    vworldLxLayer, vworldContinuousLayer, nasGukLayer, mergedAdminLayer,
+    map,
     toggleBaseLayer, changeBaseMap, updateLayerOrder, changeCadastralMap,
     toggleOverlay
 } from './map.js';
 import {
     drawnItems, startDraw, completeDrawing, cancelDrawing,
-    addGpsVertex, deleteLastVertex, currentEditLayerId, editLayerOriginalLatLng,
-    enableSingleLayerEdit, completeSingleEdit, revertSingleEdit, cancelSingleEdit
+    addGpsVertex, deleteLastVertex, currentEditLayerId,
+    completeSingleEdit, revertSingleEdit, cancelSingleEdit
 } from './draw.js';
 
 
 
 import {
     saveToStorage, loadFromStorage, loadCurrentProjectFeatures,
-    restoreFeatures, exportSingleLayer, exportCurrentProject,
+    exportCurrentProject,
     handleFileSelect, clearAllData, saveCurrentPoint, saveCurrentBoundary,
     fitCurrentProjectToMap,
     getAddressFromCoords, closeExportFormatModal, exportLayerWithFormat, backupAllProjects
@@ -37,30 +36,16 @@ import {
 
 import {
     getRandomColor, getTimestampString, createColoredMarkerIcon,
-    copyText, getTmCoords, convertToDms
+    copyText
 } from './utils.js';
 
 import {
-    openSidebar, closeSidebar, switchSidebarTab, unlockHiddenLayers,
-    toggleSearchBox, executeSearch, closeSearchResult, showHistoryPanel,
-    toggleHistorySave, clearHistoryAll, deleteHistoryItem,
-    openBottomSheet, closeBottomSheet, toggleBottomSheetState,
-    toggleBottomSheetMoreMenu, handleBottomSheetEdit, handleBottomSheetDelete,
-    showInfoPopup, fetchAndHighlightBoundary, editLayerDescription,
-    closeMemoModal, saveMemoAction, editLayerMemo, renderProjectSelector,
-    createNewProject, editProjectName, deleteCurrentProject,
-    openMoveProjectModal, openMoveSelectionModal, closeMoveProjectModal,
-    highlightButton, resetButtonStyles, openNavModal, closeNavModal,
-    executeNavigation, openSearchModal, closeSearchModal, executeMapSearch, updateCoordDisplay,
-    startSleepMode, unlockSleepMode, initSleepSlider, toggleAccordion,
-    toggleMoreMenu, toggleProjectMenu, openPhotoSelectMenu,
-    closePhotoSelectMenu, handlePhotoMenuAction, processPhotoFiles,
-    deletePhoto, openPhotoModal, nextPhoto, prevPhoto,
-    downloadCurrentPhoto, closePhotoModal, initUiEventListeners,
-    deleteLayerById, toggleLayerVisibility, zoomToLayer, updateLayerColor,
-    openLocationActionModal, closeLocationActionModal,
-    openSettingsModal, closeSettingsModal, shareLocationText,
-    openContextMenu, handleMenuAction, syncSidebarUI,
+    switchSidebarTab, closeBottomSheet,
+    showInfoPopup, fetchAndHighlightBoundary, renderProjectSelector,
+    resetButtonStyles,
+    openSearchModal, closeSearchModal, executeMapSearch, updateCoordDisplay,
+    unlockSleepMode, initSleepSlider, openPhotoSelectMenu,
+    processPhotoFiles, initUiEventListeners, syncSidebarUI,
 
     renderSurveyList as uiRenderSurveyList,
     updateLayerInfo as uiUpdateLayerInfo,
