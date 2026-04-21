@@ -4,12 +4,12 @@
    [입력] AppState, 지도(map), 레이어(drawnItems), 로컬 저장소(localStorage)
    [출력] DOM 갱신, 지도 이동/스타일 변경, 전역(window) UI 액션 바인딩
    ========================================================================== */
-import { SVG_ICONS } from './config.js?v=2.4.7';
-import { AppState } from './state.js?v=2.4.7';
-import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, getOfflineMapUrls } from './map.js?v=2.4.7';
-import { drawnItems, currentEditLayerId } from './draw.js?v=2.4.7';
-import { createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.7';
-import { saveToStorage, exportSingleLayer } from './data.js?v=2.4.7';
+import { SVG_ICONS } from './config.js?v=2.4.8';
+import { AppState } from './state.js?v=2.4.8';
+import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, getOfflineMapUrls } from './map.js?v=2.4.8';
+import { drawnItems, currentEditLayerId } from './draw.js?v=2.4.8';
+import { createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.8';
+import { saveToStorage, exportSingleLayer } from './data.js?v=2.4.8';
 import {
     initSearchSettings,
     toggleSearchBox,
@@ -21,7 +21,7 @@ import {
     clearHistoryAll,
     deleteHistoryItem,
     showHistoryPanel,
-} from './ui-search.js?v=2.4.7';
+} from './ui-search.js?v=2.4.8';
 import {
     setCurrentBottomSheetLayerId,
     openBottomSheet,
@@ -35,7 +35,7 @@ import {
     handleBottomSheetHoleFill,
     showInfoPopup,
     fetchAndHighlightBoundary,
-} from './ui-bottomsheet.js?v=2.4.7';
+} from './ui-bottomsheet.js?v=2.4.8';
 import {
     createNewProject,
     editProjectName,
@@ -52,7 +52,7 @@ import {
     openProjectSortModal,
     closeProjectSortModal,
     applyProjectSortSetting
-} from './ui-project.js?v=2.4.7';
+} from './ui-project.js?v=2.4.8';
 import {
     createLayerPhotoSection,
     openPhotoSelectMenu,
@@ -65,7 +65,7 @@ import {
     prevPhoto,
     downloadCurrentPhoto,
     closePhotoModal
-} from './ui-photo.js?v=2.4.7';
+} from './ui-photo.js?v=2.4.8';
 
 
 // --- 전역 UI 상태 ---
@@ -428,6 +428,7 @@ export function openSettingsModal() {
     document.getElementsByName('coord-mode-select').forEach(r => { if (parseInt(r.value) === AppState.coordMode) r.checked = true; });
     document.getElementsByName('track-interval-select').forEach(r => { if (parseInt(r.value) === AppState.trackInterval) r.checked = true; });
     document.getElementsByName('polygon-fill-select').forEach(r => { if ((r.value === 'true') === AppState.isPolygonFill) r.checked = true; });
+    document.getElementsByName('snap-enabled-select').forEach(r => { if ((r.value === 'true') === AppState.isSnapEnabled) r.checked = true; });
     const overlay = document.getElementById('settings-modal-overlay');
     overlay.style.display = 'flex';
     setTimeout(() => { overlay.classList.add('visible'); }, 10);
@@ -1000,6 +1001,61 @@ export function initUiEventListeners() {
    -------------------------------------------------------------------------- */
 /* 7-1. 상세 팝업, 가시성, 이동, 공유 */
 
+/**
+ * 숨김/표시 상태에 따라 레이어 상호작용 가능 여부를 동기화합니다.
+ */
+function setLayerInteractivity(layer, isInteractive) {
+    if (layer instanceof L.Marker) {
+        layer.options.interactive = isInteractive;
+        const pointerEvents = isInteractive ? 'auto' : 'none';
+        const applyMarkerPointerEvents = () => {
+            if (layer._icon) layer._icon.style.pointerEvents = pointerEvents;
+            if (layer._shadow) layer._shadow.style.pointerEvents = pointerEvents;
+        };
+        if (layer._icon || layer._shadow) applyMarkerPointerEvents();
+        else layer.once('add', applyMarkerPointerEvents);
+        return;
+    }
+
+    const pointerEvents = isInteractive ? 'visiblePainted' : 'none';
+    if (layer._path) layer._path.style.pointerEvents = pointerEvents;
+    else layer.once('add', () => { if (layer._path) layer._path.style.pointerEvents = pointerEvents; });
+}
+
+/**
+ * 레이어 설정(채우기/선표시)에 맞는 가시 상태를 계산해 반영합니다.
+ */
+export function applyLayerVisibilityState(layer, isHidden = layer?.feature?.properties?.isHidden === true) {
+    if (!layer || !layer.feature?.properties) return;
+    layer.feature.properties.isHidden = isHidden;
+
+    if (isHidden) {
+        if (layer instanceof L.Marker) {
+            layer.setOpacity(0);
+        } else {
+            layer.setStyle({ opacity: 0, fillOpacity: 0, stroke: false });
+        }
+        layer.closePopup();
+        setLayerInteractivity(layer, false);
+        return;
+    }
+
+    if (layer instanceof L.Marker) {
+        layer.setOpacity(1);
+    } else {
+        let fillOpacity = 0.2;
+        if (layer instanceof L.Polygon) {
+            const customFill = layer.feature?.properties?.customFill;
+            if (customFill === false) fillOpacity = 0;
+            else if (customFill === true) fillOpacity = 0.2;
+            else if (!AppState.isPolygonFill) fillOpacity = 0;
+        }
+        const stroke = layer.feature?.properties?.customDashArray !== 'none';
+        layer.setStyle({ opacity: 1, fillOpacity, stroke });
+    }
+    setLayerInteractivity(layer, true);
+}
+
 
 /**
  * [함수] updateLayerInfo
@@ -1055,10 +1111,10 @@ export function updateLayerInfo(layer) {
         ${photoSection.actionButtonHtml}
     </div></div></div>`;
 
-    if (layer._path) layer._path.style.pointerEvents = 'visiblePainted';
-    else layer.once('add', () => { if (layer._path) layer._path.style.pointerEvents = 'visiblePainted'; });
+    applyLayerVisibilityState(layer, layer.feature?.properties?.isHidden === true);
 
     layer.off('click').on('click', function (e) {
+        if (layer.feature?.properties?.isHidden === true) return;
         if (AppState.currentDrawer || currentEditLayerId !== null) return;
         AppState.isLayerClicked = true;
         setTimeout(() => { AppState.isLayerClicked = false; }, 50);
@@ -1141,15 +1197,7 @@ export function toggleLayerVisibility(id) {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === id);
     if (layer) {
         const isHidden = !layer.feature.properties.isHidden;
-        layer.feature.properties.isHidden = isHidden;
-        if (isHidden) {
-            layer instanceof L.Marker ? layer.setOpacity(0) : layer.setStyle({ opacity: 0, fillOpacity: 0, stroke: false });
-            layer.closePopup();
-            if (layer._path) layer._path.style.pointerEvents = 'none';
-        } else {
-            layer instanceof L.Marker ? layer.setOpacity(1) : layer.setStyle({ opacity: 1, fillOpacity: 0.2, stroke: true });
-            if (layer._path) layer._path.style.pointerEvents = 'visiblePainted';
-        }
+        applyLayerVisibilityState(layer, isHidden);
         saveToStorage();
         renderSurveyList();
         scheduleViewportVectorOptimization();

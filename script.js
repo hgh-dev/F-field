@@ -10,19 +10,20 @@
    - DOMContentLoaded 시점에 초기화를 일괄 수행해 UI/데이터/지도 상태를 동기화합니다.
    ========================================================================== */
 
-import { APP_MODE, APP_VERSION } from './config.js?v=2.4.7';
-import { AppState } from './state.js?v=2.4.7';
+import { APP_MODE, APP_VERSION } from './config.js?v=2.4.8';
+import { AppState } from './state.js?v=2.4.8';
 
 import {
     map,
     toggleBaseLayer, changeBaseMap, updateLayerOrder, changeCadastralMap,
     toggleOverlay
-} from './map.js?v=2.4.7';
+} from './map.js?v=2.4.8';
 import {
     drawnItems, startDraw, completeDrawing, cancelDrawing,
     addGpsVertex, deleteLastVertex, currentEditLayerId,
-    completeSingleEdit, revertSingleEdit, cancelSingleEdit
-} from './draw.js?v=2.4.7';
+    completeSingleEdit, revertSingleEdit, cancelSingleEdit,
+    setSnapEnabled, syncSnapToggleButtons
+} from './draw.js?v=2.4.8';
 
 
 
@@ -32,12 +33,12 @@ import {
     handleFileSelect, clearAllData, saveCurrentPoint, saveCurrentBoundary,
     fitCurrentProjectToMap,
     getAddressFromCoords, closeExportFormatModal, exportLayerWithFormat, backupAllProjects
-} from './data.js?v=2.4.7';
+} from './data.js?v=2.4.8';
 
 import {
     getRandomColor, getTimestampString, createColoredMarkerIcon,
     copyText
-} from './utils.js?v=2.4.7';
+} from './utils.js?v=2.4.8';
 
 import {
     switchSidebarTab, closeBottomSheet,
@@ -49,9 +50,10 @@ import {
 
     renderSurveyList as uiRenderSurveyList,
     updateLayerInfo as uiUpdateLayerInfo,
+    applyLayerVisibilityState,
     currentBottomSheetLayerId,
     setCurrentBottomSheetLayerId
-} from './ui.js?v=2.4.7';
+} from './ui.js?v=2.4.8';
 
 
 /* ==========================================================================
@@ -792,6 +794,9 @@ window.setTrackInterval = (value) => {
     AppState.trackInterval = parseInt(value);
     localStorage.setItem('setting_track_interval', value);
 };
+window.setSnapEnabled = (value) => {
+    setSnapEnabled(value);
+};
 // 폴리곤 채움 표시 전역 설정을 즉시 지도 레이어 스타일에 반영합니다.
 window.setPolygonFill = (value) => {
     const isFill = (value === 'true' || value === true);
@@ -836,23 +841,7 @@ window.clearAllData = clearAllData;
 // 목록 전체 선택/해제를 "isHidden + 레이어 스타일"로 동기화합니다.
 window.toggleAllLayers = (isChecked) => {
     drawnItems.getLayers().forEach(layer => {
-        layer.feature.properties.isHidden = !isChecked;
-        if (!isChecked) {
-            layer instanceof L.Marker ? layer.setOpacity(0) : layer.setStyle({ opacity: 0, fillOpacity: 0, stroke: false });
-            layer.closePopup();
-            if (layer._path) layer._path.style.pointerEvents = 'none';
-        } else {
-            let fillOpq = 0.2;
-            if (layer instanceof L.Polygon && !AppState.isPolygonFill) {
-                fillOpq = 0;
-            }
-            if (layer instanceof L.Marker) {
-                layer.setOpacity(1);
-            } else {
-                layer.setStyle({ opacity: 1, fillOpacity: fillOpq, stroke: true });
-            }
-            if (layer._path) layer._path.style.pointerEvents = 'visiblePainted';
-        }
+        applyLayerVisibilityState(layer, !isChecked);
     });
     saveToStorage();
     uiRenderSurveyList();
@@ -939,3 +928,5 @@ window.cancelSingleEdit = cancelSingleEdit;
 window.handleFileSelect = handleFileSelect;
 window.forceAppUpdate = forceAppUpdate;
 window.closeExportFormatModal = closeExportFormatModal;
+
+syncSnapToggleButtons();

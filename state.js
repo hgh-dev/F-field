@@ -15,6 +15,8 @@ export const AppState = {
     coordMode: parseInt(localStorage.getItem('setting_coord_mode')) || 0,
     // 폴리곤 내부 채움 표시 여부 (기본 true, 저장값이 'false'일 때만 false)
     isPolygonFill: localStorage.getItem('setting_polygon_fill') !== 'false',
+    // 측량/수정 중 스냅 사용 여부
+    isSnapEnabled: localStorage.getItem('setting_snap_enabled') !== 'false',
 
     /* ----------------------------------------------------------------------
        2) 지도 위치/추적 상태

@@ -7,11 +7,11 @@
    - AppState 프로젝트/레이어 상태를 읽어 목록 DOM을 구성하고, 각 카드/항목 액션을 기존 동작에 연결합니다.
    - 프로젝트 단위 관리와 기록 목록 표시 책임을 한 파일에 묶어 탭 단위 응집도를 유지합니다.
    ========================================================================== */
-import { SVG_ICONS } from './config.js?v=2.4.7';
-import { AppState } from './state.js?v=2.4.7';
-import { drawnItems } from './draw.js?v=2.4.7';
-import { saveToStorage } from './data.js?v=2.4.7';
-import { closeAllDropdowns, switchSidebarTab } from './ui-core.js?v=2.4.7';
+import { SVG_ICONS } from './config.js?v=2.4.8';
+import { AppState } from './state.js?v=2.4.8';
+import { drawnItems } from './draw.js?v=2.4.8';
+import { saveToStorage } from './data.js?v=2.4.8';
+import { closeAllDropdowns, switchSidebarTab } from './ui-core.js?v=2.4.8';
 
 export let moveTargetLayerIds = [];
 
