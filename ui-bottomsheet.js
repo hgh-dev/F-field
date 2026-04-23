@@ -7,14 +7,14 @@
    - 바텀시트 표시용 HTML 조각을 내부 보조 함수로 조합하고, 선택 레이어 상태를 기준으로 액션을 실행합니다.
    - 지도 클릭, 검색 결과 이동, 기록 상세 열기 흐름이 최종적으로 이 모듈의 바텀시트 표시로 수렴합니다.
    ========================================================================== */
-import { VWORLD_API_KEY, SVG_ICONS } from './config.js?v=2.4.8';
-import { AppState } from './state.js?v=2.4.8';
-import { map } from './map.js?v=2.4.8';
-import { drawnItems, enableSingleLayerEdit } from './draw.js?v=2.4.8';
-import { getTimestampString, getRandomColor, createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.8';
-import { saveToStorage } from './data.js?v=2.4.8';
-import { updateLayerInfo, deleteLayerById, scheduleViewportVectorOptimization } from './ui-core.js?v=2.4.8';
-import { renderSurveyList } from './ui-project.js?v=2.4.8';
+import { VWORLD_API_KEY, SVG_ICONS } from './config.js?v=2.4.9';
+import { AppState } from './state.js?v=2.4.9';
+import { map, updateLayerOrder } from './map.js?v=2.4.9';
+import { drawnItems, enableSingleLayerEdit } from './draw.js?v=2.4.9';
+import { getTimestampString, getRandomColor, createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.9';
+import { saveToStorage } from './data.js?v=2.4.9';
+import { updateLayerInfo, deleteLayerById, scheduleViewportVectorOptimization } from './ui-core.js?v=2.4.9';
+import { renderSurveyList } from './ui-project.js?v=2.4.9';
 
 export let currentBottomSheetLayerId = null;
 
@@ -79,9 +79,38 @@ export function toggleBottomSheetState() {
 export function toggleBottomSheetMoreMenu(event) {
     if (event) event.stopPropagation();
     const menu = document.getElementById('bottom-sheet-more-menu');
+    const moreBtn = document.getElementById('bottom-sheet-more-btn');
     if (!menu) return;
+
+    if (menu.parentElement !== document.body) {
+        document.body.appendChild(menu);
+    }
+
     if (menu.style.display === 'none' || menu.style.display === '') {
-        menu.style.display = 'flex';
+        if (moreBtn) {
+            const rect = moreBtn.getBoundingClientRect();
+            menu.style.display = 'flex';
+            menu.style.visibility = 'hidden';
+            menu.classList.remove('visible');
+
+            const menuWidth = menu.offsetWidth || 140;
+            const viewportPadding = 8;
+            const left = Math.min(
+                Math.max(viewportPadding, rect.right - menuWidth),
+                window.innerWidth - menuWidth - viewportPadding
+            );
+            const top = Math.min(
+                rect.bottom + 6,
+                window.innerHeight - menu.offsetHeight - viewportPadding
+            );
+
+            menu.style.left = `${left}px`;
+            menu.style.top = `${Math.max(viewportPadding, top)}px`;
+            menu.style.right = 'auto';
+            menu.style.visibility = 'visible';
+        } else {
+            menu.style.display = 'flex';
+        }
         setTimeout(() => menu.classList.add('visible'), 10);
     } else {
         menu.classList.remove('visible');
@@ -198,6 +227,45 @@ function hideBottomSheetMoreMenu() {
     if (!menu) return;
     menu.classList.remove('visible');
     setTimeout(() => menu.style.display = 'none', 100);
+}
+
+function reorderDrawnLayers(nextLayers) {
+    nextLayers.forEach(layer => drawnItems.removeLayer(layer));
+    nextLayers.forEach(layer => drawnItems.addLayer(layer));
+    updateLayerOrder();
+    saveToStorage();
+    renderSurveyList();
+    scheduleViewportVectorOptimization();
+}
+
+function moveCurrentBottomSheetLayer(position) {
+    hideBottomSheetMoreMenu();
+
+    if (currentBottomSheetLayerId === null) return;
+
+    const layers = drawnItems.getLayers();
+    if (layers.length < 2) return;
+
+    const currentIndex = layers.findIndex(layer => layer.feature?.properties?.id === currentBottomSheetLayerId);
+    if (currentIndex < 0) return;
+
+    let targetIndex = currentIndex;
+    if (position === 'front') {
+        targetIndex = layers.length - 1;
+    } else if (position === 'forward') {
+        targetIndex = Math.min(currentIndex + 1, layers.length - 1);
+    } else if (position === 'back') {
+        targetIndex = 0;
+    } else if (position === 'backward') {
+        targetIndex = Math.max(currentIndex - 1, 0);
+    }
+
+    if (targetIndex === currentIndex) return;
+
+    const nextLayers = [...layers];
+    const [targetLayer] = nextLayers.splice(currentIndex, 1);
+    nextLayers.splice(targetIndex, 0, targetLayer);
+    reorderDrawnLayers(nextLayers);
 }
 
 /**
@@ -485,6 +553,42 @@ export function handleBottomSheetHoleFill() {
     } else {
         sourceLayer.openPopup();
     }
+}
+
+/**
+ * [함수] handleBottomSheetBringToFront
+ * [역할] 선택한 기록 레이어를 현재 프로젝트의 최상단으로 이동한다.
+ * [원리] drawnItems 레이어 배열에서 현재 레이어를 끝으로 재배치한 뒤 저장과 화면 갱신을 동기화한다.
+ */
+export function handleBottomSheetBringToFront() {
+    moveCurrentBottomSheetLayer('front');
+}
+
+/**
+ * [함수] handleBottomSheetBringForward
+ * [역할] 선택한 기록 레이어를 한 단계 위로 이동한다.
+ * [원리] drawnItems 레이어 배열에서 현재 레이어 인덱스를 1 증가시켜 재배치한 뒤 저장 상태를 맞춘다.
+ */
+export function handleBottomSheetBringForward() {
+    moveCurrentBottomSheetLayer('forward');
+}
+
+/**
+ * [함수] handleBottomSheetSendToBack
+ * [역할] 선택한 기록 레이어를 현재 프로젝트의 최하단으로 이동한다.
+ * [원리] drawnItems 레이어 배열에서 현재 레이어를 시작 위치로 재배치한 뒤 저장과 렌더를 갱신한다.
+ */
+export function handleBottomSheetSendToBack() {
+    moveCurrentBottomSheetLayer('back');
+}
+
+/**
+ * [함수] handleBottomSheetSendBackward
+ * [역할] 선택한 기록 레이어를 한 단계 아래로 이동한다.
+ * [원리] drawnItems 레이어 배열에서 현재 레이어 인덱스를 1 감소시켜 재배치한 뒤 저장 상태를 반영한다.
+ */
+export function handleBottomSheetSendBackward() {
+    moveCurrentBottomSheetLayer('backward');
 }
 
 /**

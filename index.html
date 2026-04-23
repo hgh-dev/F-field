@@ -2333,6 +2333,44 @@
                 </svg>
                 구멍 채우기
             </div>
+            <hr style="width:100%; margin:4px 0; border:none; border-top:1px solid #f0f0f0;">
+            <div class="more-menu-item" onclick="handleBottomSheetBringToFront()">
+                <svg viewBox="0 0 24 24">
+                    <line x1="5" y1="18" x2="19" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    <line x1="9" y1="13" x2="9" y2="5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    <polyline points="6.8,7.7 9,5.5 11.2,7.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                    <line x1="15" y1="13" x2="15" y2="5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    <polyline points="12.8,7.7 15,5.5 17.2,7.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                맨앞으로
+            </div>
+            <div class="more-menu-item" onclick="handleBottomSheetBringForward()">
+                <svg viewBox="0 0 24 24">
+                    <line x1="5" y1="18" x2="19" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    <line x1="12" y1="13" x2="12" y2="5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    <polyline points="9.8,7.7 12,5.5 14.2,7.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                앞으로
+            </div>
+            <div class="more-menu-item" onclick="handleBottomSheetSendBackward()">
+                <svg viewBox="0 0 24 24">
+                    <line x1="5" y1="6" x2="19" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    <line x1="12" y1="10.5" x2="12" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    <polyline points="9.8,15.8 12,18 14.2,15.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                뒤로
+            </div>
+            <div class="more-menu-item" onclick="handleBottomSheetSendToBack()">
+                <svg viewBox="0 0 24 24">
+                    <line x1="5" y1="6" x2="19" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    <line x1="9" y1="10.5" x2="9" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    <polyline points="6.8,15.8 9,18 11.2,15.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                    <line x1="15" y1="10.5" x2="15" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    <polyline points="12.8,15.8 15,18 17.2,15.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                맨뒤로
+            </div>
+            <hr style="width:100%; margin:4px 0; border:none; border-top:1px solid #f0f0f0;">
             <div class="more-menu-item danger" onclick="handleBottomSheetDelete()">
                 <svg viewBox="0 0 24 24">
                     <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
@@ -3589,11 +3627,11 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script type="module" src="script.js?v=2.4.8"></script>
+    <script type="module" src="script.js?v=2.4.9"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.4.8', { updateViaCache: 'none' }));
+            window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.4.9', { updateViaCache: 'none' }));
         }
     </script>
 </body>

@@ -9,13 +9,13 @@
    - 파일 입출력은 내부 표준 구조(GeoJSON FeatureCollection)로 한 번 통일해서 처리합니다.
    - 비동기 I/O(localForage, 파일 파싱, 압축)는 async/await로 순서를 보장합니다.
    ========================================================================== */
-import { STORAGE_KEY } from './config.js?v=2.4.8';
-import { AppState } from './state.js?v=2.4.8';
-import { drawnItems } from './draw.js?v=2.4.8';
-import { renderSurveyList, updateLayerInfo, renderProjectSelector, closeSidebar, createNewProject, openSidebar, switchSidebarTab } from './ui.js?v=2.4.8';
-import { getRandomColor, createColoredMarkerIcon, getShortAddress, getTimestampString } from './utils.js?v=2.4.8';
-import { VWORLD_API_KEY } from './config.js?v=2.4.8';
-import { map } from './map.js?v=2.4.8';
+import { STORAGE_KEY } from './config.js?v=2.4.9';
+import { AppState } from './state.js?v=2.4.9';
+import { drawnItems } from './draw.js?v=2.4.9';
+import { renderSurveyList, updateLayerInfo, renderProjectSelector, closeSidebar, createNewProject, openSidebar, switchSidebarTab } from './ui.js?v=2.4.9';
+import { getRandomColor, createColoredMarkerIcon, getShortAddress, getTimestampString } from './utils.js?v=2.4.9';
+import { VWORLD_API_KEY } from './config.js?v=2.4.9';
+import { map } from './map.js?v=2.4.9';
 import { zip as shpZip } from '@crmackey/shp-write';
 
 

@@ -4,12 +4,12 @@
    [입력] AppState, 지도(map), 레이어(drawnItems), 로컬 저장소(localStorage)
    [출력] DOM 갱신, 지도 이동/스타일 변경, 전역(window) UI 액션 바인딩
    ========================================================================== */
-import { SVG_ICONS } from './config.js?v=2.4.8';
-import { AppState } from './state.js?v=2.4.8';
-import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, getOfflineMapUrls } from './map.js?v=2.4.8';
-import { drawnItems, currentEditLayerId } from './draw.js?v=2.4.8';
-import { createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.8';
-import { saveToStorage, exportSingleLayer } from './data.js?v=2.4.8';
+import { SVG_ICONS } from './config.js?v=2.4.9';
+import { AppState } from './state.js?v=2.4.9';
+import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, getOfflineMapUrls } from './map.js?v=2.4.9';
+import { drawnItems, currentEditLayerId } from './draw.js?v=2.4.9';
+import { createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.9';
+import { saveToStorage, exportSingleLayer } from './data.js?v=2.4.9';
 import {
     initSearchSettings,
     toggleSearchBox,
@@ -21,7 +21,7 @@ import {
     clearHistoryAll,
     deleteHistoryItem,
     showHistoryPanel,
-} from './ui-search.js?v=2.4.8';
+} from './ui-search.js?v=2.4.9';
 import {
     setCurrentBottomSheetLayerId,
     openBottomSheet,
@@ -30,12 +30,16 @@ import {
     toggleBottomSheetMoreMenu,
     syncBottomSheetHoleMenuForLayer,
     handleBottomSheetEdit,
+    handleBottomSheetBringToFront,
+    handleBottomSheetBringForward,
+    handleBottomSheetSendToBack,
+    handleBottomSheetSendBackward,
     handleBottomSheetDelete,
     handleBottomSheetHole,
     handleBottomSheetHoleFill,
     showInfoPopup,
     fetchAndHighlightBoundary,
-} from './ui-bottomsheet.js?v=2.4.8';
+} from './ui-bottomsheet.js?v=2.4.9';
 import {
     createNewProject,
     editProjectName,
@@ -52,7 +56,7 @@ import {
     openProjectSortModal,
     closeProjectSortModal,
     applyProjectSortSetting
-} from './ui-project.js?v=2.4.8';
+} from './ui-project.js?v=2.4.9';
 import {
     createLayerPhotoSection,
     openPhotoSelectMenu,
@@ -65,7 +69,7 @@ import {
     prevPhoto,
     downloadCurrentPhoto,
     closePhotoModal
-} from './ui-photo.js?v=2.4.8';
+} from './ui-photo.js?v=2.4.9';
 
 
 // --- 전역 UI 상태 ---
@@ -1595,6 +1599,10 @@ function bindUiActionsToWindow() {
         toggleBottomSheetState,
         toggleBottomSheetMoreMenu,
         handleBottomSheetEdit,
+        handleBottomSheetBringToFront,
+        handleBottomSheetBringForward,
+        handleBottomSheetSendToBack,
+        handleBottomSheetSendBackward,
         handleBottomSheetHole,
         handleBottomSheetHoleFill,
         handleBottomSheetDelete,

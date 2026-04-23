@@ -7,11 +7,11 @@
    - 입력 탭 상태에 따라 검색 실행 경로를 분기하고, VWorld 응답을 정리해 지도 이동으로 연결합니다.
    - 결과 목록/기록 목록의 화면 생성 보조 함수를 같은 파일에 두어 검색 기능 응집도를 유지합니다.
    ========================================================================== */
-import { VWORLD_API_KEY, SEARCH_HISTORY_KEY, SEARCH_SETTING_KEY, SVG_ICONS } from './config.js?v=2.4.8';
-import { AppState } from './state.js?v=2.4.8';
-import { map } from './map.js?v=2.4.8';
-import { currentEditLayerId } from './draw.js?v=2.4.8';
-import { dmsToDecimal, getWgs84FromTm, parseNationalPointNumber } from './utils.js?v=2.4.8';
+import { VWORLD_API_KEY, SEARCH_HISTORY_KEY, SEARCH_SETTING_KEY, SVG_ICONS } from './config.js?v=2.4.9';
+import { AppState } from './state.js?v=2.4.9';
+import { map } from './map.js?v=2.4.9';
+import { currentEditLayerId } from './draw.js?v=2.4.9';
+import { dmsToDecimal, getWgs84FromTm, parseNationalPointNumber } from './utils.js?v=2.4.9';
 
 // --- 검색 UI 상태 ---
 export let isSearchHistoryEnabled = true;

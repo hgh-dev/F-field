@@ -10,20 +10,20 @@
    - DOMContentLoaded 시점에 초기화를 일괄 수행해 UI/데이터/지도 상태를 동기화합니다.
    ========================================================================== */
 
-import { APP_MODE, APP_VERSION } from './config.js?v=2.4.8';
-import { AppState } from './state.js?v=2.4.8';
+import { APP_MODE, APP_VERSION } from './config.js?v=2.4.9';
+import { AppState } from './state.js?v=2.4.9';
 
 import {
     map,
     toggleBaseLayer, changeBaseMap, updateLayerOrder, changeCadastralMap,
     toggleOverlay
-} from './map.js?v=2.4.8';
+} from './map.js?v=2.4.9';
 import {
     drawnItems, startDraw, completeDrawing, cancelDrawing,
     addGpsVertex, deleteLastVertex, currentEditLayerId,
     completeSingleEdit, revertSingleEdit, cancelSingleEdit,
     setSnapEnabled, syncSnapToggleButtons
-} from './draw.js?v=2.4.8';
+} from './draw.js?v=2.4.9';
 
 
 
@@ -33,12 +33,12 @@ import {
     handleFileSelect, clearAllData, saveCurrentPoint, saveCurrentBoundary,
     fitCurrentProjectToMap,
     getAddressFromCoords, closeExportFormatModal, exportLayerWithFormat, backupAllProjects
-} from './data.js?v=2.4.8';
+} from './data.js?v=2.4.9';
 
 import {
     getRandomColor, getTimestampString, createColoredMarkerIcon,
     copyText
-} from './utils.js?v=2.4.8';
+} from './utils.js?v=2.4.9';
 
 import {
     switchSidebarTab, closeBottomSheet,
@@ -53,7 +53,7 @@ import {
     applyLayerVisibilityState,
     currentBottomSheetLayerId,
     setCurrentBottomSheetLayerId
-} from './ui.js?v=2.4.8';
+} from './ui.js?v=2.4.9';
 
 
 /* ==========================================================================
