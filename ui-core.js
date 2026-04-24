@@ -4,12 +4,12 @@
    [입력] AppState, 지도(map), 레이어(drawnItems), 로컬 저장소(localStorage)
    [출력] DOM 갱신, 지도 이동/스타일 변경, 전역(window) UI 액션 바인딩
    ========================================================================== */
-import { SVG_ICONS } from './config.js?v=2.4.9';
-import { AppState } from './state.js?v=2.4.9';
-import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, getOfflineMapUrls } from './map.js?v=2.4.9';
-import { drawnItems, currentEditLayerId } from './draw.js?v=2.4.9';
-import { createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.9';
-import { saveToStorage, exportSingleLayer } from './data.js?v=2.4.9';
+import { SVG_ICONS } from './config.js?v=2.4.10';
+import { AppState } from './state.js?v=2.4.10';
+import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, getOfflineMapUrls } from './map.js?v=2.4.10';
+import { drawnItems, currentEditLayerId } from './draw.js?v=2.4.10';
+import { createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.10';
+import { saveToStorage, exportSingleLayer } from './data.js?v=2.4.10';
 import {
     initSearchSettings,
     toggleSearchBox,
@@ -21,7 +21,7 @@ import {
     clearHistoryAll,
     deleteHistoryItem,
     showHistoryPanel,
-} from './ui-search.js?v=2.4.9';
+} from './ui-search.js?v=2.4.10';
 import {
     setCurrentBottomSheetLayerId,
     openBottomSheet,
@@ -39,7 +39,7 @@ import {
     handleBottomSheetHoleFill,
     showInfoPopup,
     fetchAndHighlightBoundary,
-} from './ui-bottomsheet.js?v=2.4.9';
+} from './ui-bottomsheet.js?v=2.4.10';
 import {
     createNewProject,
     editProjectName,
@@ -56,7 +56,7 @@ import {
     openProjectSortModal,
     closeProjectSortModal,
     applyProjectSortSetting
-} from './ui-project.js?v=2.4.9';
+} from './ui-project.js?v=2.4.10';
 import {
     createLayerPhotoSection,
     openPhotoSelectMenu,
@@ -69,7 +69,7 @@ import {
     prevPhoto,
     downloadCurrentPhoto,
     closePhotoModal
-} from './ui-photo.js?v=2.4.9';
+} from './ui-photo.js?v=2.4.10';
 
 
 // --- 전역 UI 상태 ---

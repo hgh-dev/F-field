@@ -7,12 +7,12 @@
    - 파일 입력을 리사이즈 후 레이어 속성에 저장하고, 상세 갱신과 목록 갱신을 연쇄 실행합니다.
    - 사진 화면 생성 보조 함수와 사진 동작 함수를 한 파일에 모아 사진 기능 변경 범위를 국소화합니다.
    ========================================================================== */
-import { AppState } from './state.js?v=2.4.9';
-import { drawnItems } from './draw.js?v=2.4.9';
-import { resizeImage } from './utils.js?v=2.4.9';
-import { saveToStorage } from './data.js?v=2.4.9';
-import { updateLayerInfo } from './ui-core.js?v=2.4.9';
-import { renderSurveyList } from './ui-project.js?v=2.4.9';
+import { AppState } from './state.js?v=2.4.10';
+import { drawnItems } from './draw.js?v=2.4.10';
+import { resizeImage } from './utils.js?v=2.4.10';
+import { saveToStorage } from './data.js?v=2.4.10';
+import { updateLayerInfo } from './ui-core.js?v=2.4.10';
+import { renderSurveyList } from './ui-project.js?v=2.4.10';
 
 export let currentPhotoList = [];
 export let currentPhotoIndex = 0;

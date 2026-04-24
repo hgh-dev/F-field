@@ -4,7 +4,7 @@
    - 기록 입력 중 화면이 자동으로 꺼지지 않도록 Screen Wake Lock을 관리합니다.
    - Wake Lock 미지원 브라우저에서는 숨김 무음 비디오 재생으로 보조합니다.
    ========================================================================== */
-import { AppState } from './state.js?v=2.4.9';
+import { AppState } from './state.js?v=2.4.10';
 
 // Wake Lock 미지원 브라우저 fallback용 무음 비디오 핸들입니다.
 let noSleepVideo = null;
