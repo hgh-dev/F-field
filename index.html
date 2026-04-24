@@ -96,8 +96,7 @@
         /* --- 지도 컨테이너 --- */
         #map {
             position: absolute;
-            top: 45px;
-            /* 상단 툴바 높이(45px)에 맞춤 */
+            top: 0;
             bottom: var(--toolbar-height);
             /* 하단 툴바 높이에 맞춤 */
             width: 100%;
@@ -108,41 +107,56 @@
             user-select: none;
         }
 
-        /* --- 상단 툴바 (주소 및 메뉴) --- */
-        .top-toolbar {
+        /* --- 지도 상단 플로팅 컨트롤 --- */
+        .map-top-controls {
             position: absolute;
             top: env(safe-area-inset-top);
             left: 0;
+            right: 0;
             width: 100%;
-            height: 45px;
-            /* 50 × 0.9 */
-            background: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 5px;
+            height: 0;
+            pointer-events: none;
             box-sizing: border-box;
-            z-index: 2000;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            z-index: 1800;
         }
 
-        /* 상단 버튼 (햄버거 메뉴, 검색 등) */
-        .top-icon-btn {
-            background: none;
+        .map-top-left,
+        .map-top-right {
+            position: absolute;
+            top: var(--space-3);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+            pointer-events: auto;
+        }
+
+        .map-top-left {
+            left: var(--space-3);
+        }
+
+        .map-top-right {
+            right: var(--space-3);
+        }
+
+        .map-control-btn {
+            width: 45px;
+            height: 45px;
+            background: rgba(255, 255, 255, 0.94);
             border: none;
+            border-radius: 50%;
+            box-shadow: 0 3px 8px rgba(15, 23, 42, 0.24);
             cursor: pointer;
-            width: 40px;
-            /* 44 × 0.9 */
-            height: 40px;
             display: flex;
             justify-content: center;
             align-items: center;
             color: #333;
+            padding: 0;
+            transition: transform 0.1s, background-color 0.2s;
         }
 
-        .top-icon-btn:active {
+        .map-control-btn:active {
             background-color: #f0f0f0;
-            border-radius: 50%;
+            transform: scale(0.96);
         }
 
         /* 아이콘 공통 스타일 */
@@ -204,7 +218,7 @@
         /* --- 검색창 (평소엔 숨김) --- */
         #search-container {
             position: absolute;
-            top: calc(55px + env(safe-area-inset-top));
+            top: calc(64px + env(safe-area-inset-top));
             left: 50%;
             transform: translateX(-50%);
             width: 90%;
@@ -435,7 +449,7 @@
         /* --- 우측 플로팅 버튼 (GPS) --- */
         .gps-btn-group {
             position: absolute;
-            top: calc(80px + env(safe-area-inset-top));
+            top: calc(140px + env(safe-area-inset-top));
             right: 15px;
             display: flex;
             flex-direction: column;
@@ -2188,6 +2202,63 @@
             margin-bottom: 8px;
             font-weight: bold;
         }
+
+        #map-active-project-badge {
+            position: absolute;
+            top: calc(env(safe-area-inset-top) + var(--space-3));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1700;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 7px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #374151;
+            box-shadow: 0 3px 8px rgba(15, 23, 42, 0.18);
+            pointer-events: none;
+            border: 1px solid rgba(229, 231, 235, 0.9);
+            display: none;
+            max-width: 54%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+        }
+
+        .location-summary {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-1);
+            margin-bottom: var(--space-4);
+            padding: var(--space-3);
+            border-radius: var(--radius-lg);
+            background: var(--color-muted-bg);
+            border: 1px solid var(--color-border);
+        }
+
+        .location-summary-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+        }
+
+        #address-display,
+        #coord-display {
+            min-width: 0;
+            color: #333;
+            font-size: 13px;
+            line-height: 1.45;
+            text-align: center;
+            word-break: keep-all;
+            overflow-wrap: anywhere;
+        }
+
+        #coord-display {
+            font-family: monospace;
+            color: #555;
+        }
     </style>
 </head>
 
@@ -2198,32 +2269,30 @@
     ==========================================================================
     -->
 
-    <!-- 
-    ==========================================================================
-    [구조 1] 상단 툴바 (Top Toolbar)
-    메뉴 버튼, 주소 표시창, 검색 버튼을 포함하는 상단 고정 영역입니다.
-    Flexbox를 사용하여 좌-중-우 배치를 쉽게 구현했습니다.
-    ==========================================================================
-    -->
-    <div class="top-toolbar">
-        <button class="top-icon-btn" onclick="openSidebar()" aria-label="메뉴 열기">
-            <svg class="svg-icon" viewBox="0 0 24 24">
-                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
-            </svg>
-        </button>
-
-        <!-- 중앙 주소 및 좌표 표시 (클릭 시 위치 액션 모달 열림) -->
-        <div class="top-info-container" onclick="openLocationActionModal()">
-            <div id="address-display">주소 확인 중...</div>
-            <div id="coord-display">좌표 수신중...</div>
+    <!-- 지도 상단 플로팅 버튼 -->
+    <div class="map-top-controls">
+        <div class="map-top-left">
+            <button class="map-control-btn" onclick="openSidebar()" aria-label="메뉴 열기" title="메뉴">
+                <svg class="svg-icon" viewBox="0 0 24 24">
+                    <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
+                </svg>
+            </button>
         </div>
 
-        <button id="btn-search-toggle" class="top-icon-btn" onclick="toggleSearchBox()" aria-label="검색창 열기">
-            <svg class="svg-icon" viewBox="0 0 24 24">
-                <path
-                    d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-            </svg>
-        </button>
+        <div class="map-top-right">
+            <button id="btn-search-toggle" class="map-control-btn" onclick="toggleSearchBox()" aria-label="검색창 열기" title="검색">
+                <svg class="svg-icon" viewBox="0 0 24 24">
+                    <path
+                        d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                </svg>
+            </button>
+            <button class="map-control-btn" onclick="openLocationActionModal()" aria-label="내 위치 공유" title="내 위치 공유">
+                <svg class="svg-icon" viewBox="0 0 24 24">
+                    <path
+                        d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11A2.99 2.99 0 1 0 15 5c0 .24.04.47.09.7L8.04 9.81A3 3 0 1 0 8.04 14.2l7.12 4.18c-.05.2-.08.41-.08.62a2.92 2.92 0 1 0 2.92-2.92z" />
+                </svg>
+            </button>
+        </div>
     </div>
 
     <!-- 
@@ -2411,9 +2480,7 @@
     <div id="map"></div>
 
     <!-- 지도 상단부 중앙: 현재 프로젝트 뱃지 -->
-    <div id="map-active-project-badge"
-        style="position: absolute; top: calc(env(safe-area-inset-top) + 60px); left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255, 255, 255, 0.8); padding: 5px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; color: #545454; box-shadow: 0 2px 6px rgba(0,0,0,0.15); pointer-events: none; border: 0px solid #ffffff; display: none; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;">
-    </div>
+    <div id="map-active-project-badge"></div>
 
     <!-- 
     ==========================================================================
@@ -3123,7 +3190,15 @@
     <div id="location-action-modal-overlay" class="nav-modal-overlay" onclick="closeLocationActionModal()">
         <div class="nav-modal-content" onclick="event.stopPropagation()">
             <div class="nav-modal-header"
-                style="font-size:18px; font-weight:bold; margin-bottom:20px; text-align:center;">현재 위치 작업</div>
+                style="font-size:18px; font-weight:bold; margin-bottom:20px; text-align:center;">내 위치 공유</div>
+            <div class="location-summary">
+                <div class="location-summary-row">
+                    <div id="address-display">주소 확인 중...</div>
+                </div>
+                <div class="location-summary-row">
+                    <div id="coord-display">좌표 수신중...</div>
+                </div>
+            </div>
             <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
                 <button onclick="copyCurrentAddress()" class="mono-btn" style="padding:14px; justify-content:center;">
                     주소 복사하기
