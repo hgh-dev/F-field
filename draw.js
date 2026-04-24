@@ -402,6 +402,10 @@ function getCurrentDrawingVertexCount() {
  */
 function updateDrawingCompleteButtonState() {
     if (!completeDrawingBtn) return;
+    if (AppState.currentDrawer instanceof L.Draw.Marker) {
+        completeDrawingBtn.disabled = true;
+        return;
+    }
     const requiredVertexCount = getRequiredVertexCountForCurrentDrawer();
     if (requiredVertexCount === 0) {
         completeDrawingBtn.disabled = false;
