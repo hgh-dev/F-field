@@ -39,6 +39,7 @@ import {
     getRandomColor, getTimestampString, createColoredMarkerIcon,
     copyText
 } from './utils.js?v=2.4.9';
+import { requestWakeLock, releaseWakeLock } from './wake-lock.js?v=2.4.9';
 
 import {
     switchSidebarTab, closeBottomSheet,
@@ -199,54 +200,8 @@ map.on('dblclick', function (e) {
 });
 
 /* ==========================================================================
-   4) 트랙 기록 + 화면 절전 방지
+   4) 트랙 기록
    ========================================================================== */
-// Wake Lock 미지원 브라우저 fallback용 무음 비디오 핸들입니다.
-let noSleepVideo = null;
-
-/**
- * 트랙 기록 중 화면 꺼짐을 방지합니다.
- * 동작 원리: 지원 브라우저는 Wake Lock API, 미지원은 숨김 비디오 재생으로 대체합니다.
- */
-export async function requestWakeLock() {
-    try {
-        if ('wakeLock' in navigator) {
-            AppState.wakeLock = await navigator.wakeLock.request('screen');
-        }
-    } catch (err) { console.error(err); }
-
-    if (!noSleepVideo) {
-        noSleepVideo = document.createElement('video');
-        noSleepVideo.setAttribute('playsinline', '');
-        noSleepVideo.setAttribute('muted', '');
-        noSleepVideo.muted = true;
-        noSleepVideo.loop = true;
-        noSleepVideo.style.display = 'none';
-        noSleepVideo.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMQAAAAhmcmVlAAAAQG1kYXQhCAgEAAAAAAARAAABvQAQAQAAEgQA//4AAAAAABIAAAAB100AAAAABAAeIBAEAAABXAAAAAAB//4AAAAAABIAAAAAAEEAAAAB2AAAAAAEAAB+GZ0sAAAAAABAAAAABAAAAAB/AAABAAAAAQBBbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAABDcAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAzx0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAD6AAAAAAMAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAQAAAAEAAAAAACRlZHRzAAAAHGVsc3QAAAAAAAAAAQAAA+gAAAAAAAEAAAAAAIhtZGlhAAAAIG1kaGQAAAAAAAAAAAAAAAAAAAPoAAAEtwBQAAAAAAAZaGRscgAAAAAAAAAAdmlkZQAAAAAAAAAAAAAAAAAAAAAAO21pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAKRzdGJsAAAALnN0c2QAAAAAAAAAAQAAAB5hdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAABhzdHRzAAAAAAAAAAEAAAABAAAEtwAAABxzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAAAUc3RzegAAAAAAAAAAAAAAAQAAABQAAAAUc3RjbwAAAAAAAAABAAAALAAAAA==';
-        document.body.appendChild(noSleepVideo);
-    }
-    noSleepVideo.play().catch(e => console.error("NoSleep fallback failed", e));
-}
-
-/**
- * 화면 절전 방지 상태를 해제합니다.
- */
-export function releaseWakeLock() {
-    if (AppState.wakeLock !== null) {
-        AppState.wakeLock.release().then(() => { AppState.wakeLock = null; });
-    }
-    if (noSleepVideo) {
-        noSleepVideo.pause();
-    }
-}
-
-// 백그라운드 복귀 시 트랙 모드면 wake lock을 다시 요청합니다.
-document.addEventListener('visibilitychange', async () => {
-    if (document.visibilityState === 'visible' && AppState.currentDrawer === 'track') {
-        requestWakeLock();
-    }
-});
-
 /**
  * GPS 트랙 기록을 시작합니다.
  * 동작 원리:
@@ -262,6 +217,7 @@ function startTrackRecording() {
     if (!confirm(confirmMsg)) return;
 
     AppState.currentDrawer = 'track';
+    closeBottomSheet();
     document.body.classList.add('recording-mode');
     AppState.lastTrackLatLng = null;
 
@@ -371,6 +327,7 @@ function completeTrackRecording() {
  */
 export function startPhotoPoint() {
     if (AppState.currentDrawer || currentEditLayerId !== null) return;
+    closeBottomSheet();
 
     const tempId = 'new-photo-point';
     let div = document.getElementById(`temp-inputs-${tempId}`);

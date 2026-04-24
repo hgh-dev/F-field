@@ -36,6 +36,7 @@ const STATIC_URLS = [
     './ui-photo.js?v=2.4.9',
     './ui-core.js?v=2.4.9',
     './utils.js?v=2.4.9',
+    './wake-lock.js?v=2.4.9',
     './script.js?v=2.4.9'
 ];
 

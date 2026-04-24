@@ -14,6 +14,7 @@ import { AppState } from './state.js?v=2.4.9';
 import { updateLayerInfo, renderSurveyList, switchSidebarTab, highlightButton, resetButtonStyles, openBottomSheet, closeBottomSheet, currentBottomSheetLayerId, setCurrentBottomSheetLayerId } from './ui.js?v=2.4.9';
 import { getRandomColor, getTimestampString, createColoredMarkerIcon } from './utils.js?v=2.4.9';
 import { saveToStorage } from './data.js?v=2.4.9';
+import { requestWakeLock, releaseWakeLock } from './wake-lock.js?v=2.4.9';
 
 
 
@@ -420,6 +421,7 @@ function updateDrawingCompleteButtonState() {
 export function startDraw(type) {
     // 이미 그리기/편집 모드라면 중복 진입을 막습니다.
     if (AppState.currentDrawer || currentEditLayerId !== null) return;
+    closeBottomSheet();
 
     // 도형 1개 단위로 기본 색상을 먼저 고정해 생성/스타일/저장 단계에서 일관되게 사용합니다.
     const randomColor = getRandomColor();
@@ -451,6 +453,7 @@ export function startDraw(type) {
 
     // 기록 모드 시각 상태(비네팅/버튼 강조)를 적용합니다.
     document.body.classList.add('recording-mode');
+    requestWakeLock();
 
     // 수동 완료 버튼으로만 종료되게 _finishShape를 감싸서 제어합니다.
     // 원리: 자동 finish 호출을 AppState.isManualFinish 플래그로 게이트합니다.
@@ -504,6 +507,7 @@ function resetDrawingState() {
     if (completeDrawingBtn) completeDrawingBtn.disabled = false;
     clearSnapGuide();
     resetButtonStyles();
+    releaseWakeLock();
 
     // 점 생성 직전에 보관하던 첨부 사진 임시 버퍼를 비웁니다.
     if (AppState.pendingPhotos) {
@@ -595,6 +599,7 @@ export function enableSingleLayerEdit(id) {
 
     layer.closePopup();
     alert("측량한 기록의 버텍스를 수정합니다. 수정이 완료되면 하단의 [수정 완료] 버튼을 누르세요.");
+    closeBottomSheet();
     document.body.classList.add('recording-mode');
 
     // 현재 편집 대상과 편집용 툴바를 함께 활성화합니다.
