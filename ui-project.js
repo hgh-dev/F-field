@@ -14,6 +14,7 @@ import { saveToStorage } from './data.js?v=2.4.10';
 import { closeAllDropdowns, switchSidebarTab } from './ui-core.js?v=2.4.10';
 
 export let moveTargetLayerIds = [];
+const PROJECT_BADGE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>';
 
 /**
  * [함수] renderProjectSelector
@@ -42,8 +43,8 @@ export function renderProjectSelector() {
 
     const mapBadge = document.getElementById('map-active-project-badge');
     if (mapBadge && currentProject) {
-        mapBadge.textContent = currentProject.name;
-        mapBadge.style.display = 'block';
+        mapBadge.innerHTML = `${PROJECT_BADGE_ICON}<span>${currentProject.name}</span>`;
+        mapBadge.style.display = 'flex';
     }
 
     renderProjectList();
