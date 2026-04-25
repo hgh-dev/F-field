@@ -17,7 +17,7 @@
 
     <!-- PWA (웹앱) 설정: 홈 화면에 추가할 때 앱처럼 보이게 합니다. -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="transparent">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes"> <!-- iOS 호환성을 위해 남겨둠 -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -88,8 +88,7 @@
             /* 스크롤바 숨김 */
             font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
 
-            /* 아이폰 노치 디자인 대응 (safe-area) */
-            padding-top: env(safe-area-inset-top);
+            /* 상단 상태바 영역까지 지도가 깔리도록 위쪽 safe-area 패딩은 두지 않습니다. */
             padding-bottom: env(safe-area-inset-bottom);
             background-color: #f5f5f5;
         }
