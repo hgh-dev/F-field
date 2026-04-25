@@ -8,9 +8,28 @@
    ========================================================================== */
 import { SVG_ICONS } from './config.js?v=2.4.10';
 
+const DEFAULT_THEME_COLOR = '#ffffff';
+const RECORDING_THEME_COLOR = '#3B82F6';
+
 /* ==========================================================================
    1) 포맷/생성 유틸
    ========================================================================== */
+
+/**
+ * 기록/측량 모드의 공통 시각 상태를 전환합니다.
+ * Android Chrome/PWA에서는 theme-color 변경으로 상단 시스템 바 색상도 함께 바뀝니다.
+ */
+export function setRecordingModeActive(isActive) {
+    document.body.classList.toggle('recording-mode', isActive);
+
+    let themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (!themeMeta) {
+        themeMeta = document.createElement('meta');
+        themeMeta.setAttribute('name', 'theme-color');
+        document.head.appendChild(themeMeta);
+    }
+    themeMeta.setAttribute('content', isActive ? RECORDING_THEME_COLOR : DEFAULT_THEME_COLOR);
+}
 
 /**
  * 현재 시각을 파일명에 쓰기 쉬운 문자열(YYMMDD_HHMMSS)로 반환합니다.

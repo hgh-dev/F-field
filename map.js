@@ -18,7 +18,7 @@ import { AppState } from './state.js?v=2.4.10';
 /**
  * 앱 전체에서 공통으로 사용하는 Leaflet 지도 인스턴스를 생성합니다.
  * 동작 원리:
- * - 기본 zoom/attribution 컨트롤은 끄고 원하는 위치에 수동 추가합니다.
+ * - 기본 zoom/attribution 컨트롤은 앱 UI와 겹치지 않도록 끕니다.
  * - renderer를 canvas로 지정해 터치 히트 영역(tolerance)을 늘려 모바일 선택성을 높입니다.
  */
 export const map = L.map('map', {
@@ -36,9 +36,6 @@ export const map = L.map('map', {
 /* ==========================================================================
    2) 레이어 정의
    ========================================================================== */
-
-// 기본 컨트롤을 앱 UI 배치에 맞춰 직접 추가합니다.
-L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
 // 축척 막대는 국내 사용 기준으로 metric만 노출합니다.
 L.control.scale({ imperial: false, metric: true }).addTo(map);

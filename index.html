@@ -17,6 +17,7 @@
 
     <!-- PWA (웹앱) 설정: 홈 화면에 추가할 때 앱처럼 보이게 합니다. -->
     <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes"> <!-- iOS 호환성을 위해 남겨둠 -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1371,21 +1372,10 @@
             }
         }
 
-        /* 줌 컨트롤, 축척바 위치 재정의 (모바일 최적화) */
-        .leaflet-control-zoom {
-            position: fixed !important;
-            bottom: calc(81px + env(safe-area-inset-bottom)) !important;
-            /* 90 × 0.9 = 81 */
-            right: 20px !important;
-            margin: 0 !important;
-            z-index: 999 !important;
-        }
-
-        /* 지도 위 Leaflet 축체 컨트롤 전체 래퍼 */
+        /* 지도 위 Leaflet 축척 컨트롤 전체 래퍼 */
         .leaflet-control-scale {
             position: fixed !important;
-            bottom: calc(72px + env(safe-area-inset-bottom)) !important;
-            /* 80 × 0.9 = 72 */
+            bottom: calc(84px + env(safe-area-inset-bottom)) !important;
             left: 15px !important;
             margin: 0 !important;
             z-index: 990 !important;
@@ -2093,10 +2083,6 @@
 
         body.has-ad-main .action-toolbar {
             bottom: calc(100px + env(safe-area-inset-bottom)) !important;
-        }
-
-        body.has-ad-main .leaflet-control-zoom {
-            bottom: calc(130px + env(safe-area-inset-bottom)) !important;
         }
 
         body.has-ad-main .leaflet-control-scale {

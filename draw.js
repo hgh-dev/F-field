@@ -12,7 +12,7 @@
 import { map } from './map.js?v=2.4.10';
 import { AppState } from './state.js?v=2.4.10';
 import { updateLayerInfo, renderSurveyList, switchSidebarTab, highlightButton, resetButtonStyles, openBottomSheet, closeBottomSheet, currentBottomSheetLayerId, setCurrentBottomSheetLayerId } from './ui.js?v=2.4.10';
-import { getRandomColor, getTimestampString, createColoredMarkerIcon } from './utils.js?v=2.4.10';
+import { getRandomColor, getTimestampString, createColoredMarkerIcon, setRecordingModeActive } from './utils.js?v=2.4.10';
 import { saveToStorage } from './data.js?v=2.4.10';
 import { requestWakeLock, releaseWakeLock } from './wake-lock.js?v=2.4.10';
 
@@ -456,7 +456,7 @@ export function startDraw(type) {
     }
 
     // 기록 모드 시각 상태(비네팅/버튼 강조)를 적용합니다.
-    document.body.classList.add('recording-mode');
+    setRecordingModeActive(true);
     requestWakeLock();
 
     // 수동 완료 버튼으로만 종료되게 _finishShape를 감싸서 제어합니다.
@@ -506,7 +506,7 @@ export function cancelDrawing() {
  * 동작 원리: Drawer 외부 상태(UI class, pendingPhotos, 색상 캐시)를 한 곳에서 정리합니다.
  */
 function resetDrawingState() {
-    document.body.classList.remove('recording-mode');
+    setRecordingModeActive(false);
     actionToolbar.style.display = 'none';
     if (completeDrawingBtn) completeDrawingBtn.disabled = false;
     clearSnapGuide();
@@ -604,7 +604,7 @@ export function enableSingleLayerEdit(id) {
     layer.closePopup();
     alert("측량한 기록의 버텍스를 수정합니다. 수정이 완료되면 하단의 [수정 완료] 버튼을 누르세요.");
     closeBottomSheet();
-    document.body.classList.add('recording-mode');
+    setRecordingModeActive(true);
 
     // 현재 편집 대상과 편집용 툴바를 함께 활성화합니다.
     currentEditLayerId = id;
@@ -622,7 +622,7 @@ export function completeSingleEdit() {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === currentEditLayerId);
     if (!layer) {
         document.getElementById('edit-action-toolbar').style.display = 'none';
-        document.body.classList.remove('recording-mode');
+        setRecordingModeActive(false);
         currentEditLayerId = null;
         return;
     }
@@ -639,7 +639,7 @@ export function completeSingleEdit() {
     renderSurveyList();
 
     // 편집 모드 UI/임시 상태를 정리합니다.
-    document.body.classList.remove('recording-mode');
+    setRecordingModeActive(false);
     document.getElementById('edit-action-toolbar').style.display = 'none';
     clearSnapGuide();
     editLayerOriginalLatLng = null;
@@ -682,7 +682,7 @@ export function cancelSingleEdit() {
     const layer = drawnItems.getLayers().find(l => l.feature.properties.id === currentEditLayerId);
     if (!layer) {
         document.getElementById('edit-action-toolbar').style.display = 'none';
-        document.body.classList.remove('recording-mode');
+        setRecordingModeActive(false);
         currentEditLayerId = null;
         return;
     }
@@ -703,7 +703,7 @@ export function cancelSingleEdit() {
     }
 
     // 편집 UI 상태를 초기화합니다.
-    document.body.classList.remove('recording-mode');
+    setRecordingModeActive(false);
     document.getElementById('edit-action-toolbar').style.display = 'none';
     clearSnapGuide();
     editLayerOriginalLatLng = null;

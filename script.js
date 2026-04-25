@@ -37,7 +37,7 @@ import {
 
 import {
     getRandomColor, getTimestampString, createColoredMarkerIcon,
-    copyText
+    copyText, setRecordingModeActive
 } from './utils.js?v=2.4.10';
 import { requestWakeLock, releaseWakeLock } from './wake-lock.js?v=2.4.10';
 
@@ -218,7 +218,7 @@ function startTrackRecording() {
 
     AppState.currentDrawer = 'track';
     closeBottomSheet();
-    document.body.classList.add('recording-mode');
+    setRecordingModeActive(true);
     AppState.lastTrackLatLng = null;
 
     const randomColor = getRandomColor();
@@ -279,7 +279,7 @@ function cancelTrackRecording() {
 function resetTrackUI() {
     AppState.currentDrawer = null;
     AppState.lastTrackLatLng = null;
-    document.body.classList.remove('recording-mode');
+    setRecordingModeActive(false);
     document.getElementById('track-action-toolbar').style.display = 'none';
     resetButtonStyles();
     releaseWakeLock();
