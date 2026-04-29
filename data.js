@@ -9,13 +9,13 @@
    - 파일 입출력은 내부 표준 구조(GeoJSON FeatureCollection)로 한 번 통일해서 처리합니다.
    - 비동기 I/O(localForage, 파일 파싱, 압축)는 async/await로 순서를 보장합니다.
    ========================================================================== */
-import { STORAGE_KEY } from './config.js?v=2.4.10';
-import { AppState } from './state.js?v=2.4.10';
-import { drawnItems } from './draw.js?v=2.4.10';
-import { renderSurveyList, updateLayerInfo, renderProjectSelector, closeSidebar, createNewProject, openSidebar, switchSidebarTab } from './ui.js?v=2.4.10';
-import { getRandomColor, createColoredMarkerIcon, getShortAddress, getTimestampString } from './utils.js?v=2.4.10';
-import { VWORLD_API_KEY } from './config.js?v=2.4.10';
-import { map } from './map.js?v=2.4.10';
+import { STORAGE_KEY } from './config.js?v=2.4.11';
+import { AppState } from './state.js?v=2.4.11';
+import { drawnItems } from './draw.js?v=2.4.11';
+import { renderSurveyList, updateLayerInfo, renderProjectSelector, closeSidebar, createNewProject, openSidebar, switchSidebarTab } from './ui.js?v=2.4.11';
+import { getRandomColor, createColoredMarkerIcon, getShortAddress, getTimestampString } from './utils.js?v=2.4.11';
+import { VWORLD_API_KEY } from './config.js?v=2.4.11';
+import { map } from './map.js?v=2.4.11';
 import { zip as shpZip } from '@crmackey/shp-write';
 
 
@@ -34,8 +34,18 @@ export async function saveToStorage() {
     // currentProjectId는 UI/저장 과정에서 문자열일 수 있어 parseInt로 타입을 맞춘 뒤 비교합니다.
     const projectIndex = AppState.projects.findIndex(p => p.id === parseInt(AppState.currentProjectId));
     if (projectIndex !== -1) {
+        const orderedLayers = getLayersForStorageOrder();
+        orderedLayers.forEach((layer, index) => {
+            if (!layer.feature) layer.feature = { type: "Feature", properties: {} };
+            if (!layer.feature.properties) layer.feature.properties = {};
+            layer.feature.properties.displayOrder = index;
+        });
+
         // Leaflet 레이어는 직렬화가 어려우므로 표준 포맷(GeoJSON)으로 변환해 저장 가능한 형태로 바꿉니다.
-        AppState.projects[projectIndex].features = drawnItems.toGeoJSON();
+        AppState.projects[projectIndex].features = {
+            type: "FeatureCollection",
+            features: orderedLayers.map(layer => layer.toGeoJSON())
+        };
         AppState.projects[projectIndex].updatedAt = new Date().toISOString();
 
         // UI에서 프로젝트 이름을 변경한 경우 저장 데이터와 이름을 맞춥니다.
@@ -58,6 +68,20 @@ export async function saveToStorage() {
         console.error("Storage save failed:", err);
         alert("데이터 저장 실패: " + err);
     }
+}
+
+function getLayersForStorageOrder() {
+    return [...drawnItems.getLayers()].sort((a, b) => {
+        const orderA = Number(a.feature?.properties?.displayOrder);
+        const orderB = Number(b.feature?.properties?.displayOrder);
+        const hasOrderA = Number.isFinite(orderA);
+        const hasOrderB = Number.isFinite(orderB);
+
+        if (hasOrderA && hasOrderB && orderA !== orderB) return orderA - orderB;
+        if (hasOrderA !== hasOrderB) return hasOrderA ? -1 : 1;
+
+        return (a.feature?.properties?.id || 0) - (b.feature?.properties?.id || 0);
+    });
 }
 
 /**
@@ -105,8 +129,12 @@ export async function loadFromStorage() {
             if (AppState.projects.length === 0) {
                 initDefaultProject();
             } else {
-                // 현재 ID가 유효하지 않으면 첫 프로젝트를 기본 선택으로 설정합니다.
-                if (!AppState.projects.find(p => p.id === parseInt(AppState.currentProjectId))) {
+                // 앱 시작 시에는 마지막으로 열었던 프로젝트 대신 기본 프로젝트를 우선 선택합니다.
+                const defaultProject = AppState.projects.find(p => p.name === "기본 프로젝트");
+                if (defaultProject) {
+                    AppState.currentProjectId = defaultProject.id;
+                } else if (!AppState.projects.find(p => p.id === parseInt(AppState.currentProjectId))) {
+                    // 현재 ID가 유효하지 않으면 첫 프로젝트를 기본 선택으로 설정합니다.
                     AppState.currentProjectId = AppState.projects[0].id;
                 }
                 renderProjectSelector();
@@ -231,12 +259,26 @@ function normalizeImportedFeatureProperties(feature) {
     assignIfMissing('customEmoji', ['customemoj', 'CUSTOMEMOJ']);
     assignIfMissing('customMarkerSize', ['custommarke', 'CUSTOMMARKE']);
     assignIfMissing('customDashArray', ['customdash', 'CUSTOMDASH']);
+    assignIfMissing('customWeight', ['customweig', 'CUSTOMWEIG', 'weight', 'WEIGHT']);
+    assignIfMissing('customFillOpacity', ['customfill', 'CUSTOMFILL', 'fillopacit', 'FILLOPACIT']);
     assignIfMissing('description', ['descriptio', 'DESCRIPTIO']);
 
     if (props.customMarkerSize !== undefined) {
         const parsed = parseInt(props.customMarkerSize, 10);
         if (!Number.isNaN(parsed)) {
             props.customMarkerSize = Math.min(5, Math.max(1, parsed));
+        }
+    }
+    if (props.customWeight !== undefined) {
+        const parsed = parseInt(props.customWeight, 10);
+        if (!Number.isNaN(parsed)) {
+            props.customWeight = Math.min(5, Math.max(1, parsed));
+        }
+    }
+    if (props.customFillOpacity !== undefined) {
+        const parsed = parseFloat(props.customFillOpacity);
+        if (!Number.isNaN(parsed)) {
+            props.customFillOpacity = Math.min(1, Math.max(0, parsed));
         }
     }
 
@@ -256,7 +298,9 @@ function normalizeImportedFeatureProperties(feature) {
  * 지오메트리 타입별 생성 규칙, 스타일 규칙, 속성 후처리를 분리합니다.
  */
 export function restoreFeatures(geoJsonData) {
-    L.geoJSON(geoJsonData, {
+    const orderedGeoJsonData = getGeoJsonDataInDisplayOrder(geoJsonData);
+
+    L.geoJSON(orderedGeoJsonData, {
         pointToLayer: function (feature, latlng) {
             // Point는 pointToLayer 콜백이 호출될 때마다 개별 마커로 생성됩니다.
             // 이때 색상/이모지/크기를 아이콘 옵션에 주입해 시각 상태를 복원합니다.
@@ -276,9 +320,14 @@ export function restoreFeatures(geoJsonData) {
             // 반환한 styleObj가 Leaflet path 옵션으로 적용됩니다.
             if (feature.geometry.type !== 'Point') {
                 const color = feature.properties.customColor || getRandomColor();
-                const styleObj = { color: color, fillColor: color };
+                const weight = Number.isFinite(Number(feature.properties.customWeight))
+                    ? Math.min(5, Math.max(1, parseInt(feature.properties.customWeight, 10)))
+                    : 3;
+                const styleObj = { color: color, fillColor: color, weight: weight };
                 if (feature.geometry.type === 'Polygon') {
-                    if (feature.properties.customFill === false) {
+                    if (Number.isFinite(Number(feature.properties.customFillOpacity))) {
+                        styleObj.fillOpacity = Math.min(1, Math.max(0, parseFloat(feature.properties.customFillOpacity)));
+                    } else if (feature.properties.customFill === false) {
                         styleObj.fillOpacity = 0;
                     } else if (feature.properties.customFill === true) {
                         styleObj.fillOpacity = 0.2;
@@ -323,6 +372,25 @@ export function restoreFeatures(geoJsonData) {
 
     // 레이어 복원 완료 후 목록 UI를 다시 렌더링해 "지도 상태 = 목록 상태"를 맞춥니다.
     renderSurveyList();
+}
+
+function getGeoJsonDataInDisplayOrder(geoJsonData) {
+    if (!geoJsonData || !Array.isArray(geoJsonData.features)) return geoJsonData;
+
+    return {
+        ...geoJsonData,
+        features: [...geoJsonData.features].sort((a, b) => {
+            const orderA = Number(a.properties?.displayOrder);
+            const orderB = Number(b.properties?.displayOrder);
+            const hasOrderA = Number.isFinite(orderA);
+            const hasOrderB = Number.isFinite(orderB);
+
+            if (hasOrderA && hasOrderB && orderA !== orderB) return orderA - orderB;
+            if (hasOrderA !== hasOrderB) return hasOrderA ? -1 : 1;
+
+            return (a.properties?.id || 0) - (b.properties?.id || 0);
+        })
+    };
 }
 
 /* ==========================================================================
@@ -808,7 +876,7 @@ function gpxToGeoJson(gpxText) {
             features.push({
                 type: "Feature",
                 geometry: { type: "LineString", coordinates: coords },
-                properties: { id: Date.now() + 1000 + i, memo: name, customColor: getColor(trks[i]) || '#0040ff', isHidden: false }
+                properties: { id: Date.now() + 1000 + i, memo: name, customColor: getColor(trks[i]) || '#0040ff', customWeight: 3, isHidden: false }
             });
         }
     }
@@ -830,7 +898,7 @@ function gpxToGeoJson(gpxText) {
             features.push({
                 type: "Feature",
                 geometry: { type: "LineString", coordinates: coords },
-                properties: { id: Date.now() + 2000 + i, memo: name, customColor: getColor(rtes[i]) || '#0040ff', isHidden: false }
+                properties: { id: Date.now() + 2000 + i, memo: name, customColor: getColor(rtes[i]) || '#0040ff', customWeight: 3, isHidden: false }
             });
         }
     }
@@ -1310,7 +1378,7 @@ export function saveCurrentBoundary(addressName) {
             addedCount++;
 
             const newLayer = L.geoJSON(singleFeature, {
-                style: { color: '#FF0000', weight: 4, opacity: 0.8, fillColor: '#FF0000', fillOpacity: AppState.isPolygonFill ? 0.2 : 0 }
+                style: { color: '#FF0000', weight: 3, opacity: 0.8, fillColor: '#FF0000', fillOpacity: AppState.isPolygonFill ? 0.2 : 0 }
             });
 
             newLayer.eachLayer(function (innerLayer) {
@@ -1319,6 +1387,7 @@ export function saveCurrentBoundary(addressName) {
                     id: uniqueId,
                     memo: shortName || "지적 영역",
                     customColor: '#FF0000',
+                    customWeight: 3,
                     isHidden: false
                 };
                 updateLayerInfo(innerLayer);

@@ -9,12 +9,12 @@
    - 생성/편집 이벤트에서 feature 속성을 갱신하고 saveToStorage()로 즉시 동기화합니다.
    - 렌더링(UI)과 데이터 저장을 같은 지점에서 호출해 상태 불일치를 줄입니다.
    ========================================================================== */
-import { map } from './map.js?v=2.4.10';
-import { AppState } from './state.js?v=2.4.10';
-import { updateLayerInfo, renderSurveyList, switchSidebarTab, highlightButton, resetButtonStyles, openBottomSheet, closeBottomSheet, currentBottomSheetLayerId, setCurrentBottomSheetLayerId } from './ui.js?v=2.4.10';
-import { getRandomColor, getTimestampString, createColoredMarkerIcon, setRecordingModeActive } from './utils.js?v=2.4.10';
-import { saveToStorage } from './data.js?v=2.4.10';
-import { requestWakeLock, releaseWakeLock } from './wake-lock.js?v=2.4.10';
+import { map } from './map.js?v=2.4.11';
+import { AppState } from './state.js?v=2.4.11';
+import { updateLayerInfo, renderSurveyList, switchSidebarTab, highlightButton, resetButtonStyles, openBottomSheet, closeBottomSheet, currentBottomSheetLayerId, setCurrentBottomSheetLayerId } from './ui.js?v=2.4.11';
+import { getRandomColor, getTimestampString, createColoredMarkerIcon, setRecordingModeActive } from './utils.js?v=2.4.11';
+import { saveToStorage } from './data.js?v=2.4.11';
+import { requestWakeLock, releaseWakeLock } from './wake-lock.js?v=2.4.11';
 
 
 
@@ -438,7 +438,7 @@ export function startDraw(type) {
         shapeOptions: {
             color: randomColor,
             fillColor: randomColor,
-            weight: 4,
+            weight: 3,
             opacity: 0.85,
             fillOpacity: AppState.isPolygonFill ? 0.2 : 0
         }
@@ -750,7 +750,7 @@ map.on(L.Draw.Event.CREATED, function (event) {
     const randomColor = AppState.currentDrawColor || getRandomColor();
     layer.feature = {
         type: "Feature",
-        properties: { memo: memo, id: Date.now(), isHidden: false, customColor: randomColor }
+        properties: { memo: memo, id: Date.now(), isHidden: false, customColor: randomColor, customWeight: 3 }
     };
 
     // 점 생성 전 임시 보관했던 사진 목록이 있으면 이 레이어에 1회 귀속시킵니다.
@@ -770,7 +770,7 @@ map.on(L.Draw.Event.CREATED, function (event) {
         layer.setIcon(createColoredMarkerIcon(randomColor, emoji, size));
     } else {
         // 선/면은 path 스타일(color/fill)을 적용합니다.
-        layer.setStyle({ color: randomColor, fillColor: randomColor });
+        layer.setStyle({ color: randomColor, fillColor: randomColor, weight: 3 });
         if (event.layerType === 'polygon' && !AppState.isPolygonFill) {
             layer.setStyle({ fillOpacity: 0 });
         }

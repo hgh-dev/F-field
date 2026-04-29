@@ -7,11 +7,11 @@
    - AppState 프로젝트/레이어 상태를 읽어 목록 DOM을 구성하고, 각 카드/항목 액션을 기존 동작에 연결합니다.
    - 프로젝트 단위 관리와 기록 목록 표시 책임을 한 파일에 묶어 탭 단위 응집도를 유지합니다.
    ========================================================================== */
-import { SVG_ICONS } from './config.js?v=2.4.10';
-import { AppState } from './state.js?v=2.4.10';
-import { drawnItems } from './draw.js?v=2.4.10';
-import { saveToStorage } from './data.js?v=2.4.10';
-import { closeAllDropdowns, switchSidebarTab } from './ui-core.js?v=2.4.10';
+import { SVG_ICONS } from './config.js?v=2.4.11';
+import { AppState } from './state.js?v=2.4.11';
+import { drawnItems } from './draw.js?v=2.4.11';
+import { saveToStorage } from './data.js?v=2.4.11';
+import { closeAllDropdowns, switchSidebarTab } from './ui-core.js?v=2.4.11';
 
 export let moveTargetLayerIds = [];
 const PROJECT_BADGE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>';
@@ -495,24 +495,28 @@ function createSurveyStyleButton(layer, props, displayColor, customEmoji) {
                 </svg>`;
         }
     } else if (layer instanceof L.Polygon) {
-        const customFill = props.customFill === true || (props.customFill === undefined && AppState.isPolygonFill);
+        const customFillOpacity = Number.isFinite(Number(props.customFillOpacity))
+            ? Math.min(1, Math.max(0, parseFloat(props.customFillOpacity)))
+            : (props.customFill === false ? 0 : (props.customFill === true ? 0.2 : (AppState.isPolygonFill ? 0.2 : 0)));
         const isNone = props.customDashArray === 'none';
         const isDashed = props.customDashArray && !isNone;
+        const customWeight = Math.min(5, Math.max(1, parseInt(props.customWeight || 3, 10)));
         const bStyle = isNone ? 'solid' : (isDashed ? 'dashed' : 'solid');
         const bColor = isNone ? '#eee' : displayColor;
         buttonStyle = "width:28px; height:28px; border:1px solid #ddd; border-radius:4px; background:transparent; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; box-sizing:border-box; padding:1px;";
-        const fillStyle = customFill ? `background:${displayColor}; opacity:0.4;` : "background:transparent;";
+        const fillStyle = customFillOpacity > 0 ? `background:${displayColor}; opacity:${customFillOpacity};` : "background:transparent;";
         btnContent = `
-                <div style="width:100%; height:100%; border-radius:2px; box-sizing:border-box; border: 2px ${bStyle} ${bColor}; overflow:hidden;">
+                <div style="width:100%; height:100%; border-radius:2px; box-sizing:border-box; border: ${customWeight}px ${bStyle} ${bColor}; overflow:hidden;">
                     <div style="width:100%; height:100%; ${fillStyle}"></div>
                 </div>`;
     } else {
         const isNone = props.customDashArray === 'none';
         const isDashed = props.customDashArray && !isNone;
+        const customWeight = Math.min(5, Math.max(1, parseInt(props.customWeight || 3, 10)));
         const bStyle = isNone ? 'solid' : (isDashed ? 'dashed' : 'solid');
         const bColor = isNone ? '#eee' : displayColor;
         buttonStyle = "width:28px; height:28px; border:1px solid #ddd; border-radius:4px; background:transparent; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; box-sizing:border-box; padding:1px;";
-        btnContent = `<div style="width:100%; height:100%; overflow:hidden; border-radius:2px; display:flex; align-items:center; justify-content:center;"><div style="width:38px; height:0; border-top: 3px ${bStyle} ${bColor}; transform: rotate(-45deg);"></div></div>`;
+        btnContent = `<div style="width:100%; height:100%; overflow:hidden; border-radius:2px; display:flex; align-items:center; justify-content:center;"><div style="width:38px; height:0; border-top: ${customWeight}px ${bStyle} ${bColor}; transform: rotate(-45deg);"></div></div>`;
     }
 
     return `<button class="style-setting-btn" style="${buttonStyle} ${bgStyle}" title="스타일 설정" onclick="openStyleModal(${props.id})">${btnContent}</button>`;

@@ -10,20 +10,20 @@
    - DOMContentLoaded 시점에 초기화를 일괄 수행해 UI/데이터/지도 상태를 동기화합니다.
    ========================================================================== */
 
-import { APP_MODE, APP_VERSION } from './config.js?v=2.4.10';
-import { AppState } from './state.js?v=2.4.10';
+import { APP_MODE, APP_VERSION } from './config.js?v=2.4.11';
+import { AppState } from './state.js?v=2.4.11';
 
 import {
     map,
     toggleBaseLayer, changeBaseMap, updateLayerOrder, changeCadastralMap,
     toggleOverlay
-} from './map.js?v=2.4.10';
+} from './map.js?v=2.4.11';
 import {
     drawnItems, startDraw, completeDrawing, cancelDrawing,
     addGpsVertex, deleteLastVertex, currentEditLayerId,
     completeSingleEdit, revertSingleEdit, cancelSingleEdit,
     setSnapEnabled, syncSnapToggleButtons
-} from './draw.js?v=2.4.10';
+} from './draw.js?v=2.4.11';
 
 
 
@@ -33,13 +33,13 @@ import {
     handleFileSelect, clearAllData, saveCurrentPoint, saveCurrentBoundary,
     fitCurrentProjectToMap,
     getAddressFromCoords, closeExportFormatModal, exportLayerWithFormat, backupAllProjects
-} from './data.js?v=2.4.10';
+} from './data.js?v=2.4.11';
 
 import {
     getRandomColor, getTimestampString, createColoredMarkerIcon,
     copyText, setRecordingModeActive
-} from './utils.js?v=2.4.10';
-import { requestWakeLock, releaseWakeLock } from './wake-lock.js?v=2.4.10';
+} from './utils.js?v=2.4.11';
+import { requestWakeLock, releaseWakeLock } from './wake-lock.js?v=2.4.11';
 
 import {
     switchSidebarTab, closeBottomSheet,
@@ -54,7 +54,7 @@ import {
     applyLayerVisibilityState,
     currentBottomSheetLayerId,
     setCurrentBottomSheetLayerId
-} from './ui.js?v=2.4.10';
+} from './ui.js?v=2.4.11';
 
 
 /* ==========================================================================
@@ -222,7 +222,7 @@ function startTrackRecording() {
     AppState.lastTrackLatLng = null;
 
     const randomColor = getRandomColor();
-    AppState.trackPolyline = L.polyline([], { color: randomColor, weight: 4, opacity: 0.85 }).addTo(map);
+    AppState.trackPolyline = L.polyline([], { color: randomColor, weight: 3, opacity: 0.85 }).addTo(map);
     document.getElementById('track-action-toolbar').style.display = 'flex';
     requestWakeLock();
 
@@ -304,10 +304,10 @@ function completeTrackRecording() {
     const memo = prompt('기록명 입력:', '트랙_' + getTimestampString());
     if (memo === null) { resetTrackUI(); return; }
 
-    const layer = L.polyline(latlngs, { color: trackColor, weight: 4 });
+    const layer = L.polyline(latlngs, { color: trackColor, weight: 3 });
     layer.feature = {
         type: 'Feature',
-        properties: { memo: memo || getTimestampString(), id: Date.now(), isHidden: false, customColor: trackColor, isTrack: true }
+        properties: { memo: memo || getTimestampString(), id: Date.now(), isHidden: false, customColor: trackColor, customWeight: 3, isTrack: true }
     };
 
     updateLayerInfo(layer);

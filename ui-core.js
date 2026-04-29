@@ -4,12 +4,12 @@
    [입력] AppState, 지도(map), 레이어(drawnItems), 로컬 저장소(localStorage)
    [출력] DOM 갱신, 지도 이동/스타일 변경, 전역(window) UI 액션 바인딩
    ========================================================================== */
-import { SVG_ICONS } from './config.js?v=2.4.10';
-import { AppState } from './state.js?v=2.4.10';
-import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, getOfflineMapUrls } from './map.js?v=2.4.10';
-import { drawnItems, currentEditLayerId } from './draw.js?v=2.4.10';
-import { createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.10';
-import { saveToStorage, exportSingleLayer } from './data.js?v=2.4.10';
+import { SVG_ICONS } from './config.js?v=2.4.11';
+import { AppState } from './state.js?v=2.4.11';
+import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, getOfflineMapUrls } from './map.js?v=2.4.11';
+import { drawnItems, currentEditLayerId } from './draw.js?v=2.4.11';
+import { createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.11';
+import { saveToStorage, exportSingleLayer } from './data.js?v=2.4.11';
 import {
     initSearchSettings,
     toggleSearchBox,
@@ -21,7 +21,7 @@ import {
     clearHistoryAll,
     deleteHistoryItem,
     showHistoryPanel,
-} from './ui-search.js?v=2.4.10';
+} from './ui-search.js?v=2.4.11';
 import {
     setCurrentBottomSheetLayerId,
     openBottomSheet,
@@ -30,6 +30,7 @@ import {
     toggleBottomSheetMoreMenu,
     syncBottomSheetHoleMenuForLayer,
     handleBottomSheetEdit,
+    handleBottomSheetStyle,
     handleBottomSheetBringToFront,
     handleBottomSheetBringForward,
     handleBottomSheetSendToBack,
@@ -39,7 +40,7 @@ import {
     handleBottomSheetHoleFill,
     showInfoPopup,
     fetchAndHighlightBoundary,
-} from './ui-bottomsheet.js?v=2.4.10';
+} from './ui-bottomsheet.js?v=2.4.11';
 import {
     createNewProject,
     editProjectName,
@@ -56,7 +57,7 @@ import {
     openProjectSortModal,
     closeProjectSortModal,
     applyProjectSortSetting
-} from './ui-project.js?v=2.4.10';
+} from './ui-project.js?v=2.4.11';
 import {
     createLayerPhotoSection,
     openPhotoSelectMenu,
@@ -69,7 +70,7 @@ import {
     prevPhoto,
     downloadCurrentPhoto,
     closePhotoModal
-} from './ui-photo.js?v=2.4.10';
+} from './ui-photo.js?v=2.4.11';
 
 
 // --- 전역 UI 상태 ---
@@ -1047,13 +1048,7 @@ export function applyLayerVisibilityState(layer, isHidden = layer?.feature?.prop
     if (layer instanceof L.Marker) {
         layer.setOpacity(1);
     } else {
-        let fillOpacity = 0.2;
-        if (layer instanceof L.Polygon) {
-            const customFill = layer.feature?.properties?.customFill;
-            if (customFill === false) fillOpacity = 0;
-            else if (customFill === true) fillOpacity = 0.2;
-            else if (!AppState.isPolygonFill) fillOpacity = 0;
-        }
+        const fillOpacity = getLayerFillOpacity(layer);
         const stroke = layer.feature?.properties?.customDashArray !== 'none';
         layer.setStyle({ opacity: 1, fillOpacity, stroke });
     }
@@ -1251,9 +1246,28 @@ let currentStyleLayerId = null;
 let currentStyleType = null;
 let tempStyleColor = '#3B82F6';
 let tempLineStyle = 'solid';
+let tempLineWeight = 3;
 let tempMarkerStyle = '';
 let tempMarkerSize = 3;
-let tempFillStyle = 'on';
+let tempFillOpacity = 0.2;
+
+function normalizeOpacityValue(value, fallback = 0.2) {
+    const parsed = parseFloat(value);
+    if (Number.isNaN(parsed)) return fallback;
+    return Math.min(1, Math.max(0, Math.round(parsed * 10) / 10));
+}
+
+function getLayerFillOpacity(layer) {
+    if (!(layer instanceof L.Polygon)) return 0;
+
+    const props = layer.feature?.properties || {};
+    if (Number.isFinite(Number(props.customFillOpacity))) {
+        return normalizeOpacityValue(props.customFillOpacity);
+    }
+    if (props.customFill === false) return 0;
+    if (props.customFill === true) return 0.2;
+    return AppState.isPolygonFill ? 0.2 : 0;
+}
 
 /**
  * [함수] openStyleModal
@@ -1270,11 +1284,13 @@ export function openStyleModal(id) {
 
     tempStyleColor = props.customColor || (layer instanceof L.Marker ? '#FF0000' : '#3388ff');
     tempLineStyle = props.customDashArray === 'none' ? 'none' : (props.customDashArray ? 'dashed' : 'solid');
+    tempLineWeight = Number.isFinite(Number(props.customWeight)) ? Math.min(5, Math.max(1, parseInt(props.customWeight, 10))) : 3;
     tempMarkerStyle = props.customEmoji || '';
     tempMarkerSize = props.customMarkerSize || 3;
 
     const overlay = document.getElementById('style-modal-overlay');
     const lineSec = document.getElementById('style-line-section');
+    const lineWeightSec = document.getElementById('style-line-weight-section');
     const markerSec = document.getElementById('style-marker-section');
     const polySec = document.getElementById('style-polygon-section');
     const markerSizeSec = document.getElementById('style-marker-size-section');
@@ -1282,19 +1298,22 @@ export function openStyleModal(id) {
     if (layer instanceof L.Marker) {
         currentStyleType = 'marker';
         if (lineSec) lineSec.style.display = 'none';
+        if (lineWeightSec) lineWeightSec.style.display = 'none';
         if (markerSec) markerSec.style.display = 'block';
         if (markerSizeSec) markerSizeSec.style.display = 'block';
         if (polySec) polySec.style.display = 'none';
     } else if (layer instanceof L.Polygon) {
         currentStyleType = 'polygon';
         if (lineSec) lineSec.style.display = 'block';
+        if (lineWeightSec) lineWeightSec.style.display = 'block';
         if (markerSec) markerSec.style.display = 'none';
         if (markerSizeSec) markerSizeSec.style.display = 'none';
         if (polySec) polySec.style.display = 'block';
-        tempFillStyle = props.customFill === false ? 'off' : (props.customFill === true ? 'on' : (AppState.isPolygonFill ? 'on' : 'off'));
+        tempFillOpacity = getLayerFillOpacity(layer);
     } else {
         currentStyleType = 'line';
         if (lineSec) lineSec.style.display = 'block';
+        if (lineWeightSec) lineWeightSec.style.display = 'block';
         if (markerSec) markerSec.style.display = 'none';
         if (markerSizeSec) markerSizeSec.style.display = 'none';
         if (polySec) polySec.style.display = 'none';
@@ -1344,14 +1363,20 @@ function updateStyleModalUI() {
     document.querySelectorAll('#style-marker-choices .emoji-btn').forEach(btn => {
         btn.classList.toggle('selected', (btn.dataset.emoji || '') === tempMarkerStyle);
     });
-    document.querySelectorAll('#style-fill-choices .style-btn').forEach(btn => {
-        btn.classList.toggle('selected', btn.dataset.fill === tempFillStyle);
-    });
-
     const sizeInput = document.getElementById('style-marker-size');
     const sizeLabel = document.getElementById('style-marker-size-label');
     if (sizeInput) sizeInput.value = tempMarkerSize;
     if (sizeLabel) sizeLabel.innerText = tempMarkerSize;
+
+    const weightInput = document.getElementById('style-line-weight');
+    const weightLabel = document.getElementById('style-line-weight-label');
+    if (weightInput) weightInput.value = tempLineWeight;
+    if (weightLabel) weightLabel.innerText = tempLineWeight;
+
+    const fillOpacityInput = document.getElementById('style-fill-opacity');
+    const fillOpacityLabel = document.getElementById('style-fill-opacity-label');
+    if (fillOpacityInput) fillOpacityInput.value = tempFillOpacity;
+    if (fillOpacityLabel) fillOpacityLabel.innerText = tempFillOpacity.toFixed(1).replace(/\.0$/, '');
 }
 
 /**
@@ -1381,13 +1406,44 @@ export function selectLineStyle(style) {
 }
 
 /**
- * [함수] selectFillStyle
- * [역할] 선택값을 임시 상태로 반영하고 UI를 동기화한다.
- * [원리] 사용자 선택값을 임시 상태(temp*)에 기록하고,
- *        선택 UI를 다시 칠해 현재 선택 항목이 시각적으로 즉시 반영되게 한다.
+ * [함수] updateLineWeightLabel
+ * [역할] 선 굵기 슬라이더 값을 화면 라벨에 반영한다.
+ * [원리] 임시 선택값을 1~5 범위 숫자로 정규화한 뒤 표시값과 상태를 함께 갱신한다.
  */
-export function selectFillStyle(fill) {
-    tempFillStyle = fill;
+export function updateLineWeightLabel(val) {
+    tempLineWeight = Math.min(5, Math.max(1, parseInt(val, 10) || 3));
+    const weightLabel = document.getElementById('style-line-weight-label');
+    if (weightLabel) weightLabel.innerText = tempLineWeight;
+}
+
+/**
+ * [함수] selectLineWeight
+ * [역할] 선택한 선 굵기를 임시 상태로 저장한다.
+ * [원리] 슬라이더 입력값을 1~5 범위로 제한해 적용 시 레이어 스타일에 사용한다.
+ */
+export function selectLineWeight(val) {
+    tempLineWeight = Math.min(5, Math.max(1, parseInt(val, 10) || 3));
+    updateStyleModalUI();
+}
+
+/**
+ * [함수] updateFillOpacityLabel
+ * [역할] 면 투명도 슬라이더 값을 화면 라벨에 반영한다.
+ * [원리] 입력값을 0~1 범위의 0.1 단위 값으로 정규화해 임시 상태와 라벨을 함께 갱신한다.
+ */
+export function updateFillOpacityLabel(val) {
+    tempFillOpacity = normalizeOpacityValue(val, AppState.isPolygonFill ? 0.2 : 0);
+    const fillOpacityLabel = document.getElementById('style-fill-opacity-label');
+    if (fillOpacityLabel) fillOpacityLabel.innerText = tempFillOpacity.toFixed(1).replace(/\.0$/, '');
+}
+
+/**
+ * [함수] selectFillOpacity
+ * [역할] 선택한 면 투명도를 임시 상태로 저장한다.
+ * [원리] 슬라이더 입력값을 정규화한 뒤 스타일 모달 UI와 적용 대기 상태를 동기화한다.
+ */
+export function selectFillOpacity(val) {
+    tempFillOpacity = normalizeOpacityValue(val, AppState.isPolygonFill ? 0.2 : 0);
     updateStyleModalUI();
 }
 
@@ -1441,20 +1497,24 @@ export function applyStyleSettings() {
         props.customMarkerSize = tempMarkerSize;
         layer.setIcon(createColoredMarkerIcon(tempStyleColor, tempMarkerStyle, tempMarkerSize));
     } else {
+        props.customWeight = tempLineWeight;
+
         if (tempLineStyle === 'dashed') props.customDashArray = '5, 5';
         else if (tempLineStyle === 'none') props.customDashArray = 'none';
         else props.customDashArray = null;
 
         if (currentStyleType === 'polygon') {
-            props.customFill = tempFillStyle === 'on';
+            props.customFillOpacity = tempFillOpacity;
+            delete props.customFill;
         }
 
         layer.setStyle({
             color: tempStyleColor,
             fillColor: tempStyleColor,
+            weight: tempLineWeight,
             dashArray: props.customDashArray === 'none' ? null : props.customDashArray,
             stroke: props.customDashArray !== 'none',
-            fillOpacity: currentStyleType === 'polygon' && props.customFill === true ? 0.2 : 0,
+            fillOpacity: currentStyleType === 'polygon' ? tempFillOpacity : 0,
             opacity: 0.8
         });
     }
@@ -1599,6 +1659,7 @@ function bindUiActionsToWindow() {
         toggleBottomSheetState,
         toggleBottomSheetMoreMenu,
         handleBottomSheetEdit,
+        handleBottomSheetStyle,
         handleBottomSheetBringToFront,
         handleBottomSheetBringForward,
         handleBottomSheetSendToBack,
@@ -1655,7 +1716,10 @@ function bindUiActionsToWindow() {
         closeStyleModal,
         selectStyleColor,
         selectLineStyle,
-        selectFillStyle,
+        updateLineWeightLabel,
+        selectLineWeight,
+        updateFillOpacityLabel,
+        selectFillOpacity,
         selectMarkerStyle,
         updateMarkerSizeLabel,
         selectMarkerSize,

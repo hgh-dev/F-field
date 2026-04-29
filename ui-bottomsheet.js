@@ -7,14 +7,14 @@
    - 바텀시트 표시용 HTML 조각을 내부 보조 함수로 조합하고, 선택 레이어 상태를 기준으로 액션을 실행합니다.
    - 지도 클릭, 검색 결과 이동, 기록 상세 열기 흐름이 최종적으로 이 모듈의 바텀시트 표시로 수렴합니다.
    ========================================================================== */
-import { VWORLD_API_KEY, SVG_ICONS } from './config.js?v=2.4.10';
-import { AppState } from './state.js?v=2.4.10';
-import { map, updateLayerOrder } from './map.js?v=2.4.10';
-import { drawnItems, enableSingleLayerEdit } from './draw.js?v=2.4.10';
-import { getTimestampString, getRandomColor, createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.10';
-import { saveToStorage } from './data.js?v=2.4.10';
-import { updateLayerInfo, deleteLayerById, scheduleViewportVectorOptimization } from './ui-core.js?v=2.4.10';
-import { renderSurveyList } from './ui-project.js?v=2.4.10';
+import { VWORLD_API_KEY, SVG_ICONS } from './config.js?v=2.4.11';
+import { AppState } from './state.js?v=2.4.11';
+import { map, updateLayerOrder } from './map.js?v=2.4.11';
+import { drawnItems, enableSingleLayerEdit } from './draw.js?v=2.4.11';
+import { getTimestampString, getRandomColor, createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.11';
+import { saveToStorage } from './data.js?v=2.4.11';
+import { updateLayerInfo, deleteLayerById, scheduleViewportVectorOptimization } from './ui-core.js?v=2.4.11';
+import { renderSurveyList } from './ui-project.js?v=2.4.11';
 
 export let currentBottomSheetLayerId = null;
 
@@ -230,6 +230,12 @@ function hideBottomSheetMoreMenu() {
 }
 
 function reorderDrawnLayers(nextLayers) {
+    nextLayers.forEach((layer, index) => {
+        if (!layer.feature) layer.feature = { type: "Feature", properties: {} };
+        if (!layer.feature.properties) layer.feature.properties = {};
+        layer.feature.properties.displayOrder = index;
+    });
+
     nextLayers.forEach(layer => drawnItems.removeLayer(layer));
     nextLayers.forEach(layer => drawnItems.addLayer(layer));
     updateLayerOrder();
@@ -243,7 +249,7 @@ function moveCurrentBottomSheetLayer(position) {
 
     if (currentBottomSheetLayerId === null) return;
 
-    const layers = drawnItems.getLayers();
+    const layers = getDisplayOrderedLayers();
     if (layers.length < 2) return;
 
     const currentIndex = layers.findIndex(layer => layer.feature?.properties?.id === currentBottomSheetLayerId);
@@ -266,6 +272,20 @@ function moveCurrentBottomSheetLayer(position) {
     const [targetLayer] = nextLayers.splice(currentIndex, 1);
     nextLayers.splice(targetIndex, 0, targetLayer);
     reorderDrawnLayers(nextLayers);
+}
+
+function getDisplayOrderedLayers() {
+    return [...drawnItems.getLayers()].sort((a, b) => {
+        const orderA = Number(a.feature?.properties?.displayOrder);
+        const orderB = Number(b.feature?.properties?.displayOrder);
+        const hasOrderA = Number.isFinite(orderA);
+        const hasOrderB = Number.isFinite(orderB);
+
+        if (hasOrderA && hasOrderB && orderA !== orderB) return orderA - orderB;
+        if (hasOrderA !== hasOrderB) return hasOrderA ? -1 : 1;
+
+        return (a.feature?.properties?.id || 0) - (b.feature?.properties?.id || 0);
+    });
 }
 
 /**
@@ -351,6 +371,19 @@ export function handleBottomSheetEdit() {
     closeBottomSheet();
     if (layerId !== null) {
         enableSingleLayerEdit(layerId);
+    }
+}
+
+/**
+ * [함수] handleBottomSheetStyle
+ * [역할] 현재 선택한 기록의 스타일 설정 모달을 연다.
+ * [원리] 바텀시트 더보기 메뉴만 닫고, 공통 스타일 모달 진입점을 현재 레이어 ID로 호출한다.
+ */
+export function handleBottomSheetStyle() {
+    hideBottomSheetMoreMenu();
+
+    if (currentBottomSheetLayerId !== null && window.openStyleModal) {
+        window.openStyleModal(currentBottomSheetLayerId);
     }
 }
 
