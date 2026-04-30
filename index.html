@@ -1310,6 +1310,224 @@
             transform: translateY(0);
         }
 
+        .settings-page-overlay {
+            background: rgba(0, 0, 0, 0.45);
+            align-items: center;
+            justify-content: center;
+            padding: calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));
+            box-sizing: border-box;
+        }
+
+        .settings-page-content {
+            width: 100%;
+            max-width: 420px;
+            min-height: 0;
+            max-height: min(620px, 100%);
+            padding: 0;
+            border-radius: 16px;
+            overflow-y: auto;
+            transform: translateY(16px) scale(0.98);
+            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.28);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .nav-modal-overlay.visible .settings-page-content {
+            transform: translateY(0) scale(1);
+        }
+
+        .settings-page-header {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 48px 1fr 48px;
+            align-items: center;
+            height: calc(52px + env(safe-area-inset-top));
+            padding-top: 0;
+            background: #fff;
+            border-bottom: 1px solid #eeeeee;
+            box-sizing: border-box;
+        }
+
+        .settings-back-btn {
+            width: 48px;
+            height: 48px;
+            border: 0;
+            background: transparent;
+            color: #111;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-back-btn::before {
+            content: '';
+            width: 13px;
+            height: 13px;
+            border-left: 2.5px solid currentColor;
+            border-bottom: 2.5px solid currentColor;
+            transform: rotate(45deg);
+            margin-left: 6px;
+        }
+
+        .settings-page-title {
+            color: #111;
+            font-size: 17px;
+            font-weight: 700;
+            line-height: 1;
+            text-align: center;
+        }
+
+        .settings-section {
+            background: #fff;
+            border-bottom: 10px solid #f2f3f5;
+        }
+
+        .settings-section:last-child {
+            border-bottom: 0;
+            padding-bottom: calc(14px + env(safe-area-inset-bottom));
+        }
+
+        .settings-row {
+            min-height: 52px;
+            margin: 0 18px;
+            padding: 11px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border-bottom: 1px solid #eeeeee;
+            box-sizing: border-box;
+        }
+
+        .settings-row:last-child {
+            border-bottom: 0;
+        }
+
+        .settings-row-stacked {
+            align-items: stretch;
+            flex-direction: column;
+            gap: 9px;
+        }
+
+        .settings-label {
+            color: #222;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.35;
+        }
+
+        .settings-help {
+            color: #8a8f98;
+            font-size: 11px;
+            line-height: 1.45;
+            margin-top: 2px;
+        }
+
+        .settings-choice-group {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 7px;
+            flex-wrap: wrap;
+        }
+
+        .settings-choice {
+            position: relative;
+            flex: 0 0 auto;
+        }
+
+        .settings-choice input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .settings-choice span {
+            min-width: 45px;
+            height: 30px;
+            padding: 0 10px;
+            border: 1px solid #d9dde3;
+            border-radius: 15px;
+            color: #5d6673;
+            background: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+
+        .settings-choice input:checked+span {
+            border-color: #1683e9;
+            color: #0b7fe8;
+            background: #eef7ff;
+        }
+
+        .settings-value {
+            color: #0b7fe8;
+            font-size: 14px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .settings-chevron {
+            width: 9px;
+            height: 9px;
+            border-top: 2px solid #0b7fe8;
+            border-right: 2px solid #0b7fe8;
+            transform: rotate(45deg);
+            flex: 0 0 auto;
+        }
+
+        .settings-toggle {
+            position: relative;
+            display: inline-flex;
+            width: 42px;
+            height: 24px;
+            border-radius: 12px;
+            background: #bdc3cc;
+            padding: 2px;
+            box-sizing: border-box;
+            transition: background 0.2s ease;
+            flex: 0 0 auto;
+        }
+
+        .settings-toggle:has(input[value="true"]:checked) {
+            background: #0b7fe8;
+        }
+
+        .settings-toggle label {
+            position: relative;
+            z-index: 2;
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .settings-toggle input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .settings-toggle-thumb {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 2px 5px rgba(15, 23, 42, 0.2);
+            transition: transform 0.2s ease;
+        }
+
+        .settings-toggle:has(input[value="true"]:checked) .settings-toggle-thumb {
+            transform: translateX(18px);
+        }
+
         .nav-app-list {
             display: flex;
             justify-content: space-around;
@@ -3433,90 +3651,95 @@
     </div>
 
     <!-- 설정 모달 -->
-    <div id="settings-modal-overlay" class="nav-modal-overlay" onclick="closeSettingsModal()">
-        <div class="nav-modal-content" onclick="event.stopPropagation()">
-            <div class="nav-modal-header"
-                style="font-size:18px; font-weight:bold; margin-bottom:20px; text-align:center;">설정</div>
+    <div id="settings-modal-overlay" class="nav-modal-overlay settings-page-overlay" onclick="closeSettingsModal()">
+        <div class="nav-modal-content settings-page-content" onclick="event.stopPropagation()">
+            <header class="settings-page-header">
+                <button class="settings-back-btn" type="button" onclick="closeSettingsModal()" aria-label="설정 닫기"></button>
+                <div class="settings-page-title">설정</div>
+                <div></div>
+            </header>
 
-            <div style="margin-bottom:20px;">
-                <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">좌표 표시 방식</div>
-                <div style="display:flex; flex-direction:column; background:#f8f9fa; border-radius:12px; padding:4px;">
-                    <label style="padding:10px; display:flex; align-items:center; font-size:14px;">
-                        <input type="radio" name="coord-mode-select" value="0" onclick="setCoordMode(0)"
-                            style="margin-right:10px;"> 도분초 (DMS)
-                    </label>
-                    <label style="padding:10px; display:flex; align-items:center; font-size:14px;">
-                        <input type="radio" name="coord-mode-select" value="1" onclick="setCoordMode(1)"
-                            style="margin-right:10px;"> 소수점 (Decimal)
-                    </label>
-                    <label style="padding:10px; display:flex; align-items:center; font-size:14px;">
-                        <input type="radio" name="coord-mode-select" value="2" onclick="setCoordMode(2)"
-                            style="margin-right:10px;"> TM 좌표 (X, Y)
-                    </label>
+            <section class="settings-section">
+                <div class="settings-row settings-row-stacked">
+                    <div class="settings-label">좌표 표시 방식</div>
+                    <div class="settings-choice-group" aria-label="좌표 표시 방식">
+                        <label class="settings-choice">
+                            <input type="radio" name="coord-mode-select" value="0" onclick="setCoordMode(0)">
+                            <span>도분초</span>
+                        </label>
+                        <label class="settings-choice">
+                            <input type="radio" name="coord-mode-select" value="1" onclick="setCoordMode(1)">
+                            <span>소수점</span>
+                        </label>
+                        <label class="settings-choice">
+                            <input type="radio" name="coord-mode-select" value="2" onclick="setCoordMode(2)">
+                            <span>TM 좌표</span>
+                        </label>
+                    </div>
                 </div>
-            </div>
+            </section>
 
+            <section class="settings-section">
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">면 채우기</div>
+                        <div class="settings-help">기록된 면의 내부 채우기 표시</div>
+                    </div>
+                    <div class="settings-toggle" aria-label="면 채우기">
+                        <label>
+                            <input type="radio" name="polygon-fill-select" value="false"
+                                onclick="setPolygonFill(false)">
+                        </label>
+                        <label>
+                            <input type="radio" name="polygon-fill-select" value="true" onclick="setPolygonFill(true)">
+                        </label>
+                        <span class="settings-toggle-thumb"></span>
+                    </div>
+                </div>
 
-            <div style="margin-bottom:20px;">
-                <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">면 채우기</div>
-                <div style="display:flex; flex-direction:row; background:#f8f9fa; border-radius:12px; padding:12px;">
-                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
-                        <input type="radio" name="polygon-fill-select" value="true" onclick="setPolygonFill(true)"
-                            style="margin-right:6px;"> 켜짐
-                    </label>
-                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
-                        <input type="radio" name="polygon-fill-select" value="false" onclick="setPolygonFill(false)"
-                            style="margin-right:6px;"> 꺼짐
-                    </label>
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">스냅기능</div>
+                        <div class="settings-help">측량 및 수정 중 주변 꼭지점과 선에 맞춤</div>
+                    </div>
+                    <div class="settings-toggle" aria-label="스냅기능">
+                        <label>
+                            <input type="radio" name="snap-enabled-select" value="false" onclick="setSnapEnabled(false)">
+                        </label>
+                        <label>
+                            <input type="radio" name="snap-enabled-select" value="true" onclick="setSnapEnabled(true)">
+                        </label>
+                        <span class="settings-toggle-thumb"></span>
+                    </div>
                 </div>
-                <div style="font-size:11px; color:#888; padding:5px 5px 0 5px;">
-                    ※ 기록된 면(Polygon)의 내부 채우기 여부를 설정합니다.
-                </div>
-            </div>
+            </section>
 
-            <div style="margin-bottom:20px;">
-                <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">스냅기능</div>
-                <div style="display:flex; flex-direction:row; background:#f8f9fa; border-radius:12px; padding:12px;">
-                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
-                        <input type="radio" name="snap-enabled-select" value="true" onclick="setSnapEnabled(true)"
-                            style="margin-right:6px;"> 켜짐
-                    </label>
-                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
-                        <input type="radio" name="snap-enabled-select" value="false" onclick="setSnapEnabled(false)"
-                            style="margin-right:6px;"> 꺼짐
-                    </label>
+            <section class="settings-section">
+                <div class="settings-row settings-row-stacked">
+                    <div>
+                        <div class="settings-label">트랙 기록 간격</div>
+                        <div class="settings-help">GPS 위치가 설정 거리 이상 이동했을 때 좌표를 기록합니다.</div>
+                    </div>
+                    <div class="settings-choice-group" aria-label="트랙 기록 간격">
+                        <label class="settings-choice">
+                            <input type="radio" name="track-interval-select" value="2" onclick="setTrackInterval(2)">
+                            <span>2m</span>
+                        </label>
+                        <label class="settings-choice">
+                            <input type="radio" name="track-interval-select" value="5" onclick="setTrackInterval(5)">
+                            <span>5m</span>
+                        </label>
+                        <label class="settings-choice">
+                            <input type="radio" name="track-interval-select" value="10" onclick="setTrackInterval(10)">
+                            <span>10m</span>
+                        </label>
+                        <label class="settings-choice">
+                            <input type="radio" name="track-interval-select" value="20" onclick="setTrackInterval(20)">
+                            <span>20m</span>
+                        </label>
+                    </div>
                 </div>
-                <div style="font-size:11px; color:#888; padding:5px 5px 0 5px;">
-                    ※ 측량 및 수정 중 다른 기록의 꼭지점이나 선에 커서가 자동으로 맞춰지도록 설정합니다.
-                </div>
-            </div>
-
-            <div style="margin-bottom:20px;">
-                <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">트랙 기록 간격</div>
-                <div style="display:flex; flex-direction:row; background:#f8f9fa; border-radius:12px; padding:12px;">
-                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
-                        <input type="radio" name="track-interval-select" value="2" onclick="setTrackInterval(2)"
-                            style="margin-right:6px;"> 2m
-                    </label>
-                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
-                        <input type="radio" name="track-interval-select" value="5" onclick="setTrackInterval(5)"
-                            style="margin-right:6px;"> 5m
-                    </label>
-                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
-                        <input type="radio" name="track-interval-select" value="10" onclick="setTrackInterval(10)"
-                            style="margin-right:6px;"> 10m
-                    </label>
-                    <label style="display:flex; align-items:center; flex:1; font-size:14px;">
-                        <input type="radio" name="track-interval-select" value="20" onclick="setTrackInterval(20)"
-                            style="margin-right:6px;"> 20m
-                    </label>
-                </div>
-                <div style="font-size:11px; color:#888; padding:5px 5px 0 5px;">※ GPS 위치가 설정 거리 이상 이동했을 때 좌표를 기록합니다.
-                </div>
-            </div>
-
-            <button onclick="closeSettingsModal()"
-                style="width:100%; padding:14px; background:#f5f5f5; border:none; border-radius:12px; font-weight:bold; color:#666;">닫기</button>
+            </section>
         </div>
     </div>
 
