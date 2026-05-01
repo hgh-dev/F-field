@@ -221,6 +221,22 @@ export const vworldRestrictionLayer = L.tileLayer.wms("https://api.vworld.kr/req
     className: 'restriction-layer'
 });
 
+// 급경사재해예방지역 WMS
+export const vworldSteepSlopeLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY,
+    layers: 'lt_c_up401',
+    styles: 'lt_c_up401',
+    format: 'image/png',
+    transparent: true,
+    opacity: 0.7,
+    version: '1.3.0',
+    minZoom: 8,
+    maxZoom: 22,
+    maxNativeZoom: 19,
+    pane: 'nasRestrictionPane',
+    className: 'steep-slope-layer'
+});
+
 // 국가유산 지정/보호구역 WMS
 export const vworldHeritageLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY,
@@ -303,6 +319,26 @@ export const vworldCityroadLayer = L.tileLayer.wms("https://api.vworld.kr/req/wm
     key: VWORLD_API_KEY, layers: 'lt_c_upisuq151', styles: 'lt_c_upisuq151', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 12, maxZoom: 22, maxNativeZoom: 19, className: 'cityroad-layer'
 });
 
+// 도시계획_공간시설 WMS
+export const vworldCitySpaceLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_upisuq153', styles: 'lt_c_upisuq153', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 12, maxZoom: 22, maxNativeZoom: 19, className: 'city-space-layer'
+});
+
+// 도시계획_공공문화체육시설 WMS
+export const vworldCityPublicCultureLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_upisuq155', styles: 'lt_c_upisuq155', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 12, maxZoom: 22, maxNativeZoom: 19, className: 'city-public-culture-layer'
+});
+
+// 도시계획_방재시설 WMS
+export const vworldCityDisasterLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_upisuq156', styles: 'lt_c_upisuq156', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 12, maxZoom: 22, maxNativeZoom: 19, className: 'city-disaster-layer'
+});
+
+// 도시계획_환경기초시설 WMS
+export const vworldCityEnvironmentLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_upisuq158', styles: 'lt_c_upisuq158', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 12, maxZoom: 22, maxNativeZoom: 19, className: 'city-environment-layer'
+});
+
 // 토지이용계획도 WMS
 export const vworldLanduseLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_lhblpn', styles: 'lt_c_lhblpn', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 8, maxZoom: 22, maxNativeZoom: 19, className: 'landuse-layer'
@@ -311,6 +347,51 @@ export const vworldLanduseLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms
 // 사업지구경계도 WMS
 export const vworldBizzoneLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_lhzone', styles: 'lt_c_lhzone', format: 'image/png', transparent: true, opacity: 0.7, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'bizzone-layer'
+});
+
+// 산업단지_경계 WMS
+export const vworldIndustrialBoundaryLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_damdan', styles: 'lt_c_damdan', format: 'image/png', transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'industrial-boundary-layer'
+});
+
+// 산업단지_시설용지 WMS
+export const vworldIndustrialFacilityLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_damyoj', styles: 'lt_c_damyoj', format: 'image/png', transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'industrial-facility-layer'
+});
+
+// 산업단지_용도지역 WMS
+export const vworldIndustrialUsezoneLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_damyod', styles: 'lt_c_damyod', format: 'image/png', transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'industrial-usezone-layer'
+});
+
+// 산업단지_유치업종 WMS
+export const vworldIndustrialBusinessLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_damyuch', styles: 'lt_c_damyuch', format: 'image/png', transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 10, maxZoom: 22, maxNativeZoom: 19, className: 'industrial-business-layer'
+});
+
+// 비행금지구역 WMS
+export const vworldFlightProhibitLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_aisprhc', styles: 'lt_c_aisprhc', format: 'image/png', transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 8, maxZoom: 22, maxNativeZoom: 19, className: 'flight-prohibit-layer'
+});
+
+// 도로구분 WMS
+export const vworldRoadClassLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_l_moctlink', styles: 'lt_l_moctlink', format: 'image/png', transparent: true, opacity: 0.9, version: '1.3.0', minZoom: 8, maxZoom: 22, maxNativeZoom: 19, className: 'road-class-layer'
+});
+
+// 비행제한구역 WMS
+export const vworldFlightRestrictLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_aisresc', styles: 'lt_c_aisresc', format: 'image/png', transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 8, maxZoom: 22, maxNativeZoom: 19, className: 'flight-restrict-layer'
+});
+
+// 산림입지토양도 WMS
+export const vworldForestSoilLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_fsdifrsts', styles: 'lt_c_fsdifrsts', format: 'image/png', transparent: true, opacity: 0.8, version: '1.3.0', minZoom: 10, minNativeZoom: 12, maxZoom: 22, maxNativeZoom: 19, className: 'forest-soil-layer'
+});
+
+// 등산로 WMS (선/점 레이어 묶음)
+export const vworldHikingTrailLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_l_frstclimb,lt_p_climball', styles: 'lt_l_frstclimb,lt_p_climball', format: 'image/png', transparent: true, opacity: 0.9, version: '1.3.0', minZoom: 8, maxZoom: 22, maxNativeZoom: 19, className: 'hiking-trail-layer'
 });
 
 
@@ -383,11 +464,26 @@ export function updateLayerOrder() {
 
     // 3) 토지이용계획
     if (map.hasLayer(vworldLanduseLayer)) vworldLanduseLayer.bringToFront();
+    if (map.hasLayer(vworldIndustrialBoundaryLayer)) vworldIndustrialBoundaryLayer.bringToFront();
+    if (map.hasLayer(vworldIndustrialFacilityLayer)) vworldIndustrialFacilityLayer.bringToFront();
+    if (map.hasLayer(vworldIndustrialUsezoneLayer)) vworldIndustrialUsezoneLayer.bringToFront();
+    if (map.hasLayer(vworldIndustrialBusinessLayer)) vworldIndustrialBusinessLayer.bringToFront();
 
     // 4) 도시계획(도로)
     if (map.hasLayer(vworldCityroadLayer)) vworldCityroadLayer.bringToFront();
+    if (map.hasLayer(vworldCitySpaceLayer)) vworldCitySpaceLayer.bringToFront();
+    if (map.hasLayer(vworldCityPublicCultureLayer)) vworldCityPublicCultureLayer.bringToFront();
+    if (map.hasLayer(vworldCityDisasterLayer)) vworldCityDisasterLayer.bringToFront();
+    if (map.hasLayer(vworldCityEnvironmentLayer)) vworldCityEnvironmentLayer.bringToFront();
 
-    // 5) 행정경계 (최상단)
+    // 5) 기타 주제도
+    if (map.hasLayer(vworldRoadClassLayer)) vworldRoadClassLayer.bringToFront();
+    if (map.hasLayer(vworldFlightProhibitLayer)) vworldFlightProhibitLayer.bringToFront();
+    if (map.hasLayer(vworldFlightRestrictLayer)) vworldFlightRestrictLayer.bringToFront();
+    if (map.hasLayer(vworldForestSoilLayer)) vworldForestSoilLayer.bringToFront();
+    if (map.hasLayer(vworldHikingTrailLayer)) vworldHikingTrailLayer.bringToFront();
+
+    // 6) 행정경계 (최상단)
     if (map.hasLayer(mergedAdminLayer)) mergedAdminLayer.bringToFront();
 }
 
@@ -448,6 +544,8 @@ export function toggleOverlay(type, isChecked) {
 
     } else if (type === 'restriction') {
         layer = vworldRestrictionLayer;
+    } else if (type === 'steepSlope') {
+        layer = vworldSteepSlopeLayer;
     } else if (type === 'heritage') {
         layer = vworldHeritageLayer;
     } else if (type === 'citypark') {
@@ -474,10 +572,36 @@ export function toggleOverlay(type, isChecked) {
         layer = vworldNatureparkLayer;
     } else if (type === 'cityroad') {
         layer = vworldCityroadLayer;
+    } else if (type === 'citySpace') {
+        layer = vworldCitySpaceLayer;
+    } else if (type === 'cityPublicCulture') {
+        layer = vworldCityPublicCultureLayer;
+    } else if (type === 'cityDisaster') {
+        layer = vworldCityDisasterLayer;
+    } else if (type === 'cityEnvironment') {
+        layer = vworldCityEnvironmentLayer;
     } else if (type === 'landuse') {
         layer = vworldLanduseLayer;
     } else if (type === 'bizzone') {
         layer = vworldBizzoneLayer;
+    } else if (type === 'industrialBoundary') {
+        layer = vworldIndustrialBoundaryLayer;
+    } else if (type === 'industrialFacility') {
+        layer = vworldIndustrialFacilityLayer;
+    } else if (type === 'industrialUsezone') {
+        layer = vworldIndustrialUsezoneLayer;
+    } else if (type === 'industrialBusiness') {
+        layer = vworldIndustrialBusinessLayer;
+    } else if (type === 'roadClass') {
+        layer = vworldRoadClassLayer;
+    } else if (type === 'flightProhibit') {
+        layer = vworldFlightProhibitLayer;
+    } else if (type === 'flightRestrict') {
+        layer = vworldFlightRestrictLayer;
+    } else if (type === 'forestSoil') {
+        layer = vworldForestSoilLayer;
+    } else if (type === 'hikingTrail') {
+        layer = vworldHikingTrailLayer;
     } else if (type === 'forest') {
         layer = vworldForestLayer;
     }
@@ -501,6 +625,7 @@ export function toggleOverlay(type, isChecked) {
 // 동작 원리: 자연공원처럼 복수 레이어 타입은 배열로 묶어 순서대로 렌더링합니다.
 const VWORLD_LEGEND_LAYERS = {
     restriction: ['lt_c_ud801'],
+    steepSlope: ['lt_c_up401'],
     forest: ['lt_c_uf151'],
     heritage: ['lt_c_uo301'],
     citypark: ['lt_c_uq162'],
@@ -515,8 +640,21 @@ const VWORLD_LEGEND_LAYERS = {
     watersource: ['lt_c_um710'],
     naturepark: ['lt_c_wgisnpgug', 'lt_c_wgisnpgun', 'lt_c_wgisnpdo'],
     cityroad: ['lt_c_upisuq151'],
+    citySpace: ['lt_c_upisuq153'],
+    cityPublicCulture: ['lt_c_upisuq155'],
+    cityDisaster: ['lt_c_upisuq156'],
+    cityEnvironment: ['lt_c_upisuq158'],
     landuse: ['lt_c_lhblpn'],
     bizzone: ['lt_c_lhzone'],
+    industrialBoundary: ['lt_c_damdan'],
+    industrialFacility: ['lt_c_damyoj'],
+    industrialUsezone: ['lt_c_damyod'],
+    industrialBusiness: ['lt_c_damyuch'],
+    roadClass: ['lt_l_moctlink'],
+    flightProhibit: ['lt_c_aisprhc'],
+    flightRestrict: ['lt_c_aisresc'],
+    forestSoil: ['lt_c_fsdifrsts'],
+    hikingTrail: ['lt_l_frstclimb', 'lt_p_climball'],
 };
 
 /**

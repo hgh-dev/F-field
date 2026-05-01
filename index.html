@@ -3098,13 +3098,20 @@
                                     onchange="toggleOverlay('watersource', this.checked)">
                             </label>
                             <div id="legend-watersource" class="vworld-legend" style="display:none;"></div>
-                            <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
+                            <label class="option-row">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">자연공원</span>
                                 <input type="checkbox" id="chk-naturepark"
                                     onchange="toggleOverlay('naturepark', this.checked)">
                             </label>
                             <div id="legend-naturepark" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">급경사재해예방지역</span>
+                                <input type="checkbox" id="chk-steep-slope"
+                                    onchange="toggleOverlay('steepSlope', this.checked)">
+                            </label>
+                            <div id="legend-steepSlope" class="vworld-legend" style="display:none;"></div>
                         </div>
                     </div>
 
@@ -3122,6 +3129,34 @@
                                     onchange="toggleOverlay('cityroad', this.checked)">
                             </label>
                             <div id="legend-cityroad" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">도시계획_공간시설</span>
+                                <input type="checkbox" id="chk-city-space"
+                                    onchange="toggleOverlay('citySpace', this.checked)">
+                            </label>
+                            <div id="legend-citySpace" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">도시계획_공공문화체육시설</span>
+                                <input type="checkbox" id="chk-city-public-culture"
+                                    onchange="toggleOverlay('cityPublicCulture', this.checked)">
+                            </label>
+                            <div id="legend-cityPublicCulture" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">도시계획_방재시설</span>
+                                <input type="checkbox" id="chk-city-disaster"
+                                    onchange="toggleOverlay('cityDisaster', this.checked)">
+                            </label>
+                            <div id="legend-cityDisaster" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">도시계획_환경기초시설</span>
+                                <input type="checkbox" id="chk-city-environment"
+                                    onchange="toggleOverlay('cityEnvironment', this.checked)">
+                            </label>
+                            <div id="legend-cityEnvironment" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
                                 <span class="static-icon"></span>
                                 <span style="flex:1;">택지개발지구_사업지구경계도</span>
@@ -3136,6 +3171,79 @@
                                     onchange="toggleOverlay('landuse', this.checked)">
                             </label>
                             <div id="legend-landuse" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">산업단지_경계</span>
+                                <input type="checkbox" id="chk-industrial-boundary"
+                                    onchange="toggleOverlay('industrialBoundary', this.checked)">
+                            </label>
+                            <div id="legend-industrialBoundary" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">산업단지_시설용지</span>
+                                <input type="checkbox" id="chk-industrial-facility"
+                                    onchange="toggleOverlay('industrialFacility', this.checked)">
+                            </label>
+                            <div id="legend-industrialFacility" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">산업단지_용도지역</span>
+                                <input type="checkbox" id="chk-industrial-usezone"
+                                    onchange="toggleOverlay('industrialUsezone', this.checked)">
+                            </label>
+                            <div id="legend-industrialUsezone" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">산업단지_유치업종</span>
+                                <input type="checkbox" id="chk-industrial-business"
+                                    onchange="toggleOverlay('industrialBusiness', this.checked)">
+                            </label>
+                            <div id="legend-industrialBusiness" class="vworld-legend" style="display:none;"></div>
+                        </div>
+                    </div>
+
+                    <div class="menu-section">
+                        <div class="menu-title accordion-header"
+                            onclick="toggleAccordion('section-topic-map', this)"
+                            style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
+                            <span>기타 주제도</span><span class="toggle-icon"></span>
+                        </div>
+                        <div id="section-topic-map" class="accordion-content" style="display: none;">
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">도로구분</span>
+                                <input type="checkbox" id="chk-road-class"
+                                    onchange="toggleOverlay('roadClass', this.checked)">
+                            </label>
+                            <div id="legend-roadClass" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">비행금지구역</span>
+                                <input type="checkbox" id="chk-flight-prohibit"
+                                    onchange="toggleOverlay('flightProhibit', this.checked)">
+                            </label>
+                            <div id="legend-flightProhibit" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">비행제한구역</span>
+                                <input type="checkbox" id="chk-flight-restrict"
+                                    onchange="toggleOverlay('flightRestrict', this.checked)">
+                            </label>
+                            <div id="legend-flightRestrict" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">산림입지토양도</span>
+                                <input type="checkbox" id="chk-forest-soil"
+                                    onchange="toggleOverlay('forestSoil', this.checked)">
+                            </label>
+                            <div id="legend-forestSoil" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">등산로</span>
+                                <input type="checkbox" id="chk-hiking-trail"
+                                    onchange="toggleOverlay('hikingTrail', this.checked)">
+                            </label>
+                            <div id="legend-hikingTrail" class="vworld-legend" style="display:none;"></div>
                         </div>
                     </div>
                     <!-- 수원국유림관리소 레이어 (암호 입력 시 표시) -->
