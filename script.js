@@ -421,6 +421,10 @@ async function checkAppVersion() {
     // 현재 실행 중 버전을 UI에 표시합니다.
     const versionEl = document.getElementById('app-version-display');
     if (versionEl) versionEl.textContent = APP_VERSION;
+    const latestVersionEl = document.getElementById('latest-version-display');
+    if (latestVersionEl) latestVersionEl.textContent = APP_VERSION;
+    const updateBtn = document.getElementById('btn-app-update');
+    if (updateBtn) updateBtn.classList.remove('has-update');
 
     try {
         // 캐시 우회 fetch
@@ -433,10 +437,9 @@ async function checkAppVersion() {
         if (!match) return;
 
         const serverVersion = match[1];
+        if (latestVersionEl) latestVersionEl.textContent = serverVersion;
         if (serverVersion !== APP_VERSION) {
-            // 버전 차이가 있으면 배지만 노출하고, 실제 업데이트는 사용자 액션으로 수행합니다.
-            const badge = document.getElementById('update-badge');
-            if (badge) badge.style.display = 'inline';
+            if (updateBtn) updateBtn.classList.add('has-update');
         }
     } catch (e) {
         // 버전 체크 실패는 앱 핵심 기능과 무관하므로 로그만 남기고 계속 진행합니다.

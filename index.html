@@ -971,7 +971,8 @@
             display: block;
             overflow-y: auto;
             padding: var(--space-3);
-            padding-bottom: var(--space-3);
+            padding-bottom: calc(92px + env(safe-area-inset-bottom));
+            -webkit-overflow-scrolling: touch;
         }
 
         /* 탭 2: Flex 레이아웃 (상단 고정, 중간 스크롤, 하단 고정) */
@@ -1676,10 +1677,21 @@
         }
 
         .settings-toggle label {
-            position: relative;
-            z-index: 2;
-            flex: 1;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
             cursor: pointer;
+        }
+
+        .settings-toggle:has(input[value="false"]:checked) label:has(input[value="true"]) {
+            z-index: 2;
+        }
+
+        .settings-toggle:has(input[value="true"]:checked) label:has(input[value="false"]) {
+            z-index: 2;
         }
 
         .settings-toggle input {
@@ -1698,10 +1710,53 @@
             background: #fff;
             box-shadow: 0 2px 5px rgba(15, 23, 42, 0.2);
             transition: transform 0.2s ease;
+            pointer-events: none;
         }
 
         .settings-toggle:has(input[value="true"]:checked) .settings-toggle-thumb {
             transform: translateX(18px);
+        }
+
+        .settings-version-row {
+            min-height: 76px;
+            align-items: center;
+        }
+
+        .settings-link-row {
+            cursor: pointer;
+        }
+
+        .settings-link-row:active {
+            background: #f7f8fa;
+        }
+
+        .settings-version-meta {
+            color: #8a8f98;
+            font-size: 12px;
+            line-height: 1.45;
+            margin-top: 5px;
+        }
+
+        .settings-update-btn {
+            min-width: 68px;
+            height: 34px;
+            border: 0;
+            border-radius: 4px;
+            background: #eef0f3;
+            color: #9aa0a8;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0 10px;
+        }
+
+        .settings-update-btn.has-update {
+            background: #0b7fe8;
+            color: #fff;
+        }
+
+        .settings-update-btn:active {
+            transform: scale(0.98);
         }
 
         .nav-app-list {
@@ -3101,16 +3156,6 @@
                     </svg>
                 </button>
                 <div style="display:flex; gap:10px;">
-                    <button class="btn-sidebar-action"
-                        onclick="window.open('https://getupnote.com/share/notes/ixIE9WYlfTPrpRbRIt446szGaIn2/019cd019-143e-772b-9609-7720b35fb002', '_blank')"
-                        title="사용설명서">
-                        <svg class="svg-icon" viewBox="0 0 24 24" style="opacity: 0.3; transition: opacity 0.2s;"
-                            onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='0.3'">
-                            <path
-                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"
-                                fill="currentColor" />
-                        </svg>
-                    </button>
                     <button class="btn-sidebar-action" onclick="openSettingsModal()" title="설정">
                         <svg class="svg-icon" viewBox="0 0 24 24">
                             <path
@@ -3528,7 +3573,8 @@
                         </ul>
                     </div>
 
-                    <div style="display:flex; justify-content:flex-start; margin-top:20px; padding-left:10px;">
+                    <div
+                        style="display:flex; justify-content:flex-start; margin-top:20px; margin-bottom:36px; padding-left:10px;">
                         <button id="btn-lock" onclick="unlockHiddenLayers()"
                             style="border: none; background: none; color: #aaa; cursor: pointer;">
                             <svg id="icon-lock" viewBox="0 0 24 24"
@@ -3537,18 +3583,6 @@
                                     d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
                             </svg>
                         </button>
-                    </div>
-                    <!-- 버전 정보 및 업데이트 -->
-                    <div
-                        style="padding: 12px 10px 4px 10px; display: flex; flex-direction: column; align-items: center;">
-                        <div
-                            style="display: flex; align-items: center; justify-content: center; font-size: 12px; color: #aaa; width: 100%;">
-                            <span onclick="forceAppUpdate()" style="cursor: pointer;">v<span
-                                    id="app-version-display"></span></span>
-                            <span id="update-badge"
-                                style="display: none; color: #EF4444; font-size: 12px; font-weight: bold; margin-left: 6px;">●
-                                업데이트 있음</span>
-                        </div>
                     </div>
                 </div>
                 <!-- 탭 2: 프로젝트 관리 -->
@@ -4066,6 +4100,25 @@
                             <span>20m</span>
                         </label>
                     </div>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <div class="settings-row settings-link-row"
+                    onclick="window.open('https://getupnote.com/share/notes/ixIE9WYlfTPrpRbRIt446szGaIn2/019cd019-143e-772b-9609-7720b35fb002', '_blank')">
+                    <div class="settings-label">앱 사용 설명서</div>
+                    <span class="settings-chevron"></span>
+                </div>
+                <div class="settings-row settings-version-row">
+                    <div>
+                        <div class="settings-label">버전</div>
+                        <div class="settings-version-meta">
+                            현재 <span id="app-version-display"></span> / 최신 <span id="latest-version-display"></span>
+                        </div>
+                    </div>
+                    <button id="btn-app-update" class="settings-update-btn" type="button" onclick="forceAppUpdate()">
+                        업데이트
+                    </button>
                 </div>
             </section>
         </div>
