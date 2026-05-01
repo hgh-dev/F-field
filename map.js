@@ -319,6 +319,11 @@ export const vworldCityroadLayer = L.tileLayer.wms("https://api.vworld.kr/req/wm
     key: VWORLD_API_KEY, layers: 'lt_c_upisuq151', styles: 'lt_c_upisuq151', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 12, maxZoom: 22, maxNativeZoom: 19, className: 'cityroad-layer'
 });
 
+// 도시계획_철도·항만·공항·주차장 WMS
+export const vworldCityTransportLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+    key: VWORLD_API_KEY, layers: 'lt_c_upisuq152', styles: 'lt_c_upisuq152', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 12, maxZoom: 22, maxNativeZoom: 19, className: 'city-transport-layer'
+});
+
 // 도시계획_공간시설 WMS
 export const vworldCitySpaceLayer = L.tileLayer.wms("https://api.vworld.kr/req/wms", {
     key: VWORLD_API_KEY, layers: 'lt_c_upisuq153', styles: 'lt_c_upisuq153', format: 'image/png', transparent: true, opacity: 1, version: '1.3.0', minZoom: 12, maxZoom: 22, maxNativeZoom: 19, className: 'city-space-layer'
@@ -471,6 +476,7 @@ export function updateLayerOrder() {
 
     // 4) 도시계획(도로)
     if (map.hasLayer(vworldCityroadLayer)) vworldCityroadLayer.bringToFront();
+    if (map.hasLayer(vworldCityTransportLayer)) vworldCityTransportLayer.bringToFront();
     if (map.hasLayer(vworldCitySpaceLayer)) vworldCitySpaceLayer.bringToFront();
     if (map.hasLayer(vworldCityPublicCultureLayer)) vworldCityPublicCultureLayer.bringToFront();
     if (map.hasLayer(vworldCityDisasterLayer)) vworldCityDisasterLayer.bringToFront();
@@ -572,6 +578,8 @@ export function toggleOverlay(type, isChecked) {
         layer = vworldNatureparkLayer;
     } else if (type === 'cityroad') {
         layer = vworldCityroadLayer;
+    } else if (type === 'cityTransport') {
+        layer = vworldCityTransportLayer;
     } else if (type === 'citySpace') {
         layer = vworldCitySpaceLayer;
     } else if (type === 'cityPublicCulture') {
@@ -640,6 +648,7 @@ const VWORLD_LEGEND_LAYERS = {
     watersource: ['lt_c_um710'],
     naturepark: ['lt_c_wgisnpgug', 'lt_c_wgisnpgun', 'lt_c_wgisnpdo'],
     cityroad: ['lt_c_upisuq151'],
+    cityTransport: ['lt_c_upisuq152'],
     citySpace: ['lt_c_upisuq153'],
     cityPublicCulture: ['lt_c_upisuq155'],
     cityDisaster: ['lt_c_upisuq156'],

@@ -3117,6 +3117,58 @@
 
                     <div class="menu-section">
                         <div class="menu-title accordion-header"
+                            onclick="toggleAccordion('section-city-planning', this)"
+                            style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
+                            <span>도시계획</span><span class="toggle-icon"></span>
+                        </div>
+                        <div id="section-city-planning" class="accordion-content" style="display: none;">
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">도로</span>
+                                <input type="checkbox" id="chk-cityroad"
+                                    onchange="toggleOverlay('cityroad', this.checked)">
+                            </label>
+                            <div id="legend-cityroad" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">철도·항만·공항·주차장</span>
+                                <input type="checkbox" id="chk-city-transport"
+                                    onchange="toggleOverlay('cityTransport', this.checked)">
+                            </label>
+                            <div id="legend-cityTransport" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">공간시설</span>
+                                <input type="checkbox" id="chk-city-space"
+                                    onchange="toggleOverlay('citySpace', this.checked)">
+                            </label>
+                            <div id="legend-citySpace" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">공공문화체육시설</span>
+                                <input type="checkbox" id="chk-city-public-culture"
+                                    onchange="toggleOverlay('cityPublicCulture', this.checked)">
+                            </label>
+                            <div id="legend-cityPublicCulture" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">방재시설</span>
+                                <input type="checkbox" id="chk-city-disaster"
+                                    onchange="toggleOverlay('cityDisaster', this.checked)">
+                            </label>
+                            <div id="legend-cityDisaster" class="vworld-legend" style="display:none;"></div>
+                            <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
+                                <span class="static-icon"></span>
+                                <span style="flex:1;">환경기초시설</span>
+                                <input type="checkbox" id="chk-city-environment"
+                                    onchange="toggleOverlay('cityEnvironment', this.checked)">
+                            </label>
+                            <div id="legend-cityEnvironment" class="vworld-legend" style="display:none;"></div>
+                        </div>
+                    </div>
+
+                    <div class="menu-section">
+                        <div class="menu-title accordion-header"
                             onclick="toggleAccordion('section-urban-planning', this)"
                             style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
                             <span>토지이용 및 개발</span><span class="toggle-icon"></span>
@@ -3124,77 +3176,42 @@
                         <div id="section-urban-planning" class="accordion-content" style="display: none;">
                             <label class="option-row">
                                 <span class="static-icon"></span>
-                                <span style="flex:1;">도시계획_도로</span>
-                                <input type="checkbox" id="chk-cityroad"
-                                    onchange="toggleOverlay('cityroad', this.checked)">
-                            </label>
-                            <div id="legend-cityroad" class="vworld-legend" style="display:none;"></div>
-                            <label class="option-row">
-                                <span class="static-icon"></span>
-                                <span style="flex:1;">도시계획_공간시설</span>
-                                <input type="checkbox" id="chk-city-space"
-                                    onchange="toggleOverlay('citySpace', this.checked)">
-                            </label>
-                            <div id="legend-citySpace" class="vworld-legend" style="display:none;"></div>
-                            <label class="option-row">
-                                <span class="static-icon"></span>
-                                <span style="flex:1;">도시계획_공공문화체육시설</span>
-                                <input type="checkbox" id="chk-city-public-culture"
-                                    onchange="toggleOverlay('cityPublicCulture', this.checked)">
-                            </label>
-                            <div id="legend-cityPublicCulture" class="vworld-legend" style="display:none;"></div>
-                            <label class="option-row">
-                                <span class="static-icon"></span>
-                                <span style="flex:1;">도시계획_방재시설</span>
-                                <input type="checkbox" id="chk-city-disaster"
-                                    onchange="toggleOverlay('cityDisaster', this.checked)">
-                            </label>
-                            <div id="legend-cityDisaster" class="vworld-legend" style="display:none;"></div>
-                            <label class="option-row">
-                                <span class="static-icon"></span>
-                                <span style="flex:1;">도시계획_환경기초시설</span>
-                                <input type="checkbox" id="chk-city-environment"
-                                    onchange="toggleOverlay('cityEnvironment', this.checked)">
-                            </label>
-                            <div id="legend-cityEnvironment" class="vworld-legend" style="display:none;"></div>
-                            <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
-                                <span class="static-icon"></span>
-                                <span style="flex:1;">택지개발지구_사업지구경계도</span>
+                                <span style="flex:1;">[택지개발지구]사업지구경계도</span>
                                 <input type="checkbox" id="chk-bizzone"
                                     onchange="toggleOverlay('bizzone', this.checked)">
                             </label>
                             <div id="legend-bizzone" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
-                                <span style="flex:1;">택지개발지구_토지이용계획도</span>
+                                <span style="flex:1;">[택지개발지구]토지이용계획도</span>
                                 <input type="checkbox" id="chk-landuse"
                                     onchange="toggleOverlay('landuse', this.checked)">
                             </label>
                             <div id="legend-landuse" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
-                                <span style="flex:1;">산업단지_경계</span>
+                                <span style="flex:1;">[산업단지]경계</span>
                                 <input type="checkbox" id="chk-industrial-boundary"
                                     onchange="toggleOverlay('industrialBoundary', this.checked)">
                             </label>
                             <div id="legend-industrialBoundary" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
-                                <span style="flex:1;">산업단지_시설용지</span>
+                                <span style="flex:1;">[산업단지]시설용지</span>
                                 <input type="checkbox" id="chk-industrial-facility"
                                     onchange="toggleOverlay('industrialFacility', this.checked)">
                             </label>
                             <div id="legend-industrialFacility" class="vworld-legend" style="display:none;"></div>
                             <label class="option-row">
                                 <span class="static-icon"></span>
-                                <span style="flex:1;">산업단지_용도지역</span>
+                                <span style="flex:1;">[산업단지]용도지역</span>
                                 <input type="checkbox" id="chk-industrial-usezone"
                                     onchange="toggleOverlay('industrialUsezone', this.checked)">
                             </label>
                             <div id="legend-industrialUsezone" class="vworld-legend" style="display:none;"></div>
-                            <label class="option-row">
+                            <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
                                 <span class="static-icon"></span>
-                                <span style="flex:1;">산업단지_유치업종</span>
+                                <span style="flex:1;">[산업단지]유치업종</span>
                                 <input type="checkbox" id="chk-industrial-business"
                                     onchange="toggleOverlay('industrialBusiness', this.checked)">
                             </label>
@@ -3203,8 +3220,7 @@
                     </div>
 
                     <div class="menu-section">
-                        <div class="menu-title accordion-header"
-                            onclick="toggleAccordion('section-topic-map', this)"
+                        <div class="menu-title accordion-header" onclick="toggleAccordion('section-topic-map', this)"
                             style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
                             <span>기타 주제도</span><span class="toggle-icon"></span>
                         </div>
@@ -3762,7 +3778,8 @@
     <div id="settings-modal-overlay" class="nav-modal-overlay settings-page-overlay" onclick="closeSettingsModal()">
         <div class="nav-modal-content settings-page-content" onclick="event.stopPropagation()">
             <header class="settings-page-header">
-                <button class="settings-back-btn" type="button" onclick="closeSettingsModal()" aria-label="설정 닫기"></button>
+                <button class="settings-back-btn" type="button" onclick="closeSettingsModal()"
+                    aria-label="설정 닫기"></button>
                 <div class="settings-page-title">설정</div>
                 <div></div>
             </header>
@@ -3812,7 +3829,8 @@
                     </div>
                     <div class="settings-toggle" aria-label="스냅기능">
                         <label>
-                            <input type="radio" name="snap-enabled-select" value="false" onclick="setSnapEnabled(false)">
+                            <input type="radio" name="snap-enabled-select" value="false"
+                                onclick="setSnapEnabled(false)">
                         </label>
                         <label>
                             <input type="radio" name="snap-enabled-select" value="true" onclick="setSnapEnabled(true)">
