@@ -4,12 +4,12 @@
    [입력] AppState, 지도(map), 레이어(drawnItems), 로컬 저장소(localStorage)
    [출력] DOM 갱신, 지도 이동/스타일 변경, 전역(window) UI 액션 바인딩
    ========================================================================== */
-import { SVG_ICONS } from './config.js?v=2.4.11';
-import { AppState } from './state.js?v=2.4.11';
-import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, getOfflineMapUrls } from './map.js?v=2.4.11';
-import { drawnItems, currentEditLayerId } from './draw.js?v=2.4.11';
-import { createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.11';
-import { saveToStorage, exportSingleLayer } from './data.js?v=2.4.11';
+import { SVG_ICONS } from './config.js?v=2.5.0';
+import { AppState } from './state.js?v=2.5.0';
+import { map, vworldBase, vworldSatellite, vworldHybrid, esriSatelliteLayer, vworldLxLayer, vworldContinuousLayer, nasGukLayer, toggleOverlay, getOfflineMapUrls } from './map.js?v=2.5.0';
+import { drawnItems, currentEditLayerId } from './draw.js?v=2.5.0';
+import { createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.5.0';
+import { saveToStorage, exportSingleLayer } from './data.js?v=2.5.0';
 import {
     initSearchSettings,
     toggleSearchBox,
@@ -21,7 +21,7 @@ import {
     clearHistoryAll,
     deleteHistoryItem,
     showHistoryPanel,
-} from './ui-search.js?v=2.4.11';
+} from './ui-search.js?v=2.5.0';
 import {
     setCurrentBottomSheetLayerId,
     openBottomSheet,
@@ -40,7 +40,7 @@ import {
     handleBottomSheetHoleFill,
     showInfoPopup,
     fetchAndHighlightBoundary,
-} from './ui-bottomsheet.js?v=2.4.11';
+} from './ui-bottomsheet.js?v=2.5.0';
 import {
     createNewProject,
     editProjectName,
@@ -57,7 +57,7 @@ import {
     openProjectSortModal,
     closeProjectSortModal,
     applyProjectSortSetting
-} from './ui-project.js?v=2.4.11';
+} from './ui-project.js?v=2.5.0';
 import {
     createLayerPhotoSection,
     openPhotoSelectMenu,
@@ -70,7 +70,7 @@ import {
     prevPhoto,
     downloadCurrentPhoto,
     closePhotoModal
-} from './ui-photo.js?v=2.4.11';
+} from './ui-photo.js?v=2.5.0';
 
 
 // --- 전역 UI 상태 ---
@@ -78,6 +78,14 @@ export let currentMemoLayerId = null;
 export let navTarget = { name: '', lat: 0, lng: 0 };
 export let currentContextId = null;
 let isUiRuntimeInitialized = false;
+
+function isDockedSidebarViewport() {
+    return window.matchMedia('(min-width: 1024px) and (orientation: landscape)').matches;
+}
+
+function refreshMapAfterSidebarLayout() {
+    setTimeout(() => map.invalidateSize({ animate: false }), 310);
+}
 
 /* --------------------------------------------------------------------------
    1. 사이드바 제어 (Sidebar)
@@ -95,8 +103,10 @@ export function openSidebar() {
     syncSidebarUI();
     renderSurveyList();
     const overlay = document.getElementById('sidebar-overlay');
+    document.body.classList.toggle('sidebar-docked-open', isDockedSidebarViewport());
     overlay.style.display = 'block';
     setTimeout(() => { overlay.classList.add('visible'); }, 10);
+    refreshMapAfterSidebarLayout();
 }
 
 /**
@@ -108,6 +118,8 @@ export function openSidebar() {
 export function closeSidebar() {
     const overlay = document.getElementById('sidebar-overlay');
     overlay.classList.remove('visible');
+    document.body.classList.remove('sidebar-docked-open');
+    refreshMapAfterSidebarLayout();
     setTimeout(() => { overlay.style.display = 'none'; }, 300);
 }
 
@@ -505,6 +517,7 @@ export function executeNavigation(type) {
  */
 export function resetButtonStyles() {
     document.querySelectorAll('.bottom-btn').forEach(btn => btn.classList.remove('active-btn'));
+    resetRecordFabMain();
 }
 
 /**
@@ -516,7 +529,54 @@ export function resetButtonStyles() {
 export function highlightButton(btnId) {
     resetButtonStyles();
     const btn = document.getElementById(btnId);
-    if (btn) btn.classList.add('active-btn');
+    if (btn) {
+        btn.classList.add('active-btn');
+        setRecordFabMainIcon(btn);
+    }
+}
+
+export function toggleRecordFab() {
+    const fab = document.getElementById('record-fab');
+    if (!fab) return;
+
+    const mainBtn = document.getElementById('record-fab-main');
+    if (mainBtn?.classList.contains('is-recording')) {
+        closeRecordFab();
+        return;
+    }
+
+    const isExpanded = fab.classList.toggle('expanded');
+    if (mainBtn) {
+        mainBtn.setAttribute('aria-label', isExpanded ? '기록 도구 닫기' : '기록 도구 열기');
+    }
+}
+
+export function closeRecordFab() {
+    const fab = document.getElementById('record-fab');
+    if (!fab) return;
+
+    fab.classList.remove('expanded');
+    const mainBtn = document.getElementById('record-fab-main');
+    if (mainBtn) mainBtn.setAttribute('aria-label', '기록 도구 열기');
+}
+
+function resetRecordFabMain() {
+    closeRecordFab();
+    const mainBtn = document.getElementById('record-fab-main');
+    const activeIcon = document.getElementById('record-fab-active-icon');
+    if (mainBtn) mainBtn.classList.remove('is-recording');
+    if (activeIcon) activeIcon.innerHTML = '';
+}
+
+function setRecordFabMainIcon(sourceBtn) {
+    closeRecordFab();
+    const mainBtn = document.getElementById('record-fab-main');
+    const activeIcon = document.getElementById('record-fab-active-icon');
+    const icon = sourceBtn?.querySelector('.icon-box');
+    if (!mainBtn || !activeIcon || !icon) return;
+
+    activeIcon.innerHTML = icon.innerHTML;
+    mainBtn.classList.add('is-recording');
 }
 
 /* --------------------------------------------------------------------------
@@ -931,6 +991,14 @@ export function initUiEventListeners() {
         e.stopPropagation();
         return false;
     }, { passive: false });
+
+    window.addEventListener('resize', function () {
+        const overlay = document.getElementById('sidebar-overlay');
+        if (!overlay || !overlay.classList.contains('visible')) return;
+
+        document.body.classList.toggle('sidebar-docked-open', isDockedSidebarViewport());
+        refreshMapAfterSidebarLayout();
+    });
 
     // 바텀시트 스와이프 드래그 닫기 기능
     const bs = document.getElementById('bottom-sheet');
@@ -1730,6 +1798,8 @@ function bindUiActionsToWindow() {
         openProjectSortModal,
         closeProjectSortModal,
         applyProjectSortSetting,
+        toggleRecordFab,
+        closeRecordFab,
     });
 }
 

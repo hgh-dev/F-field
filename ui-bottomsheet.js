@@ -7,14 +7,14 @@
    - 바텀시트 표시용 HTML 조각을 내부 보조 함수로 조합하고, 선택 레이어 상태를 기준으로 액션을 실행합니다.
    - 지도 클릭, 검색 결과 이동, 기록 상세 열기 흐름이 최종적으로 이 모듈의 바텀시트 표시로 수렴합니다.
    ========================================================================== */
-import { VWORLD_API_KEY, SVG_ICONS } from './config.js?v=2.4.11';
-import { AppState } from './state.js?v=2.4.11';
-import { map, updateLayerOrder } from './map.js?v=2.4.11';
-import { drawnItems, enableSingleLayerEdit } from './draw.js?v=2.4.11';
-import { getTimestampString, getRandomColor, createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.4.11';
-import { saveToStorage } from './data.js?v=2.4.11';
-import { updateLayerInfo, deleteLayerById, scheduleViewportVectorOptimization } from './ui-core.js?v=2.4.11';
-import { renderSurveyList } from './ui-project.js?v=2.4.11';
+import { VWORLD_API_KEY, SVG_ICONS } from './config.js?v=2.5.0';
+import { AppState } from './state.js?v=2.5.0';
+import { map, updateLayerOrder } from './map.js?v=2.5.0';
+import { drawnItems, enableSingleLayerEdit } from './draw.js?v=2.5.0';
+import { getTimestampString, getRandomColor, createColoredMarkerIcon, copyText, getTmCoords, convertToDms } from './utils.js?v=2.5.0';
+import { saveToStorage } from './data.js?v=2.5.0';
+import { updateLayerInfo, deleteLayerById, scheduleViewportVectorOptimization } from './ui-core.js?v=2.5.0';
+import { renderSurveyList } from './ui-project.js?v=2.5.0';
 
 export let currentBottomSheetLayerId = null;
 

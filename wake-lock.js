@@ -4,20 +4,31 @@
    - 기록 입력 중 화면이 자동으로 꺼지지 않도록 Screen Wake Lock을 관리합니다.
    - Wake Lock 미지원 브라우저에서는 숨김 무음 비디오 재생으로 보조합니다.
    ========================================================================== */
-import { AppState } from './state.js?v=2.4.11';
+import { AppState } from './state.js?v=2.5.0';
 
 // Wake Lock 미지원 브라우저 fallback용 무음 비디오 핸들입니다.
 let noSleepVideo = null;
+let isNoSleepFallbackUnavailable = false;
 
 /**
  * 기록 중 화면 꺼짐을 방지합니다.
  */
 export async function requestWakeLock() {
-    try {
-        if ('wakeLock' in navigator) {
+    if (AppState.wakeLock) return;
+
+    if ('wakeLock' in navigator) {
+        try {
             AppState.wakeLock = await navigator.wakeLock.request('screen');
+            AppState.wakeLock.addEventListener('release', () => {
+                AppState.wakeLock = null;
+            });
+            return;
+        } catch (err) {
+            // 일부 브라우저/환경에서는 권한 정책상 거부됩니다. 기록 자체는 계속 진행합니다.
         }
-    } catch (err) { console.error(err); }
+    }
+
+    if (isNoSleepFallbackUnavailable) return;
 
     if (!noSleepVideo) {
         noSleepVideo = document.createElement('video');
@@ -29,7 +40,11 @@ export async function requestWakeLock() {
         noSleepVideo.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMQAAAAhmcmVlAAAAQG1kYXQhCAgEAAAAAAARAAABvQAQAQAAEgQA//4AAAAAABIAAAAB100AAAAABAAeIBAEAAABXAAAAAAB//4AAAAAABIAAAAAAEEAAAAB2AAAAAAEAAB+GZ0sAAAAAABAAAAABAAAAAB/AAABAAAAAQBBbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAABDcAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAzx0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAD6AAAAAAMAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAQAAAAEAAAAAACRlZHRzAAAAHGVsc3QAAAAAAAAAAQAAA+gAAAAAAAEAAAAAAIhtZGlhAAAAIG1kaGQAAAAAAAAAAAAAAAAAAAPoAAAEtwBQAAAAAAAZaGRscgAAAAAAAAAAdmlkZQAAAAAAAAAAAAAAAAAAAAAAO21pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAKRzdGJsAAAALnN0c2QAAAAAAAAAAQAAAB5hdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAABhzdHRzAAAAAAAAAAEAAAABAAAEtwAAABxzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAAAUc3RzegAAAAAAAAAAAAAAAQAAABQAAAAUc3RjbwAAAAAAAAABAAAALAAAAA==';
         document.body.appendChild(noSleepVideo);
     }
-    noSleepVideo.play().catch(e => console.error("NoSleep fallback failed", e));
+    noSleepVideo.play().catch(() => {
+        isNoSleepFallbackUnavailable = true;
+        noSleepVideo.remove();
+        noSleepVideo = null;
+    });
 }
 
 /**

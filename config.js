@@ -3,7 +3,7 @@
    [역할] API 키, 스토리지 키, SVG 아이콘 등 변하지 않는 고정값
    ========================================================================== */
 export const APP_MODE = 'internal'; // 'internal', 'public', or 'premium'
-export const APP_VERSION = "2.4.11"; // 현재 앱 버전
+export const APP_VERSION = "2.5.0"; // 현재 앱 버전
 
 /**
  * VWORLD_API_KEY

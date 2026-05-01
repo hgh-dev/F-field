@@ -7,8 +7,8 @@
    - 이 파일은 직접 큰 UI 로직을 가지지 않고, 각 기능 파일의 export를 재노출하는 얇은 통합 레이어입니다.
    - 내부 구조가 바뀌어도 외부 호출 경로를 고정해 점진적 리팩터링 부담을 줄입니다.
    ========================================================================== */
-export * from './ui-search.js?v=2.4.11';
-export * from './ui-bottomsheet.js?v=2.4.11';
-export * from './ui-project.js?v=2.4.11';
-export * from './ui-photo.js?v=2.4.11';
-export * from './ui-core.js?v=2.4.11';
+export * from './ui-search.js?v=2.5.0';
+export * from './ui-bottomsheet.js?v=2.5.0';
+export * from './ui-project.js?v=2.5.0';
+export * from './ui-photo.js?v=2.5.0';
+export * from './ui-core.js?v=2.5.0';

@@ -75,6 +75,7 @@
             --color-panel: #ffffff;
             --color-muted-bg: #f8f9fa;
             --color-primary: #3B82F6;
+            --sidebar-docked-width: 380px;
         }
 
         /* --- 기본 레이아웃 설정 --- */
@@ -97,14 +98,15 @@
         #map {
             position: absolute;
             top: 0;
-            bottom: var(--toolbar-height);
-            /* 하단 툴바 높이에 맞춤 */
-            width: 100%;
+            bottom: 0;
+            left: 0;
+            right: 0;
             z-index: 1;
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
+            transition: left 0.3s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         /* --- 지도 상단 플로팅 컨트롤 --- */
@@ -132,6 +134,7 @@
 
         .map-top-left {
             left: var(--space-3);
+            transition: left 0.3s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         .map-top-right {
@@ -139,8 +142,8 @@
         }
 
         .map-control-btn {
-            width: 45px;
-            height: 45px;
+            width: 40px;
+            height: 40px;
             background: rgba(255, 255, 255, 0.94);
             border: none;
             border-radius: 50%;
@@ -459,8 +462,8 @@
         }
 
         .circle-btn {
-            width: 45px;
-            height: 45px;
+            width: 40px;
+            height: 40px;
             background: white;
             border: none;
             border-radius: 50%;
@@ -480,8 +483,8 @@
 
         /* 위치 추적 버튼 활성화 상태 스타일 */
         #tracking-svg-icon {
-            width: 34px;
-            height: 34px;
+            width: 30px;
+            height: 30px;
             transition: all 0.3s ease;
             filter: grayscale(100%);
             opacity: 0.6;
@@ -497,93 +500,237 @@
             border: 2px solid #aecbfa !important;
         }
 
-        /* --- 하단 툴바 (그리기 도구) --- */
-        .bottom-toolbar {
+        /* --- 기록 FAB (그리기 도구) --- */
+        .record-fab {
             position: absolute;
-            bottom: env(safe-area-inset-bottom);
-            left: 0;
-            width: 100%;
-            height: var(--toolbar-height);
-            background: white;
-            border-top: 1px solid var(--color-border);
+            right: 16px;
+            bottom: calc(18px + env(safe-area-inset-bottom));
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+            z-index: 2100;
+            pointer-events: none;
+        }
+
+        .record-fab-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s;
+        }
+
+        .record-fab.expanded .record-fab-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+            transition-delay: 0s;
+        }
+
+        .record-fab-group {
+            width: 164px;
+            padding: 8px 0;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.22);
+            overflow: hidden;
+        }
+
+        .record-fab-main {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            background: var(--color-primary);
+            color: #fff;
+            display: flex;
+            justify-content: center;
             align-items: center;
-            gap: var(--space-2);
-            padding: 6px var(--space-2);
+            padding: 0;
             box-sizing: border-box;
-            z-index: 1000;
-            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.28);
+            transition: background-color 0.18s, color 0.18s, transform 0.12s, box-shadow 0.18s;
+            pointer-events: auto;
+        }
+
+        .record-fab-main {
+            font-size: 26px;
+            font-weight: 300;
+            line-height: 1;
+        }
+
+        .record-fab-main.is-recording {
+            background: var(--color-primary);
+            color: #fff;
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.36);
+            cursor: default;
+            pointer-events: auto;
+        }
+
+        .record-fab.expanded .record-fab-main {
+            background: #fff;
+            color: #111827;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.35);
+        }
+
+        .record-fab-main:focus {
+            outline: none;
+        }
+
+        .record-fab-main:active,
+        .bottom-btn:active {
+            transform: scale(0.95);
+        }
+
+        .record-fab-plus,
+        .record-fab-close,
+        .record-fab-active-icon {
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .record-fab-close {
+            font-size: 26px;
+            font-weight: 300;
+            line-height: 1;
+        }
+
+        .record-fab:not(.expanded) .record-fab-main:not(.is-recording) .record-fab-plus,
+        .record-fab.expanded .record-fab-close,
+        .record-fab:not(.expanded) .record-fab-main.is-recording .record-fab-active-icon {
+            display: flex;
+        }
+
+        .record-fab-active-icon,
+        .record-fab-active-icon .icon-box,
+        .record-fab-active-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .record-fab-label {
+            color: #222;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
         }
 
         .bottom-btn {
-            flex: 1;
-            height: 100%;
+            width: 100%;
+            height: 38px;
             border: none;
             background: transparent;
-            font-size: 11.5px;
-            /* 12 × 0.9 ≈ 11 */
-            font-weight: bold;
             color: #555;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
             align-items: center;
-            gap: var(--space-1);
+            justify-content: flex-start;
+            gap: 10px;
             min-width: 0;
             min-height: var(--tap-min);
-            padding: var(--space-1) 2px;
-            border-radius: var(--radius-lg);
+            padding: 0 14px;
             box-sizing: border-box;
             cursor: pointer;
-            line-height: 1;
-            transition: background-color 0.2s, color 0.2s, transform 0.12s;
+            box-shadow: none;
+            flex-direction: row;
+            transition: background-color 0.16s, color 0.16s;
+            pointer-events: none;
+        }
+
+        .record-fab.expanded .bottom-btn {
+            pointer-events: auto;
         }
 
         .bottom-btn:active {
-            background-color: #f3f4f6;
-            transform: translateY(1px);
+            background: #f3f4f6;
+            transform: none;
+        }
+
+        .bottom-btn .icon-circle {
+            width: 22px;
+            height: 22px;
+            flex: 0 0 22px;
+            color: var(--record-icon-color, var(--color-primary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .bottom-btn .icon-box {
-            width: 24px;
-            height: 24px;
+            width: 22px;
+            height: 22px;
             margin-bottom: 0;
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
+        .bottom-btn .icon-box svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        #btn-poly {
+            --record-icon-color: #f97316;
+        }
+
+        #btn-line {
+            --record-icon-color: #0ea5e9;
+        }
+
+        #btn-point {
+            --record-icon-color: #22c55e;
+        }
+
+        #btn-track {
+            --record-icon-color: #8b5cf6;
+        }
+
+        #btn-photo-point {
+            --record-icon-color: #ec4899;
+        }
+
         .active-btn {
-            background-color: var(--color-primary) !important;
-            color: white !important;
-            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.28);
+            background: #eff6ff;
+            color: var(--color-primary) !important;
+        }
+
+        .active-btn .icon-circle {
+            color: var(--color-primary) !important;
         }
 
         .active-btn .svg-icon {
-            fill: white;
-            stroke: white;
+            fill: currentColor;
+            stroke: currentColor;
         }
 
         /* --- 그리기 진행 중 액션 바 --- */
         .action-toolbar {
             position: absolute;
-            bottom: calc(var(--toolbar-height) + env(safe-area-inset-bottom));
-            left: 50%;
-            transform: translateX(-50%);
-            width: min(360px, 100vw);
-            max-width: 100vw;
+            right: calc(16px + 40px + 12px);
+            bottom: calc(18px + env(safe-area-inset-bottom));
+            width: min(340px, calc(100vw - 86px));
+            max-width: 340px;
             height: auto;
-            padding: var(--space-3);
+            padding: var(--space-2);
+            box-sizing: border-box;
 
             /* Glassmorphism Style */
             background: rgba(255, 255, 255, 0.94);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(229, 231, 235, 0.95);
-            border-bottom: none;
 
-            border-radius: 20px 20px 0 0;
+            border-radius: 20px;
             display: none;
             /* 그리기 모드일 때만 flex로 변경 */
             flex-direction: column;
@@ -592,7 +739,7 @@
             gap: var(--space-3);
 
             z-index: 2000;
-            box-shadow: 0 -8px 22px rgba(15, 23, 42, 0.16);
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
             transition: all 0.3s ease;
         }
 
@@ -608,7 +755,7 @@
             border: none;
             background: none;
             flex: 1;
-            min-width: 56px;
+            min-width: 0;
             min-height: 50px;
             padding: var(--space-2) var(--space-1);
             display: flex;
@@ -782,6 +929,35 @@
             padding: 0;
             display: flex;
             flex-direction: column;
+        }
+
+        @media (min-width: 1024px) and (orientation: landscape) {
+            body.sidebar-docked-open #map {
+                left: var(--sidebar-docked-width);
+            }
+
+            body.sidebar-docked-open .map-top-left {
+                left: calc(var(--sidebar-docked-width) + var(--space-3));
+            }
+
+            body.sidebar-docked-open .leaflet-control-scale {
+                left: calc(var(--sidebar-docked-width) + 15px) !important;
+            }
+
+            body.sidebar-docked-open #map-active-project-badge {
+                left: calc(var(--sidebar-docked-width) + ((100vw - var(--sidebar-docked-width)) / 2));
+                max-width: calc((100vw - var(--sidebar-docked-width)) * 0.54);
+            }
+
+            body.sidebar-docked-open .sidebar-overlay {
+                width: var(--sidebar-docked-width);
+                background: transparent;
+            }
+
+            body.sidebar-docked-open .sidebar-content {
+                width: var(--sidebar-docked-width);
+                max-width: var(--sidebar-docked-width);
+            }
         }
 
         .tab-content {
@@ -1590,7 +1766,7 @@
         /* 지도 위 Leaflet 축척 컨트롤 전체 래퍼 */
         .leaflet-control-scale {
             position: fixed !important;
-            bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+            bottom: calc(18px + env(safe-area-inset-bottom)) !important;
             left: 15px !important;
             margin: 0 !important;
             z-index: 990 !important;
@@ -2297,11 +2473,15 @@
         }
 
         body.has-ad-main .action-toolbar {
-            bottom: calc(100px + env(safe-area-inset-bottom)) !important;
+            bottom: calc(118px + env(safe-area-inset-bottom)) !important;
+        }
+
+        body.has-ad-main .record-fab {
+            bottom: calc(118px + env(safe-area-inset-bottom)) !important;
         }
 
         body.has-ad-main .leaflet-control-scale {
-            bottom: calc(120px + env(safe-area-inset-bottom)) !important;
+            bottom: calc(118px + env(safe-area-inset-bottom)) !important;
         }
 
         /* 스타일 모달 전용 CSS */
@@ -2424,6 +2604,7 @@
             align-items: center;
             gap: 6px;
             cursor: pointer;
+            transition: left 0.3s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         #map-active-project-badge svg {
@@ -2725,63 +2906,84 @@
     <!-- 
     ==========================================================================
     [구조 4] 하단 툴바 (Bottom Toolbar)
-    점, 선, 면 그리기 도구를 선택할 수 있는 하단 버튼 영역입니다.
-    모바일 환경을 고려하여 화면 하단에 고정 배치됩니다.
+    점, 선, 면 그리기 도구를 선택할 수 있는 플로팅 버튼 영역입니다.
+    모바일 환경을 고려하여 화면 오른쪽 하단에서 세로로 확장됩니다.
     ==========================================================================
     -->
     <div id="ad-container-main"
         style="position: absolute; bottom: calc(60px + env(safe-area-inset-bottom)); width: 100%; text-align: center; z-index: 1000; background: #eee; padding: 10px 0; border-top: 1px solid #ddd; display: none; font-size: 14px; color: #666;">
         광고 (일반 배포용)
     </div>
-    <div class="bottom-toolbar">
-        <button id="btn-poly" class="bottom-btn" onclick="startDraw('polygon')">
-            <div class="icon-box">
-                <svg class="svg-icon" viewBox="0 0 24 24">
-                    <path d="M12 2L2 9L6 21H18L22 9L12 2Z" fill="currentColor" fill-opacity="0.3" stroke="currentColor"
-                        stroke-width="2" stroke-linejoin="round" />
-                </svg>
+    <div id="record-fab" class="record-fab">
+        <div class="record-fab-menu">
+            <div class="record-fab-group">
+                <button id="btn-poly" class="bottom-btn" onclick="closeRecordFab(); startDraw('polygon')" title="면 기록">
+                    <span class="icon-circle">
+                        <span class="icon-box">
+                            <svg class="svg-icon" viewBox="0 0 24 24">
+                                <path d="M12 2L2 9L6 21H18L22 9L12 2Z" fill="currentColor" fill-opacity="0.3"
+                                    stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                            </svg>
+                        </span>
+                    </span>
+                    <span class="record-fab-label">면 기록</span>
+                </button>
+                <button id="btn-line" class="bottom-btn" onclick="closeRecordFab(); startDraw('polyline')" title="선 기록">
+                    <span class="icon-circle">
+                        <span class="icon-box">
+                            <svg class="svg-icon" viewBox="0 0 24 24">
+                                <path
+                                    d="M23 8c0 1.1-.9 2-2 2-.18 0-.35-.02-.51-.07l-3.56 3.55c.05.16.07.34.07.52 0 1.1-.9 2-2 2s-2-.9-2-2c0-.18.02-.36.07-.52l-2.55-2.55c-.16.05-.34.07-.52.07s-.36-.02-.52-.07l-4.55 4.56c.05.16.07.33.07.51 0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2c.18 0 .35.02.51.07l4.56-4.55C8.02 9.36 8 9.18 8 9c0-1.1.9-2 2-2s2 .9 2 2c0 .18-.02.36-.07.52l2.55 2.55c.16-.05.34-.07.52-.07s.36.02.52-.07l3.55-3.56C19.02 8.35 19 8.18 19 8c0-1.1.9-2 2-2s2 .9 2 2z" />
+                            </svg>
+                        </span>
+                    </span>
+                    <span class="record-fab-label">선 기록</span>
+                </button>
+                <button id="btn-point" class="bottom-btn" onclick="closeRecordFab(); startDraw('marker')" title="점 기록">
+                    <span class="icon-circle">
+                        <span class="icon-box">
+                            <svg class="svg-icon" viewBox="0 0 24 24">
+                                <path
+                                    d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                            </svg>
+                        </span>
+                    </span>
+                    <span class="record-fab-label">점 기록</span>
+                </button>
             </div>
-            <span>면</span>
-        </button>
-        <button id="btn-line" class="bottom-btn" onclick="startDraw('polyline')">
-            <div class="icon-box">
-                <svg class="svg-icon" viewBox="0 0 24 24">
-                    <path
-                        d="M23 8c0 1.1-.9 2-2 2-.18 0-.35-.02-.51-.07l-3.56 3.55c.05.16.07.34.07.52 0 1.1-.9 2-2 2s-2-.9-2-2c0-.18.02-.36.07-.52l-2.55-2.55c-.16.05-.34.07-.52.07s-.36-.02-.52-.07l-4.55 4.56c.05.16.07.33.07.51 0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2c.18 0 .35.02.51.07l4.56-4.55C8.02 9.36 8 9.18 8 9c0-1.1.9-2 2-2s2 .9 2 2c0 .18-.02.36-.07.52l2.55 2.55c.16-.05.34-.07.52-.07s.36.02.52-.07l3.55-3.56C19.02 8.35 19 8.18 19 8c0-1.1.9-2 2-2s2 .9 2 2z" />
-                </svg>
+            <div class="record-fab-group">
+                <button id="btn-track" class="bottom-btn" onclick="closeRecordFab(); startTrackRecording()"
+                    title="트랙 기록">
+                    <span class="icon-circle">
+                        <span class="icon-box">
+                            <svg class="svg-icon" viewBox="0 0 24 24">
+                                <path
+                                    d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z" />
+                            </svg>
+                        </span>
+                    </span>
+                    <span class="record-fab-label">트랙 기록</span>
+                </button>
+                <button id="btn-photo-point" class="bottom-btn" onclick="closeRecordFab(); startPhotoPoint()"
+                    title="사진 기록">
+                    <span class="icon-circle">
+                        <span class="icon-box">
+                            <svg class="svg-icon" viewBox="0 0 24 24">
+                                <path fill="currentColor" opacity="0.4"
+                                    d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+                                <path fill="currentColor"
+                                    d="M14 9h-1.5l-1-1h-3l-1 1H6c-.55 0-1 .45-1 1v5c0 .55.45 1 1 1h8c.55 0 1-.45 1-1v-5c0-.55-.45-1-1-1zm-4 5.5c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" />
+                            </svg>
+                        </span>
+                    </span>
+                    <span class="record-fab-label">사진 기록</span>
+                </button>
             </div>
-            <span>선</span>
-        </button>
-        <button id="btn-point" class="bottom-btn" onclick="startDraw('marker')">
-            <div class="icon-box">
-                <svg class="svg-icon" viewBox="0 0 24 24">
-                    <path
-                        d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                </svg>
-            </div>
-            <span>점</span>
-        </button>
-        <button id="btn-track" class="bottom-btn" onclick="startTrackRecording()">
-            <div class="icon-box">
-                <svg class="svg-icon" viewBox="0 0 24 24">
-                    <path
-                        d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z" />
-                </svg>
-            </div>
-            <span>트랙</span>
-        </button>
-        <button id="btn-photo-point" class="bottom-btn" onclick="startPhotoPoint()">
-            <div class="icon-box">
-                <!-- 점 아이콘과 카메라 아이콘 합성 -->
-                <svg class="svg-icon" viewBox="0 0 24 24">
-                    <path fill="currentColor" opacity="0.4"
-                        d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
-                    <!-- 작게 축소된 카메라 아이콘 내장 -->
-                    <path fill="currentColor"
-                        d="M14 9h-1.5l-1-1h-3l-1 1H6c-.55 0-1 .45-1 1v5c0 .55.45 1 1 1h8c.55 0 1-.45 1-1v-5c0-.55-.45-1-1-1zm-4 5.5c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" />
-                </svg>
-            </div>
-            <span>사진</span>
+        </div>
+        <button id="record-fab-main" class="record-fab-main" onclick="toggleRecordFab()" aria-label="기록 도구 열기">
+            <span class="record-fab-plus">+</span>
+            <span class="record-fab-close">×</span>
+            <span id="record-fab-active-icon" class="record-fab-active-icon"></span>
         </button>
     </div>
 
@@ -2793,7 +2995,7 @@
                     <path
                         d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z" />
                 </svg>
-                현 위치 기록
+                현위치기록
             </button>
             <button class="action-btn btn-done" onclick="completeDrawing()">
                 <svg viewBox="0 0 24 24">
@@ -4113,11 +4315,11 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script type="module" src="script.js?v=2.4.11"></script>
+    <script type="module" src="script.js?v=2.5.0"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.4.11', { updateViaCache: 'none' }));
+            window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.5.0', { updateViaCache: 'none' }));
         }
     </script>
 </body>

@@ -9,12 +9,12 @@
    - 생성/편집 이벤트에서 feature 속성을 갱신하고 saveToStorage()로 즉시 동기화합니다.
    - 렌더링(UI)과 데이터 저장을 같은 지점에서 호출해 상태 불일치를 줄입니다.
    ========================================================================== */
-import { map } from './map.js?v=2.4.11';
-import { AppState } from './state.js?v=2.4.11';
-import { updateLayerInfo, renderSurveyList, switchSidebarTab, highlightButton, resetButtonStyles, openBottomSheet, closeBottomSheet, currentBottomSheetLayerId, setCurrentBottomSheetLayerId } from './ui.js?v=2.4.11';
-import { getRandomColor, getTimestampString, createColoredMarkerIcon, setRecordingModeActive } from './utils.js?v=2.4.11';
-import { saveToStorage } from './data.js?v=2.4.11';
-import { requestWakeLock, releaseWakeLock } from './wake-lock.js?v=2.4.11';
+import { map } from './map.js?v=2.5.0';
+import { AppState } from './state.js?v=2.5.0';
+import { updateLayerInfo, renderSurveyList, switchSidebarTab, highlightButton, resetButtonStyles, openBottomSheet, closeBottomSheet, currentBottomSheetLayerId, setCurrentBottomSheetLayerId } from './ui.js?v=2.5.0';
+import { getRandomColor, getTimestampString, createColoredMarkerIcon, setRecordingModeActive } from './utils.js?v=2.5.0';
+import { saveToStorage } from './data.js?v=2.5.0';
+import { requestWakeLock, releaseWakeLock } from './wake-lock.js?v=2.5.0';
 
 
 
