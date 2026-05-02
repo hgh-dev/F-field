@@ -688,12 +688,27 @@ function showVworldLegend(type, isChecked) {
         return;
     }
 
-    // 레이어별 GetLegendGraphic 이미지를 동적으로 삽입합니다.
-    legendEl.innerHTML = layers.map(layerName =>
-        `<div class="vworld-legend-item">
-            <img src="https://api.vworld.kr/req/image?service=image&request=GetLegendGraphic&format=png&layer=${layerName}&style=${layerName}&type=ALL&key=${VWORLD_API_KEY}" alt="${layerName} 범례" loading="lazy" onerror="this.parentNode.style.display='none'">
-        </div>`
-    ).join('');
+    legendEl.innerHTML = '';
+
+    // iOS Safari/PWA에서 innerHTML + loading="lazy" 조합으로 범례 이미지가 누락되는 경우가 있어
+    // DOM API로 직접 생성하고 eager 로딩으로 단순화합니다.
+    layers.forEach(layerName => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'vworld-legend-item';
+
+        const imgEl = document.createElement('img');
+        imgEl.src = `https://api.vworld.kr/req/image?service=image&request=GetLegendGraphic&format=png&layer=${layerName}&style=${layerName}&type=ALL&key=${VWORLD_API_KEY}`;
+        imgEl.alt = `${layerName} 범례`;
+        imgEl.loading = 'eager';
+        imgEl.decoding = 'async';
+        imgEl.addEventListener('error', () => {
+            itemEl.style.display = 'none';
+        });
+
+        itemEl.appendChild(imgEl);
+        legendEl.appendChild(itemEl);
+    });
+
     legendEl.dataset.loaded = '1';
     legendEl.style.display = 'block';
 }
