@@ -25,6 +25,33 @@ import { requestWakeLock, releaseWakeLock } from './wake-lock.js?v=2.5.0';
 // 원리: 내부 _onTouch 핸들러를 noop으로 바꿔 터치 드로잉 오작동을 우회합니다.
 L.Draw.Polyline.prototype._onTouch = function (e) { return; };
 
+// Leaflet.draw 기본 영문 툴팁/버튼 문구를 한국어로 덮어씁니다.
+if (L.drawLocal?.draw?.toolbar?.buttons) {
+    L.drawLocal.draw.toolbar.buttons.polyline = '선 기록';
+    L.drawLocal.draw.toolbar.buttons.polygon = '면 기록';
+    L.drawLocal.draw.toolbar.buttons.marker = '점 기록';
+}
+
+if (L.drawLocal?.draw?.handlers?.marker?.tooltip) {
+    L.drawLocal.draw.handlers.marker.tooltip.start = '지도를 눌러 점을 기록하세요.';
+}
+
+if (L.drawLocal?.draw?.handlers?.polyline?.tooltip) {
+    L.drawLocal.draw.handlers.polyline.tooltip.start = '지도를 눌러 선 기록을 시작하세요.';
+    L.drawLocal.draw.handlers.polyline.tooltip.cont = '지도를 눌러 다음 점을 추가하세요.';
+    L.drawLocal.draw.handlers.polyline.tooltip.end = '마지막 점을 다시 누르거나 기록 완료를 눌러 저장하세요.';
+}
+
+if (L.drawLocal?.draw?.handlers?.polygon?.tooltip) {
+    L.drawLocal.draw.handlers.polygon.tooltip.start = '지도를 눌러 면 기록을 시작하세요.';
+    L.drawLocal.draw.handlers.polygon.tooltip.cont = '지도를 눌러 다음 점을 추가하세요.';
+    L.drawLocal.draw.handlers.polygon.tooltip.end = '첫 점을 다시 누르거나 기록 완료를 눌러 저장하세요.';
+}
+
+if (L.drawLocal?.draw?.handlers?.simpleshape?.tooltip) {
+    L.drawLocal.draw.handlers.simpleshape.tooltip.end = '마우스를 놓아 그리기를 마치세요.';
+}
+
 
 // 앱에서 관리하는 모든 사용자 도형이 모이는 레이어 그룹입니다.
 // 원리: 개별 레이어 대신 그룹 단위로 add/remove/edit 대상을 통일하면 제어가 단순해집니다.
@@ -414,6 +441,40 @@ function updateDrawingCompleteButtonState() {
     completeDrawingBtn.disabled = getCurrentDrawingVertexCount() < requiredVertexCount;
 }
 
+function handleCompletionVertexClick(e) {
+    const drawer = AppState.currentDrawer;
+    if (!(drawer instanceof L.Draw.Polygon) && !(drawer instanceof L.Draw.Polyline)) return;
+
+    const requiredVertexCount = getRequiredVertexCountForCurrentDrawer();
+    if (getCurrentDrawingVertexCount() < requiredVertexCount) return;
+
+    if (e?.originalEvent) {
+        L.DomEvent.stop(e.originalEvent);
+    }
+    completeDrawing();
+}
+
+function syncCompletionVertexClickTarget() {
+    const drawer = AppState.currentDrawer;
+    if (!(drawer instanceof L.Draw.Polygon) && !(drawer instanceof L.Draw.Polyline)) return;
+
+    const markers = Array.isArray(drawer._markers) ? drawer._markers : null;
+    if (!markers || markers.length === 0) return;
+
+    const targetMarker = drawer instanceof L.Draw.Polygon ? markers[0] : markers[markers.length - 1];
+    if (!targetMarker) return;
+
+    if (drawer._completionVertexMarker && drawer._completionVertexMarker !== targetMarker) {
+        drawer._completionVertexMarker.off('click', handleCompletionVertexClick);
+        drawer._completionVertexMarker = null;
+    }
+
+    if (drawer._completionVertexMarker === targetMarker) return;
+
+    targetMarker.on('click', handleCompletionVertexClick);
+    drawer._completionVertexMarker = targetMarker;
+}
+
 
 /* ==========================================================================
    2) 그리기 제어
@@ -471,6 +532,7 @@ export function startDraw(type) {
     AppState.currentDrawer._lastSnapMousePointKey = null;
     actionToolbar.style.display = 'flex';
     updateDrawingCompleteButtonState();
+    syncCompletionVertexClickTarget();
 }
 
 /**
@@ -553,6 +615,7 @@ export function addGpsVertex() {
             // Polyline/Polygon은 현재 스케치에 버텍스만 누적
             AppState.currentDrawer.addVertex(latlng);
             updateDrawingCompleteButtonState();
+            syncCompletionVertexClickTarget();
         }
         // 입력 지점으로 화면 중심을 이동해 현장 사용성을 높입니다.
         map.panTo(latlng);
@@ -569,6 +632,7 @@ export function deleteLastVertex() {
     if (AppState.currentDrawer && AppState.currentDrawer.deleteLastVertex) {
         AppState.currentDrawer.deleteLastVertex();
         updateDrawingCompleteButtonState();
+        syncCompletionVertexClickTarget();
     }
 }
 
@@ -718,6 +782,7 @@ export function cancelSingleEdit() {
 // 선/면 버텍스가 추가될 때마다 완료 버튼 상태를 즉시 재평가합니다.
 map.on(L.Draw.Event.DRAWVERTEX, function () {
     updateDrawingCompleteButtonState();
+    syncCompletionVertexClickTarget();
 });
 
 /**
