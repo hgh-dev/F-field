@@ -75,7 +75,7 @@
             --color-panel: #ffffff;
             --color-muted-bg: #f8f9fa;
             --color-primary: #3B82F6;
-            --sidebar-docked-width: 380px;
+            --sidebar-docked-width: 340px;
         }
 
         /* --- 기본 레이아웃 설정 --- */
@@ -838,8 +838,8 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 85%;
-            max-width: 380px;
+            width: 80%;
+            max-width: 340px;
             height: 100%;
             background: #F2F4F6;
             box-shadow: 5px 0 25px rgba(0, 0, 0, 0.15);
@@ -958,6 +958,28 @@
                 width: var(--sidebar-docked-width);
                 max-width: var(--sidebar-docked-width);
             }
+
+            body.sidebar-docked-open #search-container {
+                left: calc(var(--sidebar-docked-width) + ((100vw - var(--sidebar-docked-width)) / 2));
+                width: min(400px, calc(100vw - var(--sidebar-docked-width) - 24px));
+                max-width: calc(100vw - var(--sidebar-docked-width) - 24px);
+            }
+
+            body.sidebar-docked-open #bottom-sheet {
+                left: calc(var(--sidebar-docked-width) + ((100vw - var(--sidebar-docked-width)) / 2));
+                width: calc(100vw - var(--sidebar-docked-width));
+                max-width: min(500px, calc(100vw - var(--sidebar-docked-width)));
+            }
+
+            body.sidebar-docked-open #location-action-modal-overlay {
+                padding-left: var(--sidebar-docked-width);
+                box-sizing: border-box;
+            }
+
+            body.sidebar-docked-open #location-action-modal-overlay .nav-modal-content {
+                width: calc(100vw - var(--sidebar-docked-width));
+                max-width: min(500px, calc(100vw - var(--sidebar-docked-width)));
+            }
         }
 
         .tab-content {
@@ -979,16 +1001,18 @@
         #content-project.active {
             display: flex;
             flex-direction: column;
-            padding: var(--space-3) var(--space-3) var(--space-4);
+            padding: var(--space-3) var(--space-3) calc(var(--space-4) + 28px + env(safe-area-inset-bottom));
             overflow: hidden;
+            box-sizing: border-box;
         }
 
         /* 탭 3: Flex 레이아웃 (상단 고정, 중간 스크롤, 하단 고정) */
         #content-record.active {
             display: flex;
             flex-direction: column;
-            padding: var(--space-3) var(--space-3) var(--space-4);
+            padding: var(--space-3) var(--space-3) calc(var(--space-4) + 28px + env(safe-area-inset-bottom));
             overflow: hidden;
+            box-sizing: border-box;
         }
 
         .tab-content.active {
@@ -1510,6 +1534,110 @@
 
         .nav-modal-overlay.visible .settings-page-content {
             transform: translateY(0) scale(1);
+        }
+
+        .sort-modal-overlay {
+            align-items: center;
+            justify-content: center;
+            padding: calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));
+            box-sizing: border-box;
+        }
+
+        .sort-modal-content {
+            width: 100%;
+            max-width: 420px;
+            padding: 22px 20px 20px;
+            border-radius: 16px;
+            transform: translateY(16px) scale(0.98);
+            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.28);
+        }
+
+        .nav-modal-overlay.visible .sort-modal-content {
+            transform: translateY(0) scale(1);
+        }
+
+        .center-modal-overlay {
+            align-items: center;
+            justify-content: center;
+            padding: calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));
+            box-sizing: border-box;
+        }
+
+        .center-modal-content {
+            width: 100%;
+            max-width: 420px;
+            padding: 22px 20px 20px;
+            border-radius: 16px;
+            transform: translateY(16px) scale(0.98);
+            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.28);
+        }
+
+        .center-modal-content.compact {
+            max-width: 380px;
+        }
+
+        .center-modal-content.tall {
+            max-height: min(520px, calc(100vh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .nav-modal-overlay.visible .center-modal-content {
+            transform: translateY(0) scale(1);
+        }
+
+        .sort-modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111;
+            text-align: center;
+            margin-bottom: 18px;
+        }
+
+        .sort-modal-group {
+            margin-bottom: 18px;
+        }
+
+        .sort-modal-group-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        .sort-modal-options {
+            display: flex;
+            flex-direction: column;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 4px;
+        }
+
+        .sort-modal-option {
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .sort-modal-option input {
+            margin-right: 10px;
+        }
+
+        .sort-modal-apply-btn {
+            width: 100%;
+            padding: 14px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            color: #666;
+            cursor: pointer;
+        }
+
+        .sort-modal-apply-btn:active {
+            transform: scale(0.99);
         }
 
         .settings-page-header {
@@ -3801,15 +3929,18 @@
                     <div id="coord-display">좌표 수신중...</div>
                 </div>
             </div>
-            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
-                <button onclick="copyCurrentAddress()" class="mono-btn" style="padding:14px; justify-content:center;">
-                    주소 복사하기
+            <div style="display:flex; gap:8px; margin-bottom:16px;">
+                <button onclick="copyCurrentAddress()" class="mono-btn"
+                    style="flex:1; padding:10px 8px; justify-content:center; font-size:11px;">
+                    주소 복사
                 </button>
-                <button onclick="copyCurrentCoords()" class="mono-btn" style="padding:14px; justify-content:center;">
-                    좌표 복사하기
+                <button onclick="copyCurrentCoords()" class="mono-btn"
+                    style="flex:1; padding:10px 8px; justify-content:center; font-size:11px;">
+                    좌표 복사
                 </button>
-                <button onclick="shareMyLocation()" class="mono-btn" style="padding:14px; justify-content:center;">
-                    내 위치 공유하기
+                <button onclick="shareMyLocation()" class="mono-btn"
+                    style="flex:1; padding:10px 8px; justify-content:center; font-size:11px;">
+                    내 위치 공유
                 </button>
             </div>
             <button onclick="closeLocationActionModal()"
@@ -4125,8 +4256,9 @@
     </div>
 
     <!-- 불러오기 안내 모달 -->
-    <div id="import-warning-modal-overlay" class="nav-modal-overlay" onclick="closeImportWarningModal()">
-        <div class="nav-modal-content" onclick="event.stopPropagation()">
+    <div id="import-warning-modal-overlay" class="nav-modal-overlay center-modal-overlay"
+        onclick="closeImportWarningModal()">
+        <div class="nav-modal-content center-modal-content compact" onclick="event.stopPropagation()">
             <div class="nav-modal-header"
                 style="font-size:18px; font-weight:bold; margin-bottom:15px; text-align:center;">불러오기</div>
 
@@ -4159,80 +4291,78 @@
     </div>
 
     <!-- 기록 정렬 설정 모달 -->
-    <div id="sort-modal-overlay" class="nav-modal-overlay" onclick="closeSortModal()">
-        <div class="nav-modal-content" onclick="event.stopPropagation()">
-            <div class="nav-modal-header"
-                style="font-size:18px; font-weight:bold; margin-bottom:20px; text-align:center;">기록 정렬 방식</div>
+    <div id="sort-modal-overlay" class="nav-modal-overlay sort-modal-overlay" onclick="closeSortModal()">
+        <div class="nav-modal-content sort-modal-content" onclick="event.stopPropagation()">
+            <div class="sort-modal-title">기록 정렬 방식</div>
 
-            <div style="margin-bottom:20px;">
-                <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">정렬 기준</div>
-                <div style="display:flex; flex-direction:column; background:#f8f9fa; border-radius:12px; padding:4px;">
-                    <label style="padding:10px; display:flex; align-items:center; font-size:14px;">
-                        <input type="radio" name="sort-by" value="date" style="margin-right:10px;"> 기록 시간
+            <div class="sort-modal-group">
+                <div class="sort-modal-group-title">정렬 기준</div>
+                <div class="sort-modal-options">
+                    <label class="sort-modal-option">
+                        <input type="radio" name="sort-by" value="date"> 기록 시간
                     </label>
-                    <label style="padding:10px; display:flex; align-items:center; font-size:14px;">
-                        <input type="radio" name="sort-by" value="name" style="margin-right:10px;"> 기록명
+                    <label class="sort-modal-option">
+                        <input type="radio" name="sort-by" value="name"> 기록명
                     </label>
                 </div>
             </div>
 
-            <div style="margin-bottom:20px;">
-                <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">정렬 순서</div>
-                <div style="display:flex; flex-direction:column; background:#f8f9fa; border-radius:12px; padding:4px;">
-                    <label style="padding:10px; display:flex; align-items:center; font-size:14px;">
-                        <input type="radio" name="sort-order" value="desc" style="margin-right:10px;"> 내림차순 (최신순)
+            <div class="sort-modal-group">
+                <div class="sort-modal-group-title">정렬 순서</div>
+                <div class="sort-modal-options">
+                    <label class="sort-modal-option">
+                        <input type="radio" name="sort-order" value="desc"> 내림차순 (최신순)
                     </label>
-                    <label style="padding:10px; display:flex; align-items:center; font-size:14px;">
-                        <input type="radio" name="sort-order" value="asc" style="margin-right:10px;"> 오름차순 (오래된순)
+                    <label class="sort-modal-option">
+                        <input type="radio" name="sort-order" value="asc"> 오름차순 (오래된순)
                     </label>
                 </div>
             </div>
 
-            <button onclick="applySortSetting()"
-                style="width:100%; padding:14px; background:#f5f5f5; border:none; border-radius:12px; font-weight:bold; color:#666;">적용</button>
+            <button onclick="applySortSetting()" class="sort-modal-apply-btn">적용</button>
         </div>
     </div>
 
     <!-- 프로젝트 정렬 설정 모달 -->
-    <div id="project-sort-modal-overlay" class="nav-modal-overlay" onclick="closeProjectSortModal()">
-        <div class="nav-modal-content" onclick="event.stopPropagation()">
-            <div class="nav-modal-header"
-                style="font-size:18px; font-weight:bold; margin-bottom:20px; text-align:center;">프로젝트 정렬 방식</div>
+    <div id="project-sort-modal-overlay" class="nav-modal-overlay sort-modal-overlay"
+        onclick="closeProjectSortModal()">
+        <div class="nav-modal-content sort-modal-content" onclick="event.stopPropagation()">
+            <div class="sort-modal-title">프로젝트 정렬 방식</div>
 
-            <div style="margin-bottom:20px;">
-                <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">정렬 기준</div>
-                <div style="display:flex; flex-direction:column; background:#f8f9fa; border-radius:12px; padding:4px;">
-                    <label style="padding:10px; display:flex; align-items:center; font-size:14px;">
-                        <input type="radio" name="project-sort-by" value="date" style="margin-right:10px;"> 생성 시간
+            <div class="sort-modal-group">
+                <div class="sort-modal-group-title">정렬 기준</div>
+                <div class="sort-modal-options">
+                    <label class="sort-modal-option">
+                        <input type="radio" name="project-sort-by" value="date"> 생성 시간
                     </label>
-                    <label style="padding:10px; display:flex; align-items:center; font-size:14px;">
-                        <input type="radio" name="project-sort-by" value="name" style="margin-right:10px;"> 프로젝트명
+                    <label class="sort-modal-option">
+                        <input type="radio" name="project-sort-by" value="name"> 프로젝트명
                     </label>
                 </div>
             </div>
 
-            <div style="margin-bottom:20px;">
-                <div style="font-size:14px; font-weight:bold; color:#555; margin-bottom:10px;">정렬 순서</div>
-                <div style="display:flex; flex-direction:column; background:#f8f9fa; border-radius:12px; padding:4px;">
-                    <label style="padding:10px; display:flex; align-items:center; font-size:14px;">
-                        <input type="radio" name="project-sort-order" value="desc" style="margin-right:10px;"> 내림차순
+            <div class="sort-modal-group">
+                <div class="sort-modal-group-title">정렬 순서</div>
+                <div class="sort-modal-options">
+                    <label class="sort-modal-option">
+                        <input type="radio" name="project-sort-order" value="desc"> 내림차순
                         (최신순)
                     </label>
-                    <label style="padding:10px; display:flex; align-items:center; font-size:14px;">
-                        <input type="radio" name="project-sort-order" value="asc" style="margin-right:10px;"> 오름차순
+                    <label class="sort-modal-option">
+                        <input type="radio" name="project-sort-order" value="asc"> 오름차순
                         (오래된순)
                     </label>
                 </div>
             </div>
 
-            <button onclick="applyProjectSortSetting()"
-                style="width:100%; padding:14px; background:#f5f5f5; border:none; border-radius:12px; font-weight:bold; color:#666;">적용</button>
+            <button onclick="applyProjectSortSetting()" class="sort-modal-apply-btn">적용</button>
         </div>
     </div>
 
     <!-- 단일 기록 저장 파일 형식 선택 모달 -->
-    <div id="export-format-modal-overlay" class="nav-modal-overlay" onclick="closeExportFormatModal()">
-        <div class="nav-modal-content" onclick="event.stopPropagation()">
+    <div id="export-format-modal-overlay" class="nav-modal-overlay center-modal-overlay"
+        onclick="closeExportFormatModal()">
+        <div class="nav-modal-content center-modal-content compact" onclick="event.stopPropagation()">
             <div class="nav-modal-header"
                 style="font-size:18px; font-weight:bold; margin-bottom:20px; text-align:center;">기록 저장 형식</div>
             <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
@@ -4260,8 +4390,9 @@
     </div>
 
     <!-- 프로젝트 이동 선택 모달 -->
-    <div id="project-move-modal-overlay" class="nav-modal-overlay" onclick="closeMoveProjectModal()">
-        <div class="nav-modal-content" onclick="event.stopPropagation()">
+    <div id="project-move-modal-overlay" class="nav-modal-overlay center-modal-overlay"
+        onclick="closeMoveProjectModal()">
+        <div class="nav-modal-content center-modal-content tall" onclick="event.stopPropagation()">
             <div class="nav-modal-header"
                 style="font-size:18px; font-weight:bold; margin-bottom:10px; text-align:center;">프로젝트 이동</div>
             <p style="text-align:center; color:#666; font-size:13px; margin-bottom:20px;">선택한 기록을 어느 프로젝트로 이동할까요?</p>

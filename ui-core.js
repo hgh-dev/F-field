@@ -981,8 +981,13 @@ export function initUiEventListeners() {
     });
 
     // 외부 클릭 시 모든 드롭다운 메뉴 닫기
-    window.addEventListener('click', function () {
+    window.addEventListener('click', function (event) {
         closeAllDropdowns();
+
+        const fab = document.getElementById('record-fab');
+        if (fab?.classList.contains('expanded') && !fab.contains(event.target)) {
+            closeRecordFab();
+        }
     });
 
     // 우클릭(컨텍스트 메뉴) 방지
