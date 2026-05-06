@@ -16,12 +16,12 @@
     <meta charset="utf-8" />
 
     <!-- PWA (웹앱) 설정: 홈 화면에 추가할 때 앱처럼 보이게 합니다. -->
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="./manifest.webmanifest">
     <meta name="theme-color" content="transparent">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes"> <!-- iOS 호환성을 위해 남겨둠 -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="apple-touch-icon" href="./assets/icon-192-BI1lt4eR.png">
 
     <!-- 
     외부 라이브러리 불러오기
@@ -29,28 +29,7 @@
     Turf: 공간 분석 라이브러리
     Proj4: 좌표 변환 라이브러리
     -->
-    <!-- importmap: ES 모듈 import 스펙이서 @crmackey/shp-write를 CDN으로 메핑 -->
-    <!-- 반드시 다른 <script type="module"> 앞에 선언해야 합니다 -->
-    <script type="importmap">
-      {
-        "imports": {
-          "@crmackey/shp-write": "https://cdn.jsdelivr.net/npm/@crmackey/shp-write@0.4.5/+esm"
-        }
-      }
-    </script>
-
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.4.4/proj4.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-
-    <!-- Shapefile 불러오기: shpjs (window.shp로 노출) -->
-    <!-- 내보내기용 @crmackey/shp-write는 importmap으로 로드 -->
-    <script src="https://cdn.jsdelivr.net/npm/shpjs@3.6.3/dist/shp.min.js"></script>
+    <!-- 외부 라이브러리는 npm/Vite 번들에서 로드합니다. -->
 
     <!-- 
     ==========================================================================
@@ -76,6 +55,16 @@
             --color-muted-bg: #f8f9fa;
             --color-primary: #3B82F6;
             --sidebar-docked-width: 340px;
+            --app-bottom-gap: max(18px, env(safe-area-inset-bottom));
+            --app-bottom-gap-roomy: max(28px, env(safe-area-inset-bottom));
+        }
+
+        @media (min-width: 700px) and (max-width: 1100px) and (orientation: portrait),
+        (min-width: 700px) and (orientation: landscape) {
+            :root {
+                --app-bottom-gap: max(30px, env(safe-area-inset-bottom));
+                --app-bottom-gap-roomy: max(42px, env(safe-area-inset-bottom));
+            }
         }
 
         /* --- 기본 레이아웃 설정 --- */
@@ -1001,7 +990,7 @@
         #content-project.active {
             display: flex;
             flex-direction: column;
-            padding: var(--space-3) var(--space-3) calc(var(--space-4) + 28px + env(safe-area-inset-bottom));
+            padding: var(--space-3) var(--space-3) calc(var(--space-4) + 28px + var(--app-bottom-gap));
             overflow: hidden;
             box-sizing: border-box;
         }
@@ -1010,9 +999,13 @@
         #content-record.active {
             display: flex;
             flex-direction: column;
-            padding: var(--space-3) var(--space-3) calc(var(--space-4) + 28px + env(safe-area-inset-bottom));
+            padding: var(--space-3) var(--space-3) calc(var(--space-4) + 28px + var(--app-bottom-gap));
             overflow: hidden;
             box-sizing: border-box;
+        }
+
+        .project-bottom-actions {
+            padding-bottom: 6px;
         }
 
         .tab-content.active {
@@ -1027,6 +1020,10 @@
             padding: var(--space-4);
             margin-bottom: var(--space-4);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        #content-map .menu-section {
+            padding: var(--space-3) var(--space-2);
         }
 
         /* 기록 탭용 유연한 카드 스타일 */
@@ -1102,12 +1099,223 @@
             /* 간격 조정 */
         }
 
+        #content-map .map-layer-row {
+            justify-content: flex-start;
+            gap: 6px;
+            min-width: 0;
+            padding: 8px 0;
+        }
+
+        #content-map .accordion-content[id$="-options"] {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: transparent !important;
+            border-radius: 0 !important;
+        }
+
+        #content-map .accordion-content[id$="-options"],
+        #user-map-list .user-map-category-rows {
+            position: relative;
+        }
+
+        #content-map .accordion-content[id$="-options"]::before,
+        #user-map-list .user-map-category-rows::before {
+            content: '';
+            position: absolute;
+            left: 33px;
+            top: 0;
+            bottom: 22px;
+            width: 1px;
+            background: #d1d5db;
+            z-index: 1;
+        }
+
+        #content-map .map-layer-row-depth-3,
+        #user-map-list .map-layer-row-depth-3 {
+            margin-left: 24px;
+            position: relative;
+        }
+
+        #content-map .map-layer-row-depth-3::before,
+        #user-map-list .map-layer-row-depth-3::before {
+            content: '';
+            position: absolute;
+            left: 9px;
+            top: 50%;
+            width: 10px;
+            height: 1px;
+            background: #d1d5db;
+            z-index: 1;
+        }
+
+        #content-map .map-layer-row-depth-3 > *,
+        #user-map-list .map-layer-row-depth-3 > * {
+            position: relative;
+            z-index: 2;
+        }
+
+        #content-map .vworld-legend,
+        #content-map #nas-guk-legend {
+            margin-left: 30px !important;
+            margin-top: -2px !important;
+            margin-bottom: 8px !important;
+            padding: 0 !important;
+        }
+
+        #user-map-list .survey-item {
+            gap: 6px;
+            padding: 8px 0;
+        }
+
+        #content-map .map-layer-toggle {
+            width: 18px;
+            height: 28px;
+            border: 0;
+            background: transparent;
+            color: #6b7280;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        #content-map .map-layer-toggle svg {
+            width: 12px;
+            height: 12px;
+            fill: currentColor;
+            transition: transform 0.15s ease;
+        }
+
+        #content-map .map-layer-toggle.expanded svg {
+            transform: rotate(90deg);
+        }
+
+        #content-map .map-layer-toggle.disabled {
+            visibility: hidden;
+            cursor: default;
+        }
+
+        #content-map .map-layer-row input[type="checkbox"],
+        #content-map .map-layer-row input[type="radio"],
+        #user-map-list .map-layer-row-depth-3 input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            appearance: auto;
+            background: initial;
+            accent-color: #3B82F6;
+            border-radius: 0;
+            margin: 0;
+            flex-shrink: 0;
+        }
+
+        #content-map .map-layer-row input[type="checkbox"]:checked {
+            background: initial;
+        }
+
+        #content-map .map-layer-row input[type="checkbox"]::after,
+        #user-map-list .map-layer-row-depth-3 input[type="checkbox"]::after {
+            content: none;
+        }
+
+        #content-map .map-layer-style-placeholder {
+            width: 28px;
+            height: 28px;
+            border: 1px solid #ddd;
+            border-radius: 0;
+            background: #fff;
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        #content-map .map-layer-style-placeholder svg {
+            width: 26px;
+            height: 26px;
+            fill: currentColor;
+        }
+
+        #content-map .map-layer-style-placeholder.group-icon {
+            border-color: transparent;
+            background: transparent;
+        }
+
+        #content-map .map-layer-name {
+            flex: 1;
+            min-width: 0;
+            color: #333;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #user-map-list .map-layer-toggle {
+            width: 18px;
+            height: 28px;
+            border: 0;
+            background: transparent;
+            color: #6b7280;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        #user-map-list .map-layer-toggle svg {
+            width: 12px;
+            height: 12px;
+            fill: currentColor;
+            transition: transform 0.15s ease;
+        }
+
+        #user-map-list .map-layer-toggle.expanded svg {
+            transform: rotate(90deg);
+        }
+
+        #user-map-list .map-layer-toggle.disabled {
+            visibility: hidden;
+            cursor: default;
+        }
+
         .accordion-header {
             display: flex;
             align-items: center;
             cursor: pointer;
             flex: 1;
             /* 남은 공간 차지 */
+        }
+
+        #content-map .menu-title.accordion-header {
+            justify-content: flex-start !important;
+            gap: 6px;
+        }
+
+        #content-map .section-toggle-triangle {
+            width: 14px;
+            height: 14px;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        #content-map .section-toggle-triangle svg {
+            width: 11px;
+            height: 11px;
+            fill: currentColor;
+            transition: transform 0.15s ease;
+        }
+
+        #content-map .menu-title.accordion-header.active .section-toggle-triangle svg {
+            transform: rotate(90deg);
         }
 
         .toggle-icon,
@@ -1501,7 +1709,7 @@
             max-width: 500px;
             background: white;
             border-radius: 20px 20px 0 0;
-            padding: 24px;
+            padding: 24px 24px calc(24px + var(--app-bottom-gap));
             box-sizing: border-box;
             transform: translateY(100%);
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1967,12 +2175,18 @@
             /* Leaflet 기본 스타일(overflow: hidden) 무효화하여 바깥쪽 그림자 잘림 방지 */
             overflow: visible !important;
             /* 텍스트: 검정 + 흰 테두리 효과 */
-            color: black !important;
+            color: #111 !important;
             font-size: 13px !important;
             font-weight: bold !important;
             text-align: center;
-            /* 흰색 외곽선 효과 (8방향 그림자 + 약간의 blur) */
+            -webkit-text-stroke: 2.5px white;
+            paint-order: stroke fill;
+            /* 흰색 외곽선 효과: Android WebView에서 숫자 가장자리 빈틈 방지 */
             text-shadow:
+                -2px 0 0 white,
+                2px 0 0 white,
+                0 -2px 0 white,
+                0 2px 0 white,
                 -1px -1px 0 white,
                 1px -1px 0 white,
                 -1px 1px 0 white,
@@ -1981,7 +2195,8 @@
                 1px 0px 0 white,
                 0px -1px 0 white,
                 0px 1px 0 white,
-                0 0 2px white;
+                0 0 2px white,
+                0 0 4px white;
             line-height: 1.4;
             position: relative;
             display: block;
@@ -2476,7 +2691,7 @@
             /* 기본적으로 화면 아래로 숨김 상태 (-50%는 가로축 중앙정렬용) */
             transform: translate(-50%, 100%);
             /* 하단 여백 추가 (최소 24px + 노치 영역) */
-            padding: 0 var(--space-3) calc(var(--space-4) + env(safe-area-inset-bottom));
+            padding: 0 var(--space-3) calc(var(--space-4) + var(--app-bottom-gap-roomy));
             box-sizing: border-box;
             max-height: 72vh;
             overflow-y: auto;
@@ -2729,6 +2944,41 @@
             font-weight: bold;
         }
 
+        .style-modal-tabs {
+            display: none;
+            background: white;
+            border-bottom: 1px solid #eee;
+            margin: -4px 0 14px 0;
+        }
+
+        .style-tab-btn {
+            flex: 1;
+            padding: 11px 0;
+            background: none;
+            border: none;
+            color: #8898AA;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            position: relative;
+        }
+
+        .style-tab-btn.selected {
+            color: #3B82F6;
+            font-weight: 800;
+        }
+
+        .style-tab-btn.selected::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: #3B82F6;
+            border-radius: 3px 3px 0 0;
+        }
+
         .emoji-palette {
             display: flex;
             flex-wrap: wrap;
@@ -2839,6 +3089,8 @@
             color: #555;
         }
     </style>
+  <script type="module" crossorigin src="./assets/index-Dt5ey75Q.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CzhGa0jY.css">
 </head>
 
 <body>
@@ -3673,7 +3925,26 @@
 
                     <div class="menu-section">
                         <div class="menu-title"
-                            style="display: flex; justify-content: space-between; align-items: center; border-bottom: none; padding-bottom: 0;">
+                            style="display: flex; justify-content: space-between; align-items: center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
+                            <span>사용자 지도</span>
+                            <button type="button" class="mono-btn" onclick="addUserMapFromUrl()"
+                                style="padding: 6px 10px; font-size: 11px; font-weight: normal; background: #007bff; color: white; border: none; border-radius: 6px; justify-content:center; min-width:60px; margin-left: 10px;">
+                                불러오기
+                            </button>
+                        </div>
+                        <div id="user-map-list" style="margin-top: 6px;"></div>
+                        <div id="user-map-status"
+                            style="font-size: 11px; color: #888; margin-top: 6px; text-align: left;">
+                            <ul style="padding-left: 18px; margin: 6px 0 0 0; line-height: 1.4;">
+                                <li>로컬에서 Shp파일을 불러오거나 타일 지도의 URL을 입력하여 지도 위에 표시할 수 있습니다.</li>
+                                <li style="margin-top: 2px;">외부 지도 주소는 CORS가 허용되어야 표시됩니다.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="menu-section">
+                        <div class="menu-title"
+                            style="display: flex; justify-content: space-between; align-items: center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
                             <span>오프라인 지도</span>
                             <button id="btn-offline-map" class="mono-btn"
                                 style="padding: 6px 10px; font-size: 11px; font-weight: normal; background: #007bff; color: white; border: none; border-radius: 6px; justify-content:center; min-width:60px; margin-left: 10px;"
@@ -3720,7 +3991,8 @@
                         style="flex:1; overflow-y:auto; min-height:0; margin-bottom:var(--space-3);">
                     </div>
                     <!-- 하단 버튼 (2x2 그리드) -->
-                    <div style="flex-shrink:0; display:grid; grid-template-columns: 1fr 1fr; gap:var(--space-2);">
+                    <div class="project-bottom-actions"
+                        style="flex-shrink:0; display:grid; grid-template-columns: 1fr 1fr; gap:var(--space-2);">
                         <button onclick="createNewProject()" class="mono-btn"
                             style="justify-content:center; padding:var(--space-3); font-size:13px;">
                             <svg viewBox="0 0 24 24">
@@ -3956,8 +4228,15 @@
                 스타일 설정
             </div>
 
-            <div class="setting-group">
-                <div class="setting-title">색상 선택</div>
+            <div id="style-polygon-tabs" class="style-modal-tabs">
+                <button type="button" id="style-fill-tab-btn" class="style-tab-btn selected"
+                    onclick="selectStyleTab('fill')">면 설정</button>
+                <button type="button" id="style-line-tab-btn" class="style-tab-btn" onclick="selectStyleTab('line')">선
+                    설정</button>
+            </div>
+
+            <div class="setting-group" id="style-fill-color-section">
+                <div class="setting-title" id="style-color-title">색상 선택</div>
                 <div class="color-palette" id="style-color-palette">
                     <!-- 1행: 빨강/핑크 계열 -->
                     <div class="color-circle" data-color="#7F1D1D" style="background-color: #7F1D1D;"
@@ -4055,6 +4334,17 @@
                     <span id="style-fill-opacity-label"
                         style="font-weight:bold; font-size:14px; width:28px; text-align:center;">0.2</span>
                 </div>
+            </div>
+
+            <!-- 면 전용: 선 색상 -->
+            <div class="setting-group" id="style-line-color-section" style="display:none;">
+                <div class="setting-title">선 색상 선택</div>
+                <div class="style-choice-group" id="style-line-color-mode-choices" style="margin-bottom:10px;">
+                    <button class="style-btn" data-mode="same" onclick="selectLineColorMode('same')">면 색상과 동일</button>
+                    <button class="style-btn" data-mode="custom" onclick="selectLineColorMode('custom')">다른 색상
+                        선택</button>
+                </div>
+                <div class="color-palette" id="style-line-color-palette" style="display:none;"></div>
             </div>
 
             <!-- 선/면 공통: 선 모양 -->
@@ -4324,8 +4614,7 @@
     </div>
 
     <!-- 프로젝트 정렬 설정 모달 -->
-    <div id="project-sort-modal-overlay" class="nav-modal-overlay sort-modal-overlay"
-        onclick="closeProjectSortModal()">
+    <div id="project-sort-modal-overlay" class="nav-modal-overlay sort-modal-overlay" onclick="closeProjectSortModal()">
         <div class="nav-modal-content sort-modal-content" onclick="event.stopPropagation()">
             <div class="sort-modal-title">프로젝트 정렬 방식</div>
 
@@ -4413,7 +4702,8 @@
 
     <!-- 파일 입력 (숨김) - multiple: 다중 파일 선택, .zip: Shapefile 지원 -->
     <input type="file" id="geoJsonInput" style="display:none" onchange="handleFileSelect(this)"
-        accept=".geojson, .json, .gpx, .zip" multiple>
+        accept=".geojson,.json,.gpx,.zip,application/geo+json,application/json,application/gpx+xml,application/xml,text/xml,application/zip,application/x-zip-compressed,*/*"
+        multiple>
     <!-- 사진 확대 보기 모달 (갤러리 뷰어) -->
     <div id="photo-modal" onclick="if(event.target === this) closePhotoModal()">
         <!-- 상단 컨트롤 (다운로드, 닫기) -->
@@ -4499,11 +4789,10 @@
     </div>
 
     <!-- 메인 스크립트 연결 -->
-    <script type="module" src="script.js?v=2.5.0"></script>
     <script>
         // PWA 서비스 워커 등록
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.5.0', { updateViaCache: 'none' }));
+            window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' }));
         }
     </script>
 </body>
