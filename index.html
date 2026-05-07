@@ -57,6 +57,7 @@
             --sidebar-docked-width: 340px;
             --app-bottom-gap: max(18px, env(safe-area-inset-bottom));
             --app-bottom-gap-roomy: max(28px, env(safe-area-inset-bottom));
+            --app-floating-bottom: calc(18px + env(safe-area-inset-bottom));
         }
 
         @media (min-width: 700px) and (max-width: 1100px) and (orientation: portrait),
@@ -1249,9 +1250,22 @@
             min-width: 0;
             color: #333;
             font-size: 14px;
+            font-weight: 600;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        #content-map .map-layer-row-depth-3 .map-layer-name {
+            font-weight: 400;
+        }
+
+        #user-map-list .survey-name {
+            font-weight: 600;
+        }
+
+        #user-map-list .map-layer-row-depth-3 .survey-name {
+            font-weight: 400;
         }
 
         #user-map-list .map-layer-toggle {
@@ -1709,7 +1723,7 @@
             max-width: 500px;
             background: white;
             border-radius: 20px 20px 0 0;
-            padding: 24px 24px calc(24px + var(--app-bottom-gap));
+            padding: 24px 24px calc(24px + var(--app-floating-bottom));
             box-sizing: border-box;
             transform: translateY(100%);
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -2690,8 +2704,8 @@
             transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
             /* 기본적으로 화면 아래로 숨김 상태 (-50%는 가로축 중앙정렬용) */
             transform: translate(-50%, 100%);
-            /* 하단 여백 추가 (최소 24px + 노치 영역) */
-            padding: 0 var(--space-3) calc(var(--space-4) + var(--app-bottom-gap-roomy));
+            /* 플로팅 버튼과 동일하게 하단 safe-area 값에 반응 */
+            padding: 0 var(--space-3) calc(var(--space-4) + var(--app-floating-bottom));
             box-sizing: border-box;
             max-height: 72vh;
             overflow-y: auto;
@@ -2882,25 +2896,99 @@
             bottom: calc(118px + env(safe-area-inset-bottom)) !important;
         }
 
+        @supports (-webkit-touch-callout: none) {
+            #bottom-sheet {
+                padding-bottom: max(18px, env(safe-area-inset-bottom));
+            }
+
+            .nav-modal-content {
+                padding-bottom: max(24px, env(safe-area-inset-bottom));
+            }
+
+            @media (display-mode: standalone) {
+                .record-fab {
+                    bottom: 18px;
+                }
+
+                body.has-ad-main .record-fab {
+                    bottom: 118px !important;
+                }
+            }
+        }
+
         /* 스타일 모달 전용 CSS */
         .color-palette {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
+            display: flex;
+            flex-direction: column;
             gap: 6px;
             margin-bottom: 12px;
-            justify-items: center;
+            align-items: stretch;
+        }
+
+        .palette-basic-row,
+        .palette-basic-swatches {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .palette-basic-row {
+            justify-content: flex-start;
+        }
+
+        .palette-basic-swatches {
+            min-width: 0;
+        }
+
+        .palette-grid {
+            display: none;
+            grid-template-columns: repeat(13, 1fr);
+            gap: 0;
+            overflow: hidden;
+            border-radius: 6px;
+        }
+
+        .color-palette.expanded .palette-grid {
+            display: grid;
         }
 
         .color-circle {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
+            width: 19px;
+            height: 19px;
+            border-radius: 0;
             cursor: pointer;
-            border: 1px solid rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.16);
             display: flex;
             align-items: center;
             justify-content: center;
             transition: transform 0.1s ease;
+        }
+
+        .palette-basic-row .color-circle {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1;
+        }
+
+        .palette-basic-swatches {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            flex: 1;
+            max-width: calc(100% - 30px);
+            min-width: 0;
+        }
+
+        .palette-grid .color-circle {
+            width: 100%;
+            aspect-ratio: 1;
+            height: auto;
+            border: 0;
+        }
+
+        .palette-grid-spacer {
+            width: 100%;
+            aspect-ratio: 1;
+            background: transparent;
         }
 
         .color-circle.selected {
@@ -2908,6 +2996,60 @@
             border-width: 2px;
             transform: scale(1.1);
             box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .palette-expand-btn {
+            width: 22px;
+            height: 22px;
+            margin-left: 8px;
+            border-radius: 50%;
+            border: 2px solid #22c55e;
+            background: #fff;
+            color: #7c3aed;
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .palette-color-view-btn {
+            display: none;
+            width: 100%;
+            height: 36px;
+            border: 0;
+            border-radius: 4px;
+            background: #e5e5e5;
+            color: #333;
+            font-size: 13px;
+            line-height: 36px;
+            text-align: center;
+            box-sizing: border-box;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #style-modal .color-palette {
+            max-width: 452px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .color-palette.expanded .palette-color-view-btn {
+            display: block;
+        }
+
+        .color-picker-input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+            pointer-events: none;
         }
 
         .transparent-btn {
@@ -2984,6 +3126,10 @@
             flex-wrap: wrap;
             gap: 8px;
             margin-bottom: 12px;
+            max-height: 80px;
+            overflow-y: auto;
+            padding-right: 2px;
+            -webkit-overflow-scrolling: touch;
         }
 
         .emoji-btn {
@@ -3089,7 +3235,7 @@
             color: #555;
         }
     </style>
-  <script type="module" crossorigin src="./assets/index-Dt5ey75Q.js"></script>
+  <script type="module" crossorigin src="./assets/index-Dc4H-uRR.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-CzhGa0jY.css">
 </head>
 
@@ -3924,44 +4070,52 @@
                     </div>
 
                     <div class="menu-section">
-                        <div class="menu-title"
-                            style="display: flex; justify-content: space-between; align-items: center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
+                        <div class="menu-title accordion-header" onclick="toggleAccordion('section-user-map', this)"
+                            style="cursor:pointer; display: flex; justify-content: space-between; align-items: center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
                             <span>사용자 지도</span>
-                            <button type="button" class="mono-btn" onclick="addUserMapFromUrl()"
-                                style="padding: 6px 10px; font-size: 11px; font-weight: normal; background: #007bff; color: white; border: none; border-radius: 6px; justify-content:center; min-width:60px; margin-left: 10px;">
-                                불러오기
-                            </button>
                         </div>
-                        <div id="user-map-list" style="margin-top: 6px;"></div>
-                        <div id="user-map-status"
-                            style="font-size: 11px; color: #888; margin-top: 6px; text-align: left;">
-                            <ul style="padding-left: 18px; margin: 6px 0 0 0; line-height: 1.4;">
-                                <li>로컬에서 Shp파일을 불러오거나 타일 지도의 URL을 입력하여 지도 위에 표시할 수 있습니다.</li>
-                                <li style="margin-top: 2px;">외부 지도 주소는 CORS가 허용되어야 표시됩니다.</li>
-                            </ul>
+                        <div id="section-user-map" class="accordion-content" style="display: block;">
+                            <div id="user-map-list" style="margin-top: 6px;"></div>
+                            <div id="user-map-status"
+                                style="font-size: 11px; color: #888; margin-top: 6px; text-align: left;">
+                                <ul style="padding-left: 18px; margin: 6px 0 0 0; line-height: 1.4;">
+                                    <li>로컬에서 Shp파일을 불러오거나 타일 지도의 URL을 입력하여 지도 위에 표시할 수 있습니다.</li>
+                                    <li style="margin-top: 2px;">외부 지도 주소는 CORS가 허용되어야 표시됩니다.</li>
+                                </ul>
+                            </div>
+                            <button type="button" class="mono-btn" onclick="addUserMapFromUrl()"
+                                style="width:100%; min-height:40px; margin-top:10px; padding: 9px 12px; font-size: 12px; font-weight: 700; background: #007bff; color: white; border: none; border-radius: 6px; justify-content:center;">
+                                <svg viewBox="0 0 24 24"
+                                    style="width:14px;height:14px;fill:currentColor;margin-right:4px;">
+                                    <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z" />
+                                </svg>
+                                <span>불러오기</span>
+                            </button>
                         </div>
                     </div>
 
                     <div class="menu-section">
-                        <div class="menu-title"
-                            style="display: flex; justify-content: space-between; align-items: center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
+                        <div class="menu-title accordion-header" onclick="toggleAccordion('section-offline-map', this)"
+                            style="cursor:pointer; display: flex; justify-content: space-between; align-items: center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
                             <span>오프라인 지도</span>
+                        </div>
+                        <div id="section-offline-map" class="accordion-content" style="display: block;">
+                            <div id="offline-map-status"
+                                style="font-size: 11px; color: #888; margin-top: 6px; text-align: left;">
+                                <ul style="padding-left: 18px; margin: 6px 0 0 0; line-height: 1.4;">
+                                    <li>15레벨 이상 확대 시 현재 화면의 지도를 다운로드할 수 있습니다.</li>
+                                    <li style="margin-top: 2px;">다운로드 후 오프라인 상태에서 지도를 확인할 수 있습니다.</li>
+                                </ul>
+                            </div>
                             <button id="btn-offline-map" class="mono-btn"
-                                style="padding: 6px 10px; font-size: 11px; font-weight: normal; background: #007bff; color: white; border: none; border-radius: 6px; justify-content:center; min-width:60px; margin-left: 10px;"
+                                style="width:100%; min-height:40px; margin-top:10px; padding: 9px 12px; font-size: 12px; font-weight: 700; background: #007bff; color: white; border: none; border-radius: 6px; justify-content:center;"
                                 disabled onclick="downloadOfflineMap()">
                                 <svg viewBox="0 0 24 24"
-                                    style="width:14px;height:14px;fill:currentColor;margin-right:2px;">
+                                    style="width:14px;height:14px;fill:currentColor;margin-right:4px;">
                                     <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
                                 </svg>
                                 <span id="btn-offline-map-text">다운로드</span>
                             </button>
-                        </div>
-                        <div id="offline-map-status"
-                            style="font-size: 11px; color: #888; margin-top: 6px; text-align: left;">
-                            <ul style="padding-left: 18px; margin: 6px 0 0 0; line-height: 1.4;">
-                                <li>15레벨 이상 확대 시 현재 화면의 지도를 다운로드할 수 있습니다.</li>
-                                <li style="margin-top: 2px;">다운로드 후 오프라인 상태에서 지도를 확인할 수 있습니다.</li>
-                            </ul>
                         </div>
                     </div>
 
@@ -4329,10 +4483,10 @@
             <div class="setting-group" id="style-polygon-section" style="display:none;">
                 <div class="setting-title">면 투명도</div>
                 <div style="display:flex; align-items:center; gap: 10px;">
-                    <input type="range" id="style-fill-opacity" min="0" max="1" value="0.2" step="0.1" style="flex:1;"
+                    <input type="range" id="style-fill-opacity" min="0" max="1" value="0.2" step="0.05" style="flex:1;"
                         oninput="updateFillOpacityLabel(this.value)" onchange="selectFillOpacity(this.value)">
                     <span id="style-fill-opacity-label"
-                        style="font-weight:bold; font-size:14px; width:28px; text-align:center;">0.2</span>
+                        style="font-weight:bold; font-size:14px; width:34px; text-align:center;">0.2</span>
                 </div>
             </div>
 
@@ -4361,10 +4515,10 @@
             <div class="setting-group" id="style-line-weight-section">
                 <div class="setting-title">선 굵기</div>
                 <div style="display:flex; align-items:center; gap: 10px;">
-                    <input type="range" id="style-line-weight" min="1" max="5" value="3" step="1" style="flex:1;"
+                    <input type="range" id="style-line-weight" min="1" max="5" value="3" step="0.5" style="flex:1;"
                         oninput="updateLineWeightLabel(this.value)" onchange="selectLineWeight(this.value)">
                     <span id="style-line-weight-label"
-                        style="font-weight:bold; font-size:14px; width:20px; text-align:center;">3</span>
+                        style="font-weight:bold; font-size:14px; width:26px; text-align:center;">3</span>
                 </div>
             </div>
 
@@ -4528,6 +4682,11 @@
                 <div class="settings-row settings-link-row"
                     onclick="window.open('https://getupnote.com/share/notes/ixIE9WYlfTPrpRbRIt446szGaIn2/019cd019-143e-772b-9609-7720b35fb002', '_blank')">
                     <div class="settings-label">앱 사용 설명서</div>
+                    <span class="settings-chevron"></span>
+                </div>
+                <div class="settings-row settings-link-row"
+                    onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSdfvKXEvISCs3G8mQDiN9uNMCRa0q_s-o1qkZw4oPv0rT-ufg/viewform?usp=preview', '_blank')">
+                    <div class="settings-label">피드백 보내기</div>
                     <span class="settings-chevron"></span>
                 </div>
                 <div class="settings-row settings-version-row">
