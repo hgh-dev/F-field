@@ -54,7 +54,7 @@
             --color-panel: #ffffff;
             --color-muted-bg: #f8f9fa;
             --color-primary: #3B82F6;
-            --sidebar-docked-width: 340px;
+            --sidebar-docked-width: 360px;
             --app-bottom-gap: max(18px, env(safe-area-inset-bottom));
             --app-bottom-gap-roomy: max(28px, env(safe-area-inset-bottom));
             --app-floating-bottom: calc(18px + env(safe-area-inset-bottom));
@@ -828,8 +828,8 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 80%;
-            max-width: 340px;
+            width: 86%;
+            max-width: 360px;
             height: 100%;
             background: #F2F4F6;
             box-shadow: 5px 0 25px rgba(0, 0, 0, 0.15);
@@ -1149,8 +1149,8 @@
             z-index: 1;
         }
 
-        #content-map .map-layer-row-depth-3 > *,
-        #user-map-list .map-layer-row-depth-3 > * {
+        #content-map .map-layer-row-depth-3>*,
+        #user-map-list .map-layer-row-depth-3>* {
             position: relative;
             z-index: 2;
         }
@@ -1245,12 +1245,33 @@
             background: transparent;
         }
 
-        #content-map .map-layer-name {
+        #content-map .map-layer-text {
             flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 1px;
+        }
+
+        #content-map .map-layer-name {
+            display: block;
             min-width: 0;
             color: #333;
             font-size: 14px;
             font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #content-map .map-layer-meta {
+            display: block;
+            min-width: 0;
+            color: #888 !important;
+            font-size: 11px !important;
+            font-weight: 400;
+            line-height: 1.2;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -1503,19 +1524,21 @@
         /* 기록 리스트 스타일 */
         .survey-list-container {
             border: 1px solid #eee;
-            border-radius: 12px;
+            border-radius: 8px;
             background: #fdfdfd;
             min-height: 100px;
             /* 높이 제한 해제: 화면 전체 활용 */
+            padding: 0 6px;
             margin-bottom: 15px;
             box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.03);
+            box-sizing: border-box;
         }
 
         .survey-item {
             display: flex;
             align-items: center;
             gap: 6px;
-            padding: 9px 10px;
+            padding: 8px 0;
             border-bottom: 1px solid #f0f0f0;
             background: white;
             transition: background 0.2s;
@@ -1526,12 +1549,183 @@
             background-color: #f7f9fc;
         }
 
+        .survey-group {
+            background: #fff;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .survey-group-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 0;
+            background: #fff;
+            min-width: 0;
+        }
+
+        .survey-group-toggle,
+        .survey-row-toggle-spacer {
+            width: 18px;
+            height: 28px;
+            border: 0;
+            background: transparent;
+            color: #6b7280;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .survey-row-toggle-spacer {
+            visibility: hidden;
+            cursor: default;
+        }
+
+        .survey-group-toggle svg,
+        .survey-row-toggle-spacer svg {
+            width: 12px;
+            height: 12px;
+            fill: currentColor;
+            transition: transform 0.15s ease;
+        }
+
+        .survey-group-toggle.expanded svg {
+            transform: rotate(90deg);
+        }
+
+        .survey-group-icon {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            flex-shrink: 0;
+        }
+
+        .survey-group-icon svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+
+        .survey-group-name {
+            flex: 1;
+            min-width: 0;
+            font-size: 13px;
+            font-weight: 700;
+            color: #334155;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+        }
+
+        .survey-group-meta {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 1px;
+            font-weight: 400;
+        }
+
+        .survey-group-items {
+            position: relative;
+            margin-left: 24px;
+            background: #fff;
+        }
+
+        .survey-group-items::before {
+            content: '';
+            position: absolute;
+            left: 9px;
+            top: 0;
+            bottom: 22px;
+            width: 1px;
+            background: #d1d5db;
+            z-index: 1;
+        }
+
+        .survey-group-items .survey-item {
+            position: relative;
+            margin-left: 24px;
+            padding-left: 0;
+            border-bottom: none;
+        }
+
+        .survey-group-items .survey-row-toggle-spacer {
+            display: none;
+        }
+
+        .survey-group-items .survey-item::before {
+            content: '';
+            position: absolute;
+            left: -15px;
+            top: 50%;
+            width: 12px;
+            height: 1px;
+            background: #d1d5db;
+            z-index: 1;
+        }
+
+        .survey-group-items .survey-item>* {
+            position: relative;
+            z-index: 2;
+        }
+
+        .record-group-select-item {
+            width: 100%;
+            min-height: 44px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+            padding: 9px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-align: left;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        .record-group-select-item:active {
+            background: #f8fafc;
+        }
+
+        .record-group-select-icon {
+            width: 24px;
+            height: 24px;
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .record-group-select-icon svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+
+        .record-group-select-name {
+            min-width: 0;
+            flex: 1;
+            color: #334155;
+            font-size: 14px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .survey-check-area {
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            width: 24px;
+            width: 16px;
         }
 
         .survey-checkbox {
@@ -3235,7 +3429,7 @@
             color: #555;
         }
     </style>
-  <script type="module" crossorigin src="./assets/index-Dc4H-uRR.js"></script>
+  <script type="module" crossorigin src="./assets/index-DLtr35Ho.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-CzhGa0jY.css">
 </head>
 
@@ -3717,12 +3911,12 @@
                                 <div id="base-layer-options" class="accordion-content"
                                     style="margin-top: 0; padding: 10px 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">
                                     <label class="option-row" style="padding:8px 0;">
-                                        <span style="flex:1;">위성지도(VWorld)</span>
+                                        <span style="flex:1;">위성지도</span>
                                         <input type="radio" name="baseMap" value="satellite"
                                             onchange="changeBaseMap('satellite')">
                                     </label>
                                     <label class="option-row" style="padding:8px 0;">
-                                        <span style="flex:1;">위성지도(Esri)</span>
+                                        <span style="flex:1;">위성지도</span>
                                         <input type="radio" name="baseMap" value="esri"
                                             onchange="changeBaseMap('esri')">
                                     </label>
@@ -4076,13 +4270,6 @@
                         </div>
                         <div id="section-user-map" class="accordion-content" style="display: block;">
                             <div id="user-map-list" style="margin-top: 6px;"></div>
-                            <div id="user-map-status"
-                                style="font-size: 11px; color: #888; margin-top: 6px; text-align: left;">
-                                <ul style="padding-left: 18px; margin: 6px 0 0 0; line-height: 1.4;">
-                                    <li>로컬에서 Shp파일을 불러오거나 타일 지도의 URL을 입력하여 지도 위에 표시할 수 있습니다.</li>
-                                    <li style="margin-top: 2px;">외부 지도 주소는 CORS가 허용되어야 표시됩니다.</li>
-                                </ul>
-                            </div>
                             <button type="button" class="mono-btn" onclick="addUserMapFromUrl()"
                                 style="width:100%; min-height:40px; margin-top:10px; padding: 9px 12px; font-size: 12px; font-weight: 700; background: #007bff; color: white; border: none; border-radius: 6px; justify-content:center;">
                                 <svg viewBox="0 0 24 24"
@@ -4091,6 +4278,13 @@
                                 </svg>
                                 <span>불러오기</span>
                             </button>
+                            <div id="user-map-status"
+                                style="font-size: 11px; color: #888; margin-top: 6px; text-align: left;">
+                                <ul style="padding-left: 18px; margin: 6px 0 0 0; line-height: 1.4;">
+                                    <li>로컬에서 Shp파일을 불러오거나 타일 지도의 URL을 입력하여 지도 위에 표시할 수 있습니다.</li>
+                                    <li style="margin-top: 2px;">외부 지도 주소는 CORS가 허용되어야 표시됩니다.</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
 
@@ -4100,13 +4294,6 @@
                             <span>오프라인 지도</span>
                         </div>
                         <div id="section-offline-map" class="accordion-content" style="display: block;">
-                            <div id="offline-map-status"
-                                style="font-size: 11px; color: #888; margin-top: 6px; text-align: left;">
-                                <ul style="padding-left: 18px; margin: 6px 0 0 0; line-height: 1.4;">
-                                    <li>15레벨 이상 확대 시 현재 화면의 지도를 다운로드할 수 있습니다.</li>
-                                    <li style="margin-top: 2px;">다운로드 후 오프라인 상태에서 지도를 확인할 수 있습니다.</li>
-                                </ul>
-                            </div>
                             <button id="btn-offline-map" class="mono-btn"
                                 style="width:100%; min-height:40px; margin-top:10px; padding: 9px 12px; font-size: 12px; font-weight: 700; background: #007bff; color: white; border: none; border-radius: 6px; justify-content:center;"
                                 disabled onclick="downloadOfflineMap()">
@@ -4116,6 +4303,13 @@
                                 </svg>
                                 <span id="btn-offline-map-text">다운로드</span>
                             </button>
+                            <div id="offline-map-status"
+                                style="font-size: 11px; color: #888; margin-top: 6px; text-align: left;">
+                                <ul style="padding-left: 18px; margin: 6px 0 0 0; line-height: 1.4;">
+                                    <li>15레벨 이상 확대 시 현재 화면의 지도를 다운로드할 수 있습니다.</li>
+                                    <li style="margin-top: 2px;">다운로드 후 오프라인 상태에서 지도를 확인할 수 있습니다.</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
 
@@ -4229,6 +4423,12 @@
                                         <path d="M14 13v-3l7 4.5-7 4.5v-3H9v-3h5z" />
                                     </svg>
                                     선택 이동
+                                </div>
+                                <div class="dropdown-item" onclick="groupSelectedLayers()">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M7 4h13v10H7V4zm-3 3h2v8h11v2H4V7zm-3 3h2v8h11v2H1V10z" />
+                                    </svg>
+                                    선택 그룹화
                                 </div>
                                 <div class="dropdown-item" onclick="exportSelectedLayers()">
                                     <svg viewBox="0 0 24 24">
@@ -4855,6 +5055,22 @@
                 새 프로젝트 생성</button>
 
             <button onclick="closeMoveProjectModal()"
+                style="width:100%; padding:14px; background:#f5f5f5; border:none; border-radius:12px; font-size:15px; font-weight:bold; color:#666;">취소</button>
+        </div>
+    </div>
+
+    <!-- 기록 그룹 선택 모달 -->
+    <div id="record-group-select-modal-overlay" class="nav-modal-overlay center-modal-overlay"
+        onclick="closeAddRecordToGroupModal()">
+        <div class="nav-modal-content center-modal-content compact" onclick="event.stopPropagation()">
+            <div class="nav-modal-header"
+                style="font-size:18px; font-weight:bold; margin-bottom:10px; text-align:center;">그룹에 추가</div>
+            <p id="record-group-select-empty"
+                style="display:none; text-align:center; color:#666; font-size:13px; margin:0 0 18px;">추가할 그룹이 없습니다.</p>
+            <div id="record-group-select-list"
+                style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px; max-height:240px; overflow-y:auto;">
+            </div>
+            <button onclick="closeAddRecordToGroupModal()"
                 style="width:100%; padding:14px; background:#f5f5f5; border:none; border-radius:12px; font-size:15px; font-weight:bold; color:#666;">취소</button>
         </div>
     </div>
