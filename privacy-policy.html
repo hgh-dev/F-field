@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>F-Field 개인정보처리방침</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 28px 20px 48px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #1f2937;
+            line-height: 1.65;
+            background: #fff;
+        }
+
+        main {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin: 0 0 6px;
+            font-size: 22px;
+            line-height: 1.3;
+            color: #111827;
+        }
+
+        h2 {
+            margin: 28px 0 8px;
+            font-size: 16px;
+            color: #111827;
+        }
+
+        p,
+        li {
+            font-size: 14px;
+        }
+
+        .meta {
+            margin: 0 0 24px;
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>F-Field 개인정보처리방침</h1>
+        <p class="meta">시행일: 2026년 5월 14일</p>
+
+        <p>F-Field는 현장 지도 확인, 위치 기록, 도형 기록, 사진 첨부, 파일 저장 및 불러오기 기능을 제공하기 위해 필요한 범위의 정보만 처리합니다.
+            현장 기록과 프로젝트 데이터는 기본적으로 사용자의 기기에 저장되며, 사용자가 직접 내보내기·공유를 실행하지 않는 한 앱이 임의로 외부에 전송하지 않습니다.</p>
+
+        <h2>1. 처리하는 정보</h2>
+        <ul>
+            <li>계정 정보: Google 로그인과 Supabase Auth를 통해 이메일, 사용자 ID, 프로필 이름, 프로필 이미지 주소가 처리될 수 있습니다.</li>
+            <li>권한 정보: 로그인한 사용자의 권한 확인을 위해 사용자 ID, 권한 등급, 권한 부여 출처가 Supabase entitlements 테이블에 저장·조회됩니다.</li>
+            <li>인증코드 정보: 사용자가 입력한 인증코드는 Supabase Edge Function에서 검증됩니다. 인증코드 원문은 저장하지 않고, 서버에는 해시값과 사용 여부만 보관합니다.</li>
+            <li>위치 정보: 현재 위치 표시, 위치 추적, GPS 트랙 기록, 도형 기록, 내 위치 공유 기능에 사용됩니다.</li>
+            <li>사진 및 파일 정보: 사용자가 선택한 사진, GeoJSON, GPX, SHP 파일 내용이 현장 기록과 함께 기기 내부에 저장될 수 있습니다.</li>
+            <li>앱 설정 정보: 좌표 표시 방식, 트랙 기록 간격, 지도 설정 등 사용자가 선택한 설정값이 기기에 저장될 수 있습니다.</li>
+        </ul>
+
+        <h2>2. 정보 사용 목적</h2>
+        <ul>
+            <li>지도 위 현재 위치와 현장 기록 표시</li>
+            <li>GPS 트랙 및 사진이 포함된 현장 기록 생성</li>
+            <li>Google 로그인, 권한 확인, 인증코드 검증</li>
+            <li>기록 데이터 백업, 복원, 파일 불러오기 및 내보내기</li>
+            <li>주소 검색, 지적 조회, 배경지도 표시</li>
+            <li>앱 설정 저장 및 사용자 편의 기능 제공</li>
+        </ul>
+
+        <h2>3. 외부 서비스</h2>
+        <p>F-Field는 Google 로그인과 권한 확인을 위해 Google 및 Supabase를 사용합니다. 지도 표시, 주소 검색, 지적 조회, 배경지도 표시를 위해 VWorld, Esri,
+            OpenStreetMap 등 외부 지도/API 서비스에 요청이 전송될 수 있습니다. 이 과정에서 IP 주소, 요청한 지도 영역, 기기·브라우저 정보 등이 각 외부 서비스의 정책에 따라 처리될 수
+            있습니다.</p>
+
+        <h2>4. 보관 및 삭제</h2>
+        <p>기기 내부에 저장된 현장 기록, 프로젝트, 사진, 설정값은 사용자가 삭제하거나 앱 데이터를 초기화하기 전까지 기기에 보관됩니다. 계정 정보와 권한 정보는 Supabase에 저장되며,
+            회원탈퇴 시 Supabase 계정과 권한 정보가 삭제됩니다. 단, 기기에 저장된 현장 기록, 프로젝트, 사진은 회원탈퇴만으로 자동 삭제되지 않으므로 별도 초기화가 필요할 수 있습니다.</p>
+
+        <h2>5. 공유</h2>
+        <p>F-Field는 사용자의 현장 기록이나 사진을 임의로 제3자에게 판매하거나 제공하지 않습니다. 다만 사용자가 파일 저장, 공유, 내 위치 공유, 외부 지도 열기 기능을 직접 실행하는 경우
+            사용자가 선택한 앱 또는 외부 서비스로 정보가 전달될 수 있습니다.</p>
+
+        <h2>6. 이용자의 선택과 권리</h2>
+        <ul>
+            <li>위치 권한과 사진 접근 권한은 기기 설정에서 변경할 수 있습니다.</li>
+            <li>앱에 저장된 현장 기록과 프로젝트는 앱 내 삭제 기능 또는 기기 앱 데이터 초기화를 통해 삭제할 수 있습니다.</li>
+            <li>계정 삭제는 설정의 계정 메뉴에서 회원탈퇴를 통해 요청할 수 있습니다.</li>
+        </ul>
+
+        <h2>7. 문의</h2>
+        <p>개인정보 처리 관련 문의는 hussell.app@gmail.com 으로 전달할 수 있습니다.</p>
+    </main>
+</body>
+
+</html>

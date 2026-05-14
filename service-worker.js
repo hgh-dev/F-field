@@ -10,6 +10,13 @@
 
 const STATIC_CACHE_NAME = 'F-field-v3.0.0';
 const MAP_CACHE_NAME = 'F-field-map-v1';
+const MAP_CACHE_MAX_ITEMS = 15000;
+const MAP_CACHE_TRIM_WRITE_INTERVAL = 100;
+const MAP_CACHE_TRIM_TIME_INTERVAL_MS = 60 * 1000;
+
+let mapCacheWriteCount = 0;
+let lastMapCacheTrimAt = 0;
+let mapCacheTrimInProgress = false;
 
 // 1. 설치: Vite dist에서 루트에 남는 기본 앱 셸만 캐싱합니다.
 const STATIC_URLS = [
@@ -28,17 +35,33 @@ self.addEventListener('install', (event) => {
 });
 
 // 가장 오래된 캐시 지우기 함수 (일괄 삭제 방식)
-function trimCache(cacheName, maxItems) {
-    caches.open(cacheName).then((cache) => {
-        cache.keys().then((keys) => {
-            if (keys.length > maxItems) {
-                // 초과한 개수만큼 잘라서 삭제 대상 배열 만들기
-                const keysToDelete = keys.slice(0, keys.length - maxItems);
-                Promise.all(keysToDelete.map(key => cache.delete(key)))
-                    .then(() => console.log(`[Service Worker] Deleted ${keysToDelete.length} old cache items from ${cacheName}.`));
-            }
+async function trimCache(cacheName, maxItems) {
+    const cache = await caches.open(cacheName);
+    const keys = await cache.keys();
+    if (keys.length <= maxItems) return;
+
+    const keysToDelete = keys.slice(0, keys.length - maxItems);
+    await Promise.all(keysToDelete.map(key => cache.delete(key)));
+    console.log(`[Service Worker] Deleted ${keysToDelete.length} old cache items from ${cacheName}.`);
+}
+
+function scheduleMapCacheTrim() {
+    mapCacheWriteCount += 1;
+
+    const now = Date.now();
+    const hasEnoughWrites = mapCacheWriteCount >= MAP_CACHE_TRIM_WRITE_INTERVAL;
+    const hasEnoughTime = now - lastMapCacheTrimAt >= MAP_CACHE_TRIM_TIME_INTERVAL_MS;
+    if (!hasEnoughWrites || !hasEnoughTime || mapCacheTrimInProgress) return;
+
+    mapCacheWriteCount = 0;
+    lastMapCacheTrimAt = now;
+    mapCacheTrimInProgress = true;
+
+    trimCache(MAP_CACHE_NAME, MAP_CACHE_MAX_ITEMS)
+        .catch((error) => console.warn('[Service Worker] Failed to trim map cache:', error))
+        .finally(() => {
+            mapCacheTrimInProgress = false;
         });
-    });
 }
 
 // 2. 활성화: 구버전 캐시 정리
@@ -57,10 +80,24 @@ self.addEventListener('activate', (event) => {
 
 // 3. 요청 처리 (여기가 핵심!)
 self.addEventListener('fetch', (event) => {
-    const url = event.request.url;
+    const requestUrl = new URL(event.request.url);
+    const url = requestUrl.href;
+
+    if (event.request.method !== 'GET' || url.includes('supabase.co')) {
+        return;
+    }
+
+    if (requestUrl.pathname.endsWith('/version.json')) {
+        return;
+    }
+
     const isVworldRequest = url.includes('api.vworld.kr');
     const isVworldWmtsTileRequest = isVworldRequest && url.includes('/req/wmts');
-    const isStaticTileRequest = url.includes('arcgisonline.com') || url.includes('openstreetmap.org') || url.includes('hgh-dev.github.io');
+    const isOwnStaticMapTileRequest = requestUrl.hostname === 'hgh-dev.github.io'
+        && requestUrl.pathname.startsWith('/map_data/');
+    const isStaticTileRequest = url.includes('arcgisonline.com')
+        || url.includes('openstreetmap.org')
+        || isOwnStaticMapTileRequest;
     const isOfflineMapTileRequest = isVworldWmtsTileRequest || isStaticTileRequest;
 
     // 주소/검색/데이터 API는 오프라인 타일이 아니므로 캐싱하지 않습니다.
@@ -81,7 +118,7 @@ self.addEventListener('fetch', (event) => {
                         fetch(event.request).then((networkResponse) => {
                             if (networkResponse && (networkResponse.ok || networkResponse.type === 'opaque')) {
                                 cache.put(event.request, networkResponse.clone()).then(() => {
-                                    trimCache(MAP_CACHE_NAME, 15000);
+                                    scheduleMapCacheTrim();
                                 });
                             }
                             return networkResponse;

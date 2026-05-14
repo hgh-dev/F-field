@@ -689,6 +689,10 @@
             --record-icon-color: #ec4899;
         }
 
+        #auth-status-btn.premium {
+            color: #0f766e;
+        }
+
         .active-btn {
             background: #eff6ff;
             color: var(--color-primary) !important;
@@ -876,6 +880,15 @@
             background: #e4e6eb;
         }
 
+        .btn-sidebar-action.signed-in {
+            background: #eff6ff;
+            color: #2563eb;
+        }
+
+        .btn-sidebar-action.signed-in:active {
+            background: #dbeafe;
+        }
+
         /* 사이드바 탭 */
         .sidebar-tabs {
             display: flex;
@@ -1005,6 +1018,11 @@
             box-sizing: border-box;
         }
 
+        body.is-native-app #content-project.active,
+        body.is-native-app #content-record.active {
+            padding-bottom: calc(32px + var(--app-floating-bottom));
+        }
+
         .project-bottom-actions {
             padding-bottom: 0;
         }
@@ -1114,45 +1132,9 @@
             border-radius: 0 !important;
         }
 
-        #content-map .accordion-content[id$="-options"],
-        #user-map-list .user-map-category-rows {
-            position: relative;
-        }
-
-        #content-map .accordion-content[id$="-options"]::before,
-        #user-map-list .user-map-category-rows::before {
-            content: '';
-            position: absolute;
-            left: 33px;
-            top: 0;
-            bottom: 22px;
-            width: 1px;
-            background: #d1d5db;
-            z-index: 1;
-        }
-
         #content-map .map-layer-row-depth-3,
         #user-map-list .map-layer-row-depth-3 {
             margin-left: 24px;
-            position: relative;
-        }
-
-        #content-map .map-layer-row-depth-3::before,
-        #user-map-list .map-layer-row-depth-3::before {
-            content: '';
-            position: absolute;
-            left: 9px;
-            top: 50%;
-            width: 10px;
-            height: 1px;
-            background: #d1d5db;
-            z-index: 1;
-        }
-
-        #content-map .map-layer-row-depth-3>*,
-        #user-map-list .map-layer-row-depth-3>* {
-            position: relative;
-            z-index: 2;
         }
 
         #content-map .vworld-legend,
@@ -1161,6 +1143,10 @@
             margin-top: -2px !important;
             margin-bottom: 8px !important;
             padding: 0 !important;
+        }
+
+        #content-map .topic-map-groups .vworld-legend {
+            margin-left: 54px !important;
         }
 
         #user-map-list .survey-item {
@@ -1218,6 +1204,11 @@
         #content-map .map-layer-row input[type="checkbox"]::after,
         #user-map-list .map-layer-row-depth-3 input[type="checkbox"]::after {
             content: none;
+        }
+
+        #content-map .map-layer-row input[type="checkbox"]:disabled {
+            opacity: 0.45;
+            cursor: default;
         }
 
         #content-map .map-layer-style-placeholder {
@@ -1631,24 +1622,11 @@
         }
 
         .survey-group-items {
-            position: relative;
             margin-left: 24px;
             background: #fff;
         }
 
-        .survey-group-items::before {
-            content: '';
-            position: absolute;
-            left: 9px;
-            top: 0;
-            bottom: 22px;
-            width: 1px;
-            background: #d1d5db;
-            z-index: 1;
-        }
-
         .survey-group-items .survey-item {
-            position: relative;
             margin-left: 24px;
             padding-left: 0;
             border-bottom: none;
@@ -1656,22 +1634,6 @@
 
         .survey-group-items .survey-row-toggle-spacer {
             display: none;
-        }
-
-        .survey-group-items .survey-item::before {
-            content: '';
-            position: absolute;
-            left: -15px;
-            top: 50%;
-            width: 12px;
-            height: 1px;
-            background: #d1d5db;
-            z-index: 1;
-        }
-
-        .survey-group-items .survey-item>* {
-            position: relative;
-            z-index: 2;
         }
 
         .record-group-select-item {
@@ -1928,28 +1890,29 @@
         }
 
         .settings-page-overlay {
-            background: rgba(0, 0, 0, 0.45);
-            align-items: center;
-            justify-content: center;
-            padding: calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));
+            background: #f2f3f5;
+            align-items: stretch;
+            justify-content: stretch;
+            padding: 0;
             box-sizing: border-box;
         }
 
         .settings-page-content {
             width: 100%;
-            max-width: 420px;
-            min-height: 0;
-            max-height: min(620px, 100%);
+            height: 100%;
+            max-width: none;
+            min-height: 100%;
+            max-height: none;
             padding: 0;
-            border-radius: 16px;
+            border-radius: 0;
             overflow-y: auto;
-            transform: translateY(16px) scale(0.98);
-            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.28);
+            transform: translateX(100%);
+            box-shadow: none;
             -webkit-overflow-scrolling: touch;
         }
 
         .nav-modal-overlay.visible .settings-page-content {
-            transform: translateY(0) scale(1);
+            transform: translateX(0);
         }
 
         .sort-modal-overlay {
@@ -1990,6 +1953,312 @@
 
         .center-modal-content.compact {
             max-width: 380px;
+        }
+
+        .auth-modal-content {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .auth-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .auth-modal-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .auth-modal-close {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 50%;
+            background: #f3f4f6;
+            color: #111827;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .auth-status-text {
+            font-size: 13px;
+            font-weight: 700;
+            color: #374151;
+        }
+
+        .auth-hint {
+            min-height: 34px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            color: #4b5563;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .auth-section {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .auth-section.hidden {
+            display: none;
+        }
+
+        .auth-summary {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .auth-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #f0f2f5;
+            color: #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 38px;
+        }
+
+        .auth-avatar.signed-in {
+            background: #eff6ff;
+            color: #2563eb;
+        }
+
+        .auth-avatar svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+
+        .auth-summary-main {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .auth-account-email {
+            margin-top: 3px;
+            color: #6b7280;
+            font-size: 12px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .auth-tier-badge {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 0 9px;
+            border-radius: 999px;
+            background: #f3f4f6;
+            color: #374151;
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 0;
+            text-transform: uppercase;
+        }
+
+        .auth-tier-badge.premium {
+            background: #ecfdf5;
+            color: #047857;
+        }
+
+        .auth-card {
+            padding: 13px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+
+        .auth-card-title {
+            color: #111827;
+            font-size: 13px;
+            font-weight: 900;
+            margin-bottom: 5px;
+        }
+
+        .auth-card-copy {
+            color: #6b7280;
+            font-size: 12px;
+            line-height: 1.45;
+            margin-bottom: 11px;
+        }
+
+        .auth-message {
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .auth-message.hidden {
+            display: none;
+        }
+
+        .auth-message[data-type="error"] {
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+
+        .auth-divider {
+            height: 1px;
+            background: #e5e7eb;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .auth-form.hidden {
+            display: none;
+        }
+
+        .auth-form input {
+            width: 100%;
+            height: 44px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 0 12px;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+
+        .auth-primary-btn,
+        .auth-secondary-btn {
+            width: 100%;
+            height: 44px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .auth-primary-btn {
+            background: #2563eb;
+            color: #fff;
+        }
+
+        .auth-primary-btn:disabled {
+            background: #9ca3af;
+            cursor: default;
+        }
+
+        .auth-google-btn {
+            width: 100%;
+            height: 44px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: #fff;
+            color: #111827;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .auth-google-mark {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            background: #4285f4;
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .auth-google-btn:disabled {
+            color: #6b7280;
+            background: #f9fafb;
+            cursor: default;
+        }
+
+        .auth-legal-copy {
+            color: #8a8f98;
+            font-size: 11px;
+            line-height: 1.45;
+            text-align: center;
+        }
+
+        .auth-secondary-btn {
+            background: #f3f4f6;
+            color: #111827;
+        }
+
+        .auth-danger-btn {
+            width: 100%;
+            height: 44px;
+            border: none;
+            border-radius: 8px;
+            background: #fef2f2;
+            color: #b91c1c;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .auth-danger-btn:disabled {
+            background: #f3f4f6;
+            color: #9ca3af;
+            cursor: default;
+        }
+
+        .auth-delete-link {
+            align-self: center;
+            border: none;
+            background: transparent;
+            color: #9ca3af;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 2px 6px;
+            cursor: pointer;
+        }
+
+        .auth-delete-link:active {
+            color: #b91c1c;
+        }
+
+        .delete-account-list {
+            margin: 0;
+            padding-left: 18px;
+            color: #4b5563;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .delete-account-confirm-input {
+            width: 100%;
+            height: 44px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 0 12px;
+            box-sizing: border-box;
+            font-size: 15px;
         }
 
         .center-modal-content.tall {
@@ -2100,6 +2369,189 @@
             text-align: center;
         }
 
+        .settings-account-row {
+            min-height: 62px;
+        }
+
+        .settings-account-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: #7e57c2;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 34px;
+            font-size: 15px;
+            font-weight: 500;
+            overflow: hidden;
+        }
+
+        .settings-account-avatar.signed-in {
+            background: #7e57c2;
+            color: #fff;
+        }
+
+        .settings-account-avatar.signed-out {
+            background: #f0f2f5;
+            color: #6b7280;
+        }
+
+        .settings-account-avatar.has-image {
+            background: #f0f2f5;
+        }
+
+        .settings-account-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .settings-account-avatar svg {
+            width: 21px;
+            height: 21px;
+            fill: currentColor;
+        }
+
+        .settings-account-main {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .settings-account-email {
+            color: #222;
+            font-size: 14px;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .settings-account-status {
+            color: #8a8f98;
+            font-size: 12px;
+            line-height: 1.35;
+            margin-top: 3px;
+        }
+
+        .settings-account-tier-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 48px;
+            height: 24px;
+            padding: 0 8px;
+            border-radius: 999px;
+            background: #f3f4f6;
+            color: #6b7280;
+            font-size: 10px;
+            font-weight: 900;
+            letter-spacing: 0;
+            flex: 0 0 auto;
+            box-sizing: border-box;
+        }
+
+        .settings-account-tier-badge.premium {
+            background: #ecfdf5;
+            color: #047857;
+        }
+
+        .account-actions-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        #account-actions-modal-overlay {
+            z-index: 7000;
+        }
+
+        #delete-account-modal-overlay {
+            z-index: 7100;
+        }
+
+        .account-actions-title {
+            color: #111827;
+            font-size: 15px;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 2px;
+        }
+
+        .settings-row.settings-code-row {
+            display: none;
+        }
+
+        .settings-row.settings-code-row.visible {
+            display: flex;
+        }
+
+        .settings-update-banner {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 14px 18px;
+            padding: 12px;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            background: #eff6ff;
+            box-sizing: border-box;
+        }
+
+        .settings-update-banner.visible {
+            display: flex;
+        }
+
+        .settings-update-banner-title {
+            color: #1d4ed8;
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+
+        .settings-update-banner-meta {
+            color: #64748b;
+            font-size: 11px;
+            line-height: 1.4;
+            margin-top: 2px;
+        }
+
+        .settings-update-banner-btn {
+            min-width: 74px;
+            height: 34px;
+            border: 0;
+            border-radius: 6px;
+            background: #2563eb;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            flex: 0 0 auto;
+        }
+
+        .settings-update-banner-btn:active {
+            transform: scale(0.98);
+        }
+
+        #btn-settings.has-update {
+            position: relative;
+        }
+
+        #btn-settings.has-update::after {
+            content: '';
+            position: absolute;
+            top: 7px;
+            right: 7px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #2563eb;
+            box-shadow: 0 0 0 2px #fff;
+        }
+
         .settings-section {
             background: #fff;
             border-bottom: 10px solid #f2f3f5;
@@ -2192,6 +2644,13 @@
             font-size: 14px;
             font-weight: 700;
             white-space: nowrap;
+        }
+
+        .settings-row-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            flex: 0 0 auto;
         }
 
         .settings-chevron {
@@ -2301,6 +2760,50 @@
 
         .settings-update-btn:active {
             transform: scale(0.98);
+        }
+
+        #settings-choice-modal-overlay {
+            z-index: 7060;
+        }
+
+        .settings-choice-modal-content {
+            width: min(340px, calc(100vw - 36px));
+            padding: 18px 18px 12px;
+        }
+
+        .settings-choice-modal-title {
+            color: #1f2933;
+            font-size: 17px;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .settings-choice-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .settings-choice-option {
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid #edf0f3;
+            color: #27313d;
+            font-size: 14px;
+            font-weight: 650;
+            cursor: pointer;
+        }
+
+        .settings-choice-option:last-child {
+            border-bottom: 0;
+        }
+
+        .settings-choice-option input {
+            width: 18px;
+            height: 18px;
+            accent-color: #1683e9;
+            flex: 0 0 auto;
         }
 
         .nav-app-list {
@@ -2567,6 +3070,17 @@
 
         .more-menu-item:active {
             background: #f5f5f5;
+        }
+
+        .more-menu-item.disabled {
+            color: #b0b7c3;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .more-menu-item.disabled svg {
+            color: #b0b7c3;
+            fill: currentColor;
         }
 
         .more-menu-item.danger {
@@ -3073,23 +3587,6 @@
             background-color: #555;
         }
 
-        /* === (일반 배포용) 광고 활성화 시 하단 UI 들림 처리 === */
-        body.has-ad-main #map {
-            bottom: 100px !important;
-        }
-
-        body.has-ad-main .action-toolbar {
-            bottom: calc(118px + env(safe-area-inset-bottom)) !important;
-        }
-
-        body.has-ad-main .record-fab {
-            bottom: calc(118px + env(safe-area-inset-bottom)) !important;
-        }
-
-        body.has-ad-main .leaflet-control-scale {
-            bottom: calc(118px + env(safe-area-inset-bottom)) !important;
-        }
-
         @supports (-webkit-touch-callout: none) {
             #bottom-sheet {
                 padding-bottom: max(18px, env(safe-area-inset-bottom));
@@ -3102,10 +3599,6 @@
             @media (display-mode: standalone) {
                 .record-fab {
                     bottom: 18px;
-                }
-
-                body.has-ad-main .record-fab {
-                    bottom: 118px !important;
                 }
             }
         }
@@ -3429,7 +3922,7 @@
             color: #555;
         }
     </style>
-  <script type="module" crossorigin src="./assets/index-CZoHiCfb.js"></script>
+  <script type="module" crossorigin src="./assets/index-CL4r5R7k.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-CzhGa0jY.css">
 </head>
 
@@ -3685,10 +4178,6 @@
     모바일 환경을 고려하여 화면 오른쪽 하단에서 세로로 확장됩니다.
     ==========================================================================
     -->
-    <div id="ad-container-main"
-        style="position: absolute; bottom: calc(60px + env(safe-area-inset-bottom)); width: 100%; text-align: center; z-index: 1000; background: #eee; padding: 10px 0; border-top: 1px solid #ddd; display: none; font-size: 14px; color: #666;">
-        광고 (일반 배포용)
-    </div>
     <div id="record-fab" class="record-fab">
         <div class="record-fab-menu">
             <div class="record-fab-group">
@@ -3726,7 +4215,7 @@
                     <span class="record-fab-label">점 기록</span>
                 </button>
             </div>
-            <div class="record-fab-group">
+            <div id="premium-record-tools" class="record-fab-group">
                 <button id="btn-track" class="bottom-btn" onclick="closeRecordFab(); startTrackRecording()"
                     title="트랙 기록">
                     <span class="icon-circle">
@@ -3811,7 +4300,7 @@
                 </svg>
                 절전
             </button>
-            <button class="action-btn" onclick="addTrackPhotoPoint(event)">
+            <button id="btn-track-photo-point" class="action-btn" onclick="addTrackPhotoPoint(event)">
                 <svg viewBox="0 0 24 24">
                     <path
                         d="M4 4h3l2-2h6l2 2h3c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zm8 3c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z" />
@@ -3860,6 +4349,86 @@
     ==========================================================================
     -->
 
+    <div id="auth-modal-overlay" class="nav-modal-overlay center-modal-overlay">
+        <div class="nav-modal-content center-modal-content compact auth-modal-content"
+            onclick="event.stopPropagation()">
+            <div class="auth-modal-header">
+                <div id="auth-modal-title" class="auth-modal-title">계정 로그인</div>
+                <button id="auth-modal-close" class="auth-modal-close" type="button" aria-label="닫기">×</button>
+            </div>
+            <div class="auth-summary">
+                <div id="auth-avatar" class="auth-avatar" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.31 0-10 1.67-10 5v2h20v-2c0-3.33-6.69-5-10-5z" />
+                    </svg>
+                </div>
+                <div class="auth-summary-main">
+                    <div id="auth-status-text" class="auth-status-text">비회원</div>
+                    <div id="auth-account-email" class="auth-account-email">로그인이 필요합니다.</div>
+                </div>
+                <div id="auth-tier-badge" class="auth-tier-badge">FREE</div>
+            </div>
+            <div id="auth-message" class="auth-message hidden"></div>
+            <div id="auth-signed-out-section" class="auth-section">
+                <div id="auth-hint" class="auth-hint">Google 계정으로 로그인하면 권한 인증과 프리미엄 기능을 사용할 수 있습니다.</div>
+                <button id="auth-google-btn" class="auth-google-btn" type="button">
+                    <span class="auth-google-mark">G</span>
+                    Google로 계속하기
+                </button>
+                <div class="auth-legal-copy">로그인하면 개인정보처리방침과 서비스 이용약관에 동의한 것으로 간주됩니다.</div>
+            </div>
+            <div id="auth-account-section" class="auth-section hidden">
+                <div class="auth-card">
+                    <div class="auth-card-title">권한 활성화</div>
+                    <div id="auth-permission-copy" class="auth-card-copy">일반 계정으로 사용 중입니다.</div>
+                </div>
+                <div class="auth-divider"></div>
+                <button id="auth-logout-btn" class="auth-secondary-btn" type="button"
+                    style="display:none;">로그아웃</button>
+                <button id="auth-delete-account-btn" class="auth-delete-link" type="button"
+                    style="display:none;">회원탈퇴</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="account-actions-modal-overlay" class="nav-modal-overlay center-modal-overlay">
+        <div class="nav-modal-content center-modal-content compact auth-modal-content account-actions-content"
+            onclick="event.stopPropagation()">
+            <div class="account-actions-title">계정</div>
+            <button id="settings-logout-btn" class="auth-secondary-btn" type="button">로그아웃</button>
+            <button id="settings-delete-account-btn" class="auth-delete-link" type="button">회원탈퇴</button>
+        </div>
+    </div>
+
+    <div id="delete-account-modal-overlay" class="nav-modal-overlay center-modal-overlay">
+        <div class="nav-modal-content center-modal-content compact auth-modal-content"
+            onclick="event.stopPropagation()">
+            <div class="auth-modal-header">
+                <div class="auth-modal-title">회원탈퇴</div>
+                <button id="delete-account-modal-close" class="auth-modal-close" type="button"
+                    aria-label="닫기">×</button>
+            </div>
+            <ul class="delete-account-list">
+                <li>로그인 계정과 권한 정보가 모두 삭제됩니다.</li>
+                <li>이 기기에 저장된 현장 기록/프로젝트/사진은 별도로 초기화해야 합니다.</li>
+                <li>탈퇴 후 되돌릴 수 없습니다.</li>
+            </ul>
+            <input id="delete-account-confirm-input" class="delete-account-confirm-input" type="text" autocomplete="off"
+                placeholder="탈퇴">
+            <button id="delete-account-confirm-btn" class="auth-danger-btn" type="button" disabled>최종 탈퇴</button>
+        </div>
+    </div>
+
+    <div id="settings-choice-modal-overlay" class="nav-modal-overlay center-modal-overlay"
+        onclick="closeSettingsChoiceModal()">
+        <div class="nav-modal-content center-modal-content compact settings-choice-modal-content"
+            onclick="event.stopPropagation()">
+            <div id="settings-choice-modal-title" class="settings-choice-modal-title">설정 선택</div>
+            <div id="settings-choice-list" class="settings-choice-list"></div>
+        </div>
+    </div>
+
     <!-- 
     ==========================================================================
     [구조 5] 사이드바 (Sidebar)
@@ -3876,7 +4445,14 @@
                     </svg>
                 </button>
                 <div style="display:flex; gap:10px;">
-                    <button class="btn-sidebar-action" onclick="openSettingsModal()" title="설정">
+                    <button id="btn-notice" class="btn-sidebar-action" type="button" title="공지사항" aria-label="공지사항">
+                        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        </svg>
+                    </button>
+                    <button id="btn-settings" class="btn-sidebar-action" onclick="openSettingsModal()" title="설정">
                         <svg class="svg-icon" viewBox="0 0 24 24">
                             <path
                                 d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
@@ -3962,10 +4538,19 @@
                         </div>
                     </div>
                     <div class="menu-section">
-                        <div class="menu-title accordion-header" onclick="toggleAccordion('section-land-use', this)"
+                        <div class="menu-title accordion-header" onclick="toggleAccordion('section-topic-groups', this)"
                             style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
-                            <span>국토의 용도 구분</span><span class="toggle-icon"></span>
+                            <span>주제도</span><span class="toggle-icon"></span>
                         </div>
+                        <div id="section-topic-groups" class="accordion-content topic-map-groups"
+                            style="display: none;">
+                            <div class="option-row" style="border-bottom:none; padding-bottom:5px;">
+                                <div class="accordion-header" onclick="toggleAccordion('section-land-use', this)">
+                                    <span class="toggle-icon"></span>
+                                    <span>국토의 용도 구분</span>
+                                </div>
+                                <input type="checkbox" disabled>
+                            </div>
                         <div id="section-land-use" class="accordion-content" style="display: none;">
                             <label class="option-row">
                                 <span class="static-icon"></span>
@@ -3996,12 +4581,13 @@
                             </label>
                             <div id="legend-envpreserve" class="vworld-legend" style="display:none;"></div>
                         </div>
-                    </div>
-                    <div class="menu-section">
-                        <div class="menu-title accordion-header" onclick="toggleAccordion('section-zone-map', this)"
-                            style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
-                            <span>다른 법률에 따른 지역·지구·구역</span><span class="toggle-icon"></span>
-                        </div>
+                            <div class="option-row" style="border-bottom:none; padding-bottom:5px;">
+                                <div class="accordion-header" onclick="toggleAccordion('section-zone-map', this)">
+                                    <span class="toggle-icon"></span>
+                                    <span>다른 법률에 따른 지역·지구·구역</span>
+                                </div>
+                                <input type="checkbox" disabled>
+                            </div>
                         <div id="section-zone-map" class="accordion-content" style="display: none;">
                             <label class="option-row">
                                 <span class="static-icon"></span>
@@ -4080,14 +4666,14 @@
                             </label>
                             <div id="legend-steepSlope" class="vworld-legend" style="display:none;"></div>
                         </div>
-                    </div>
 
-                    <div class="menu-section">
-                        <div class="menu-title accordion-header"
-                            onclick="toggleAccordion('section-city-planning', this)"
-                            style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
-                            <span>도시계획</span><span class="toggle-icon"></span>
-                        </div>
+                            <div class="option-row" style="border-bottom:none; padding-bottom:5px;">
+                                <div class="accordion-header" onclick="toggleAccordion('section-city-planning', this)">
+                                    <span class="toggle-icon"></span>
+                                    <span>도시계획</span>
+                                </div>
+                                <input type="checkbox" disabled>
+                            </div>
                         <div id="section-city-planning" class="accordion-content" style="display: none;">
                             <label class="option-row">
                                 <span class="static-icon"></span>
@@ -4132,14 +4718,14 @@
                             </label>
                             <div id="legend-cityEnvironment" class="vworld-legend" style="display:none;"></div>
                         </div>
-                    </div>
 
-                    <div class="menu-section">
-                        <div class="menu-title accordion-header"
-                            onclick="toggleAccordion('section-urban-planning', this)"
-                            style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
-                            <span>토지이용 및 개발</span><span class="toggle-icon"></span>
-                        </div>
+                            <div class="option-row" style="border-bottom:none; padding-bottom:5px;">
+                                <div class="accordion-header" onclick="toggleAccordion('section-urban-planning', this)">
+                                    <span class="toggle-icon"></span>
+                                    <span>토지이용 및 개발</span>
+                                </div>
+                                <input type="checkbox" disabled>
+                            </div>
                         <div id="section-urban-planning" class="accordion-content" style="display: none;">
                             <label class="option-row">
                                 <span class="static-icon"></span>
@@ -4184,13 +4770,14 @@
                             </label>
                             <div id="legend-industrialBusiness" class="vworld-legend" style="display:none;"></div>
                         </div>
-                    </div>
 
-                    <div class="menu-section">
-                        <div class="menu-title accordion-header" onclick="toggleAccordion('section-topic-map', this)"
-                            style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
-                            <span>기타 주제도</span><span class="toggle-icon"></span>
-                        </div>
+                            <div class="option-row" style="border-bottom:none; padding-bottom:5px;">
+                                <div class="accordion-header" onclick="toggleAccordion('section-topic-map', this)">
+                                    <span class="toggle-icon"></span>
+                                    <span>기타 주제도</span>
+                                </div>
+                                <input type="checkbox" disabled>
+                            </div>
                         <div id="section-topic-map" class="accordion-content" style="display: none;">
                             <label class="option-row">
                                 <span class="static-icon"></span>
@@ -4227,6 +4814,7 @@
                                     onchange="toggleOverlay('hikingTrail', this.checked)">
                             </label>
                             <div id="legend-hikingTrail" class="vworld-legend" style="display:none;"></div>
+                        </div>
                         </div>
                     </div>
                     <!-- 수원국유림관리소 레이어 (암호 입력 시 표시) -->
@@ -4801,22 +5389,41 @@
                 <div></div>
             </header>
 
+            <div id="settings-update-banner" class="settings-update-banner">
+                <div>
+                    <div class="settings-update-banner-title">새 버전이 있습니다.</div>
+                    <div class="settings-update-banner-meta">업데이트 후 최신 기능과 수정사항이 적용됩니다.</div>
+                </div>
+                <button class="settings-update-banner-btn" type="button" onclick="forceAppUpdate()">업데이트</button>
+            </div>
+
             <section class="settings-section">
-                <div class="settings-row settings-row-stacked">
-                    <div class="settings-label">좌표 표시 방식</div>
-                    <div class="settings-choice-group" aria-label="좌표 표시 방식">
-                        <label class="settings-choice">
-                            <input type="radio" name="coord-mode-select" value="0" onclick="setCoordMode(0)">
-                            <span>도분초</span>
-                        </label>
-                        <label class="settings-choice">
-                            <input type="radio" name="coord-mode-select" value="1" onclick="setCoordMode(1)">
-                            <span>소수점</span>
-                        </label>
-                        <label class="settings-choice">
-                            <input type="radio" name="coord-mode-select" value="2" onclick="setCoordMode(2)">
-                            <span>TM 좌표</span>
-                        </label>
+                <div id="settings-account-row" class="settings-row settings-link-row settings-account-row">
+                    <div class="settings-account-avatar" id="settings-account-avatar">?</div>
+                    <div class="settings-account-main">
+                        <div id="settings-account-email" class="settings-account-email">로그인이 필요합니다.</div>
+                        <div id="settings-account-status" class="settings-account-status">비회원</div>
+                    </div>
+                    <div id="settings-account-tier-badge" class="settings-account-tier-badge">FREE</div>
+                    <span class="settings-chevron"></span>
+                </div>
+                <div id="settings-verification-code-row" class="settings-row settings-link-row settings-code-row">
+                    <div>
+                        <div class="settings-label">인증코드 입력하기</div>
+                        <div class="settings-help">인증코드가 있다면 계정 권한을 활성화합니다.</div>
+                    </div>
+                    <span class="settings-chevron"></span>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <div class="settings-row settings-link-row" onclick="openSettingsChoiceModal('coord')">
+                    <div>
+                        <div class="settings-label">좌표 표시 방식</div>
+                    </div>
+                    <div class="settings-row-action">
+                        <span id="settings-coord-mode-value" class="settings-value">도분초</span>
+                        <span class="settings-chevron"></span>
                     </div>
                 </div>
             </section>
@@ -4857,30 +5464,29 @@
                 </div>
             </section>
 
-            <section class="settings-section">
-                <div class="settings-row settings-row-stacked">
+            <section id="settings-track-interval-section" class="settings-section" style="display:none;">
+                <div class="settings-row settings-link-row" onclick="openSettingsChoiceModal('track')">
                     <div>
                         <div class="settings-label">트랙 기록 간격</div>
                         <div class="settings-help">GPS 위치가 설정 거리 이상 이동했을 때 좌표를 기록합니다.</div>
                     </div>
-                    <div class="settings-choice-group" aria-label="트랙 기록 간격">
-                        <label class="settings-choice">
-                            <input type="radio" name="track-interval-select" value="2" onclick="setTrackInterval(2)">
-                            <span>2m</span>
-                        </label>
-                        <label class="settings-choice">
-                            <input type="radio" name="track-interval-select" value="5" onclick="setTrackInterval(5)">
-                            <span>5m</span>
-                        </label>
-                        <label class="settings-choice">
-                            <input type="radio" name="track-interval-select" value="10" onclick="setTrackInterval(10)">
-                            <span>10m</span>
-                        </label>
-                        <label class="settings-choice">
-                            <input type="radio" name="track-interval-select" value="20" onclick="setTrackInterval(20)">
-                            <span>20m</span>
-                        </label>
+                    <div class="settings-row-action">
+                        <span id="settings-track-interval-value" class="settings-value">10m</span>
+                        <span class="settings-chevron"></span>
                     </div>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <div class="settings-row settings-link-row"
+                    onclick="window.open('./privacy-policy.html', '_blank')">
+                    <div class="settings-label">개인정보처리방침</div>
+                    <span class="settings-chevron"></span>
+                </div>
+                <div class="settings-row settings-link-row"
+                    onclick="window.open('./open-source-licenses.html', '_blank')">
+                    <div class="settings-label">오픈소스 라이선스</div>
+                    <span class="settings-chevron"></span>
                 </div>
             </section>
 
@@ -4925,7 +5531,7 @@
                     <li><b>SHP파일</b>은 .shp, .shx, .dbf 파일을 <b>.ZIP</b> 파일로 압축한 후 불러올 수 있습니다.</li>
                     <li>여러 개의 파일을 한 번에 불러올 수 있습니다.</li>
                     <li>프로젝트 파일은 해당 프로젝트명으로 새로운 프로젝트가 추가되고, 단일 기록은 현재 프로젝트에 추가됩니다.</li>
-                    <li><b>10MB</b> 이상의 SHP파일은 불러올 수 없습니다.</li>
+                    <li>도형이 50개 이상인 SHP파일은 추가 위치를 선택하는 안내창이 표시됩니다.</li>
                 </ul>
             </div>
 
