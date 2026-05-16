@@ -50,25 +50,29 @@
             overflow-wrap: anywhere;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        .license-list {
             margin-top: 18px;
-            font-size: 13px;
+            border-top: 1px solid #e5e7eb;
         }
 
-        th,
-        td {
-            padding: 10px 8px;
+        .license-entry {
+            padding: 14px 0;
             border-bottom: 1px solid #e5e7eb;
-            text-align: left;
-            vertical-align: top;
+            font-size: 13px;
+            color: #4b5563;
         }
 
-        th {
+        .license-library {
+            display: block;
+            margin-bottom: 5px;
             color: #111827;
-            background: #f8fafc;
-            font-weight: 700;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .license-line {
+            display: block;
+            margin-top: 2px;
         }
 
         .notice {
@@ -101,120 +105,110 @@
         <p>F-Field는 다음 오픈소스 소프트웨어를 사용합니다. 각 오픈소스 소프트웨어의 저작권은 원 저작권자에게 있으며,
             F-Field는 해당 라이선스 조건에 따라 저작권 고지와 라이선스 정보를 제공합니다.</p>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>라이브러리</th>
-                    <th>저작권 고지</th>
-                    <th>라이선스</th>
-                    <th>공식 저장소</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>@capacitor/android</td>
-                    <td>Copyright (c) 2017-present Drifty Co.</td>
-                    <td>MIT</td>
-                    <td><a href="https://github.com/ionic-team/capacitor">github.com/ionic-team/capacitor</a></td>
-                </tr>
-                <tr>
-                    <td>@capacitor/app</td>
-                    <td>Copyright 2020-present Ionic</td>
-                    <td>MIT</td>
-                    <td><a href="https://github.com/ionic-team/capacitor-plugins">github.com/ionic-team/capacitor-plugins</a></td>
-                </tr>
-                <tr>
-                    <td>@capacitor/cli</td>
-                    <td>Copyright (c) 2017-present Drifty Co.</td>
-                    <td>MIT</td>
-                    <td><a href="https://github.com/ionic-team/capacitor">github.com/ionic-team/capacitor</a></td>
-                </tr>
-                <tr>
-                    <td>@capacitor/core</td>
-                    <td>Copyright (c) 2017-present Drifty Co.</td>
-                    <td>MIT</td>
-                    <td><a href="https://github.com/ionic-team/capacitor">github.com/ionic-team/capacitor</a></td>
-                </tr>
-                <tr>
-                    <td>@capacitor/filesystem</td>
-                    <td>Copyright (c) 2025 Ionic</td>
-                    <td>MIT</td>
-                    <td><a href="https://github.com/ionic-team/capacitor-filesystem">github.com/ionic-team/capacitor-filesystem</a></td>
-                </tr>
-                <tr>
-                    <td>@capacitor/share</td>
-                    <td>Copyright 2020-present Ionic</td>
-                    <td>MIT</td>
-                    <td><a href="https://github.com/ionic-team/capacitor-plugins">github.com/ionic-team/capacitor-plugins</a></td>
-                </tr>
-                <tr>
-                    <td>@crmackey/shp-write</td>
-                    <td>Copyright (c) 2015, Mapbox</td>
-                    <td>BSD-2-Clause</td>
-                    <td><a href="https://github.com/CalebM1987/shp-write">github.com/CalebM1987/shp-write</a></td>
-                </tr>
-                <tr>
-                    <td>@supabase/supabase-js</td>
-                    <td>Supabase and contributors</td>
-                    <td>MIT</td>
-                    <td><a href="https://github.com/supabase/supabase-js">github.com/supabase/supabase-js</a></td>
-                </tr>
-                <tr>
-                    <td>@turf/turf</td>
-                    <td>Copyright (c) 2017 TurfJS</td>
-                    <td>MIT</td>
-                    <td><a href="https://github.com/Turfjs/turf">github.com/Turfjs/turf</a></td>
-                </tr>
-                <tr>
-                    <td>jszip</td>
-                    <td>Copyright (c) 2009-2016 Stuart Knightley, David Duponchel, Franz Buchinger, Antonio Afonso</td>
-                    <td>MIT 또는 GPL-3.0-or-later 중 선택 가능. F-Field는 MIT 조건으로 사용합니다.</td>
-                    <td><a href="https://github.com/Stuk/jszip">github.com/Stuk/jszip</a></td>
-                </tr>
-                <tr>
-                    <td>leaflet</td>
-                    <td>Copyright (c) 2010-2023, Volodymyr Agafonkin<br>Copyright (c) 2010-2011, CloudMade</td>
-                    <td>BSD-2-Clause</td>
-                    <td><a href="https://github.com/Leaflet/Leaflet">github.com/Leaflet/Leaflet</a></td>
-                </tr>
-                <tr>
-                    <td>leaflet-draw</td>
-                    <td>Leaflet.draw contributors</td>
-                    <td>MIT</td>
-                    <td><a href="https://github.com/Leaflet/Leaflet.draw">github.com/Leaflet/Leaflet.draw</a></td>
-                </tr>
-                <tr>
-                    <td>localforage</td>
-                    <td>Mozilla and contributors</td>
-                    <td>Apache-2.0</td>
-                    <td><a href="https://github.com/localForage/localForage">github.com/localForage/localForage</a></td>
-                </tr>
-                <tr>
-                    <td>pmtiles</td>
-                    <td>Brandon Liu and contributors</td>
-                    <td>BSD-3-Clause</td>
-                    <td><a href="https://github.com/protomaps/pmtiles">github.com/protomaps/pmtiles</a></td>
-                </tr>
-                <tr>
-                    <td>proj4</td>
-                    <td>Copyright (c) 2014, Mike Adair, Richard Greenwood, Didier Richard, Stephen Irons, Olivier Terral and Calvin Metcalf</td>
-                    <td>MIT</td>
-                    <td><a href="https://github.com/proj4js/proj4js">github.com/proj4js/proj4js</a></td>
-                </tr>
-                <tr>
-                    <td>shpjs</td>
-                    <td>Calvin Metcalf and contributors</td>
-                    <td>MIT</td>
-                    <td><a href="https://github.com/calvinmetcalf/shapefile-js">github.com/calvinmetcalf/shapefile-js</a></td>
-                </tr>
-                <tr>
-                    <td>sql.js</td>
-                    <td>Copyright (c) 2017 sql.js authors</td>
-                    <td>MIT</td>
-                    <td><a href="https://github.com/sql-js/sql.js">github.com/sql-js/sql.js</a></td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="license-list">
+            <div class="license-entry">
+                <strong class="license-library">@capacitor/android</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/ionic-team/capacitor">github.com/ionic-team/capacitor</a></span>
+                <span class="license-line">저작권 고지: Copyright (c) 2017-present Drifty Co.</span>
+                <span class="license-line">라이선스: MIT</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">@capacitor/app</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/ionic-team/capacitor-plugins">github.com/ionic-team/capacitor-plugins</a></span>
+                <span class="license-line">저작권 고지: Copyright 2020-present Ionic</span>
+                <span class="license-line">라이선스: MIT</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">@capacitor/cli</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/ionic-team/capacitor">github.com/ionic-team/capacitor</a></span>
+                <span class="license-line">저작권 고지: Copyright (c) 2017-present Drifty Co.</span>
+                <span class="license-line">라이선스: MIT</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">@capacitor/core</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/ionic-team/capacitor">github.com/ionic-team/capacitor</a></span>
+                <span class="license-line">저작권 고지: Copyright (c) 2017-present Drifty Co.</span>
+                <span class="license-line">라이선스: MIT</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">@capacitor/filesystem</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/ionic-team/capacitor-filesystem">github.com/ionic-team/capacitor-filesystem</a></span>
+                <span class="license-line">저작권 고지: Copyright (c) 2025 Ionic</span>
+                <span class="license-line">라이선스: MIT</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">@capacitor/share</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/ionic-team/capacitor-plugins">github.com/ionic-team/capacitor-plugins</a></span>
+                <span class="license-line">저작권 고지: Copyright 2020-present Ionic</span>
+                <span class="license-line">라이선스: MIT</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">@crmackey/shp-write</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/CalebM1987/shp-write">github.com/CalebM1987/shp-write</a></span>
+                <span class="license-line">저작권 고지: Copyright (c) 2015, Mapbox</span>
+                <span class="license-line">라이선스: BSD-2-Clause</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">@supabase/supabase-js</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/supabase/supabase-js">github.com/supabase/supabase-js</a></span>
+                <span class="license-line">저작권 고지: Supabase and contributors</span>
+                <span class="license-line">라이선스: MIT</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">@turf/turf</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/Turfjs/turf">github.com/Turfjs/turf</a></span>
+                <span class="license-line">저작권 고지: Copyright (c) 2017 TurfJS</span>
+                <span class="license-line">라이선스: MIT</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">jszip</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/Stuk/jszip">github.com/Stuk/jszip</a></span>
+                <span class="license-line">저작권 고지: Copyright (c) 2009-2016 Stuart Knightley, David Duponchel, Franz Buchinger, Antonio Afonso</span>
+                <span class="license-line">라이선스: MIT 또는 GPL-3.0-or-later 중 선택 가능. F-Field는 MIT 조건으로 사용합니다.</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">leaflet</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/Leaflet/Leaflet">github.com/Leaflet/Leaflet</a></span>
+                <span class="license-line">저작권 고지: Copyright (c) 2010-2023, Volodymyr Agafonkin / Copyright (c) 2010-2011, CloudMade</span>
+                <span class="license-line">라이선스: BSD-2-Clause</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">leaflet-draw</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/Leaflet/Leaflet.draw">github.com/Leaflet/Leaflet.draw</a></span>
+                <span class="license-line">저작권 고지: Leaflet.draw contributors</span>
+                <span class="license-line">라이선스: MIT</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">localforage</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/localForage/localForage">github.com/localForage/localForage</a></span>
+                <span class="license-line">저작권 고지: Mozilla and contributors</span>
+                <span class="license-line">라이선스: Apache-2.0</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">pmtiles</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/protomaps/pmtiles">github.com/protomaps/pmtiles</a></span>
+                <span class="license-line">저작권 고지: Brandon Liu and contributors</span>
+                <span class="license-line">라이선스: BSD-3-Clause</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">proj4</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/proj4js/proj4js">github.com/proj4js/proj4js</a></span>
+                <span class="license-line">저작권 고지: Copyright (c) 2014, Mike Adair, Richard Greenwood, Didier Richard, Stephen Irons, Olivier Terral and Calvin Metcalf</span>
+                <span class="license-line">라이선스: MIT</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">shpjs</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/calvinmetcalf/shapefile-js">github.com/calvinmetcalf/shapefile-js</a></span>
+                <span class="license-line">저작권 고지: Calvin Metcalf and contributors</span>
+                <span class="license-line">라이선스: MIT</span>
+            </div>
+            <div class="license-entry">
+                <strong class="license-library">sql.js</strong>
+                <span class="license-line">공식 저장소: <a href="https://github.com/sql-js/sql.js">github.com/sql-js/sql.js</a></span>
+                <span class="license-line">저작권 고지: Copyright (c) 2017 sql.js authors</span>
+                <span class="license-line">라이선스: MIT</span>
+            </div>
+        </div>
 
         <p class="notice">각 오픈소스 소프트웨어의 전체 라이선스 전문과 저작권 고지는 해당 프로젝트의 공식 저장소 또는 npm 패키지에 포함된
             LICENSE, NOTICE, AUTHORS 파일을 기준으로 합니다. 아래에는 F-Field가 사용하는 주요 라이선스 전문을 함께 고지합니다.</p>
