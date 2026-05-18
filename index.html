@@ -4332,10 +4332,9 @@
             flex-wrap: wrap;
             gap: 8px;
             margin-bottom: 12px;
-            max-height: 80px;
-            overflow-y: auto;
+            max-height: none;
+            overflow: visible;
             padding-right: 2px;
-            -webkit-overflow-scrolling: touch;
         }
 
         .emoji-btn {
@@ -4350,12 +4349,49 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            color: #333;
+        }
+
+        .emoji-btn svg {
+            width: 25px;
+            height: 25px;
+            fill: currentColor;
+        }
+
+        .emoji-btn span {
+            line-height: 1;
         }
 
         .emoji-btn.selected {
             border-width: 1.5px;
             border-color: #3B82F6;
             background: #eff6ff;
+        }
+
+        .marker-emoji-btn {
+            display: none;
+        }
+
+        .emoji-palette.expanded .marker-emoji-btn {
+            display: flex;
+        }
+
+        .marker-emoji-more-btn {
+            min-height: 34px;
+            margin-top: -4px;
+            width: 100%;
+        }
+
+        .marker-emoji-more-btn .collapse-label {
+            display: none;
+        }
+
+        .marker-emoji-more-btn.expanded .expand-label {
+            display: none;
+        }
+
+        .marker-emoji-more-btn.expanded .collapse-label {
+            display: inline;
         }
 
         .setting-group {
@@ -4441,7 +4477,7 @@
             color: #555;
         }
     </style>
-  <script type="module" crossorigin src="./assets/index-BUOTJm1N.js"></script>
+  <script type="module" crossorigin src="./assets/index-CUsUnxx1.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-CzhGa0jY.css">
 </head>
 
@@ -6162,42 +6198,91 @@
             <div class="setting-group" id="style-marker-section">
                 <div class="setting-title">마커 모양</div>
                 <div class="emoji-palette" id="style-marker-choices">
-                    <button class="emoji-btn" data-emoji="" onclick="selectMarkerStyle('')"
-                        style="font-size:12px; font-weight:bold;">기본</button>
-                    <button class="emoji-btn" data-emoji="⭐" onclick="selectMarkerStyle('⭐')">⭐</button>
-                    <button class="emoji-btn" data-emoji="❌" onclick="selectMarkerStyle('❌')">❌</button>
-                    <button class="emoji-btn" data-emoji="❓" onclick="selectMarkerStyle('❓')">❓</button>
-                    <button class="emoji-btn" data-emoji="❗️" onclick="selectMarkerStyle('❗️')">❗️</button>
-                    <button class="emoji-btn" data-emoji="📷" onclick="selectMarkerStyle('📷')">📷</button>
-                    <button class="emoji-btn" data-emoji="🗒️" onclick="selectMarkerStyle('🗒️')">🗒️</button>
-                    <button class="emoji-btn" data-emoji="📌" onclick="selectMarkerStyle('📌')">📌</button>
-                    <button class="emoji-btn" data-emoji="📍" onclick="selectMarkerStyle('📍')">📍</button>
-                    <button class="emoji-btn" data-emoji="🚩" onclick="selectMarkerStyle('🚩')">🚩</button>
-                    <button class="emoji-btn" data-emoji="🚧" onclick="selectMarkerStyle('🚧')">🚧</button>
-                    <button class="emoji-btn" data-emoji="🌳" onclick="selectMarkerStyle('🌳')">🌳</button>
-                    <button class="emoji-btn" data-emoji="🌲" onclick="selectMarkerStyle('🌲')">🌲</button>
-                    <button class="emoji-btn" data-emoji="🪾" onclick="selectMarkerStyle('🪾')">🪾</button>
-                    <button class="emoji-btn" data-emoji="🪵" onclick="selectMarkerStyle('🪵')">🪵</button>
-                    <button class="emoji-btn" data-emoji="🌱" onclick="selectMarkerStyle('🌱')">🌱</button>
-                    <button class="emoji-btn" data-emoji="🌸" onclick="selectMarkerStyle('🌸')">🌸</button>
-                    <button class="emoji-btn" data-emoji="🌾" onclick="selectMarkerStyle('🌾')">🌾</button>
-                    <button class="emoji-btn" data-emoji="🥬" onclick="selectMarkerStyle('🥬')">🥬</button>
-                    <button class="emoji-btn" data-emoji="🏠" onclick="selectMarkerStyle('🏠')">🏠</button>
-                    <button class="emoji-btn" data-emoji="🏢" onclick="selectMarkerStyle('🏢')">🏢</button>
-                    <button class="emoji-btn" data-emoji="🏭" onclick="selectMarkerStyle('🏭')">🏭</button>
-                    <button class="emoji-btn" data-emoji="⛰️" onclick="selectMarkerStyle('⛰️')">⛰️</button>
-                    <button class="emoji-btn" data-emoji="⚠️" onclick="selectMarkerStyle('⚠️')">⚠️</button>
-                    <button class="emoji-btn" data-emoji="🟦" onclick="selectMarkerStyle('🟦')">🟦</button>
-                    <button class="emoji-btn" data-emoji="🔴" onclick="selectMarkerStyle('🔴')">🔴</button>
-                    <button class="emoji-btn" data-emoji="🔶" onclick="selectMarkerStyle('🔶')">🔶</button>
-                    <button class="emoji-btn" data-emoji="✅" onclick="selectMarkerStyle('✅')">✅</button>
-                    <button class="emoji-btn" data-emoji="🔥" onclick="selectMarkerStyle('🔥')">🔥</button>
-                    <button class="emoji-btn" data-emoji="🚒" onclick="selectMarkerStyle('🚒')">🚒</button>
-                    <button class="emoji-btn" data-emoji="🧯" onclick="selectMarkerStyle('🧯')">🧯</button>
-                    <button class="emoji-btn" data-emoji="💧" onclick="selectMarkerStyle('💧')">💧</button>
-                    <button class="emoji-btn" data-emoji="🐍" onclick="selectMarkerStyle('🐍')">🐍</button>
-                    <button class="emoji-btn" data-emoji="☕️" onclick="selectMarkerStyle('☕️')">☕️</button>
+                    <button class="emoji-btn" data-marker-style="" onclick="selectMarkerStyle('')" title="기본마커"
+                        aria-label="기본마커">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                        </svg>
+                    </button>
+                    <button class="emoji-btn" data-marker-style="circle" onclick="selectMarkerStyle('circle')" title="원"
+                        aria-label="원">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="12" cy="12" r="3.6" />
+                        </svg>
+                    </button>
+                    <button class="emoji-btn" data-marker-style="triangle" onclick="selectMarkerStyle('triangle')"
+                        title="삼각형" aria-label="삼각형">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 7.7 L16.3 16.3 H7.7 Z" />
+                        </svg>
+                    </button>
+                    <button class="emoji-btn" data-marker-style="square" onclick="selectMarkerStyle('square')"
+                        title="사각형" aria-label="사각형">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="7.8" y="7.8" width="8.4" height="8.4" rx="0.9" />
+                        </svg>
+                    </button>
+                    <button class="emoji-btn" data-marker-style="pentagon" onclick="selectMarkerStyle('pentagon')"
+                        title="오각형" aria-label="오각형">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 7.1 L16.6 10.55 L14.85 16.1 H9.15 L7.4 10.55 Z" />
+                        </svg>
+                    </button>
+                    <button class="emoji-btn" data-marker-style="diamond" onclick="selectMarkerStyle('diamond')"
+                        title="다이아몬드" aria-label="다이아몬드">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 7.2 L16.8 12 L12 16.8 L7.2 12 Z" />
+                        </svg>
+                    </button>
+                    <button class="emoji-btn" data-marker-style="star" onclick="selectMarkerStyle('star')" title="별"
+                        aria-label="별">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 6.9 L13.45 10.05 L17 10.5 L14.35 12.9 L15.05 16.45 L12 14.6 L8.95 16.45 L9.65 12.9 L7 10.5 L10.55 10.05 Z" />
+                        </svg>
+                    </button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="📍" onclick="selectMarkerStyle('📍')">📍</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="📌" onclick="selectMarkerStyle('📌')">📌</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚩" onclick="selectMarkerStyle('🚩')">🚩</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="⭐" onclick="selectMarkerStyle('⭐')">⭐</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="✅" onclick="selectMarkerStyle('✅')">✅</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="❌" onclick="selectMarkerStyle('❌')">❌</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="❗️" onclick="selectMarkerStyle('❗️')">❗️</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="❓" onclick="selectMarkerStyle('❓')">❓</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🟦" onclick="selectMarkerStyle('🟦')">🟦</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🔴" onclick="selectMarkerStyle('🔴')">🔴</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🔶" onclick="selectMarkerStyle('🔶')">🔶</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="📷" onclick="selectMarkerStyle('📷')">📷</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🗒️" onclick="selectMarkerStyle('🗒️')">🗒️</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌳" onclick="selectMarkerStyle('🌳')">🌳</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌲" onclick="selectMarkerStyle('🌲')">🌲</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🪾" onclick="selectMarkerStyle('🪾')">🪾</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🪵" onclick="selectMarkerStyle('🪵')">🪵</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌱" onclick="selectMarkerStyle('🌱')">🌱</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌸" onclick="selectMarkerStyle('🌸')">🌸</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌾" onclick="selectMarkerStyle('🌾')">🌾</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🥬" onclick="selectMarkerStyle('🥬')">🥬</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="⛰️" onclick="selectMarkerStyle('⛰️')">⛰️</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="💧" onclick="selectMarkerStyle('💧')">💧</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🐍" onclick="selectMarkerStyle('🐍')">🐍</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🏠" onclick="selectMarkerStyle('🏠')">🏠</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🏢" onclick="selectMarkerStyle('🏢')">🏢</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🏭" onclick="selectMarkerStyle('🏭')">🏭</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚧" onclick="selectMarkerStyle('🚧')">🚧</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="⚠️" onclick="selectMarkerStyle('⚠️')">⚠️</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🔥" onclick="selectMarkerStyle('🔥')">🔥</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🧯" onclick="selectMarkerStyle('🧯')">🧯</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="👮" onclick="selectMarkerStyle('👮')">👮</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🧑‍🚒" onclick="selectMarkerStyle('🧑‍🚒')">🧑‍🚒</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚓" onclick="selectMarkerStyle('🚓')">🚓</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚒" onclick="selectMarkerStyle('🚒')">🚒</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚑" onclick="selectMarkerStyle('🚑')">🚑</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="☕️" onclick="selectMarkerStyle('☕️')">☕️</button>
                 </div>
+                <button type="button" id="style-marker-emoji-more-btn" class="style-btn marker-emoji-more-btn"
+                    onclick="toggleMarkerEmojiOptions()">
+                    <span class="expand-label">더보기</span>
+                    <span class="collapse-label">접기</span>
+                </button>
             </div>
 
             <!-- 점 전용: 마커 크기 -->
