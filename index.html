@@ -1042,6 +1042,10 @@
             padding-bottom: calc(32px + var(--app-floating-bottom));
         }
 
+        body.is-native-app #content-map.active {
+            padding-bottom: calc(32px + var(--app-floating-bottom));
+        }
+
         .project-bottom-actions {
             padding-bottom: 0;
         }
@@ -1156,8 +1160,7 @@
             margin-left: 24px;
         }
 
-        #content-map .vworld-legend,
-        #content-map #nas-guk-legend {
+        #content-map .vworld-legend {
             margin-left: 30px !important;
             margin-top: -2px !important;
             margin-bottom: 8px !important;
@@ -4477,7 +4480,7 @@
             color: #555;
         }
     </style>
-  <script type="module" crossorigin src="./assets/index-CUsUnxx1.js"></script>
+  <script type="module" crossorigin src="./assets/index-BIQkYBT6.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-CzhGa0jY.css">
 </head>
 
@@ -5254,12 +5257,12 @@
                         </div>
                     </div>
                     <div class="menu-section">
-                        <div class="menu-title accordion-header" onclick="toggleAccordion('section-topic-groups', this)"
+                        <div class="menu-title accordion-header active" onclick="toggleAccordion('section-topic-groups', this)"
                             style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
                             <span>주제도</span><span class="toggle-icon"></span>
                         </div>
                         <div id="section-topic-groups" class="accordion-content topic-map-groups"
-                            style="display: none;">
+                            style="display: block;">
                             <div class="option-row" style="border-bottom:none; padding-bottom:5px;">
                                 <div class="accordion-header" onclick="toggleAccordion('section-land-use', this)">
                                     <span class="toggle-icon"></span>
@@ -5535,40 +5538,6 @@
                             </div>
                         </div>
                     </div>
-                    <!-- 수원국유림관리소 레이어 (암호 입력 시 표시) -->
-                    <div id="hidden-layer-section" class="menu-section" style="display: none;">
-                        <div class="menu-title accordion-header active"
-                            onclick="toggleAccordion('section-nas-guk', this)"
-                            style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
-                            <span>수원국유림관리소</span><span class="toggle-icon"></span>
-                        </div>
-                        <div id="section-nas-guk" class="accordion-content" style="display: block;">
-                            <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
-                                <span class="static-icon"></span>
-                                <span style="flex:1;">국유재산기본도(26년 1월)</span>
-                                <input type="checkbox" id="chk-nas-guk"
-                                    onchange="toggleOverlay('nasGuk', this.checked)">
-                            </label>
-                            <div id="nas-guk-legend"
-                                style="display: none; margin-top: 0; padding: 0 0 0 15px; background: transparent; border-radius: 8px; margin-bottom: 10px; font-size:13px; color:#555;">
-                                <div style="margin-bottom:2px;">
-                                    <span
-                                        style="width:12px; height:12px; background:#8cff90; display:inline-block; margin-right:5px; "></span>보전국유림
-                                </div>
-                                <div style="margin-bottom:2px;">
-                                    <span
-                                        style="width:12px; height:12px; background:#ffe081; display:inline-block; margin-right:5px;"></span>준보전국유림
-                                </div>
-                            </div>
-                            <label class="option-row" style="border-bottom:none; padding-bottom:5px;">
-                                <span class="static-icon"></span>
-                                <span style="flex:1;">임도망도(25년 말)</span>
-                                <input type="checkbox" id="chk-nas-imdo"
-                                    onchange="toggleOverlay('nasImdo', this.checked)">
-                            </label>
-                        </div>
-                    </div>
-
                     <div class="menu-section">
                         <div class="menu-title accordion-header" onclick="toggleAccordion('section-user-map', this)"
                             style="cursor:pointer; display: flex; justify-content: space-between; align-items: center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
@@ -5594,7 +5563,7 @@
                         </div>
                     </div>
 
-                    <div class="menu-section">
+                    <div id="offline-map-section" class="menu-section" style="display:none;">
                         <div class="menu-title accordion-header" onclick="toggleAccordion('section-offline-map', this)"
                             style="cursor:pointer; display: flex; justify-content: space-between; align-items: center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
                             <span>오프라인 지도</span>
@@ -5630,18 +5599,6 @@
                             <li>모든 정보는 법적 효력이 없으며, 참고용으로만 활용하시기 바랍니다.</li>
                             <li>많은 레이어를 표시할 경우 오류가 발생할 수 있습니다.</li>
                         </ul>
-                    </div>
-
-                    <div
-                        style="display:flex; justify-content:flex-start; margin-top:20px; margin-bottom:36px; padding-left:10px;">
-                        <button id="btn-lock" onclick="unlockHiddenLayers()"
-                            style="border: none; background: none; color: #aaa; cursor: pointer;">
-                            <svg id="icon-lock" viewBox="0 0 24 24"
-                                style="width: 24px; height: 24px; fill: currentColor;">
-                                <path
-                                    d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
-                            </svg>
-                        </button>
                     </div>
                 </div>
                 <!-- 탭 2: 프로젝트 관리 -->
@@ -5768,7 +5725,7 @@
                     <!-- 하단: 버튼 그룹 (고정) -->
                     <!-- 하단: 버튼 그룹 (고정) -->
                     <div style="flex-shrink: 0;">
-                        <div style="display:flex; gap:var(--space-2); margin-bottom:var(--space-2);">
+                        <div style="display:flex; gap:var(--space-2); margin-bottom:2px;">
                             <button onclick="triggerFileInput()" class="mono-btn"
                                 style="flex:1; justify-content:center; padding: var(--space-3); font-size: 13px;">
                                 <svg viewBox="0 0 24 24">
@@ -5786,7 +5743,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="sidebar-warning">
+                    <div class="sidebar-warning" style="margin-top:4px;">
                         <ul>
                             <li>많은 기록을 표시하거나 용량이 큰 파일을 불러올 경우 오류가 발생할 수 있습니다.</li>
                             <li>웹브라우저의 인터넷 기록이나 캐시를 삭제하면 기록한 데이터가 모두 없어지니 미리 기기에 저장하시기 바랍니다.</li>
@@ -6201,7 +6158,8 @@
                     <button class="emoji-btn" data-marker-style="" onclick="selectMarkerStyle('')" title="기본마커"
                         aria-label="기본마커">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                            <path
+                                d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
                         </svg>
                     </button>
                     <button class="emoji-btn" data-marker-style="circle" onclick="selectMarkerStyle('circle')" title="원"
@@ -6237,46 +6195,84 @@
                     <button class="emoji-btn" data-marker-style="star" onclick="selectMarkerStyle('star')" title="별"
                         aria-label="별">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 6.9 L13.45 10.05 L17 10.5 L14.35 12.9 L15.05 16.45 L12 14.6 L8.95 16.45 L9.65 12.9 L7 10.5 L10.55 10.05 Z" />
+                            <path
+                                d="M12 6.9 L13.45 10.05 L17 10.5 L14.35 12.9 L15.05 16.45 L12 14.6 L8.95 16.45 L9.65 12.9 L7 10.5 L10.55 10.05 Z" />
                         </svg>
                     </button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="📍" onclick="selectMarkerStyle('📍')">📍</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="📌" onclick="selectMarkerStyle('📌')">📌</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚩" onclick="selectMarkerStyle('🚩')">🚩</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="⭐" onclick="selectMarkerStyle('⭐')">⭐</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="✅" onclick="selectMarkerStyle('✅')">✅</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="❌" onclick="selectMarkerStyle('❌')">❌</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="❗️" onclick="selectMarkerStyle('❗️')">❗️</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="❓" onclick="selectMarkerStyle('❓')">❓</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🟦" onclick="selectMarkerStyle('🟦')">🟦</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🔴" onclick="selectMarkerStyle('🔴')">🔴</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🔶" onclick="selectMarkerStyle('🔶')">🔶</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="📷" onclick="selectMarkerStyle('📷')">📷</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🗒️" onclick="selectMarkerStyle('🗒️')">🗒️</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌳" onclick="selectMarkerStyle('🌳')">🌳</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌲" onclick="selectMarkerStyle('🌲')">🌲</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🪾" onclick="selectMarkerStyle('🪾')">🪾</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🪵" onclick="selectMarkerStyle('🪵')">🪵</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌱" onclick="selectMarkerStyle('🌱')">🌱</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌸" onclick="selectMarkerStyle('🌸')">🌸</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌾" onclick="selectMarkerStyle('🌾')">🌾</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🥬" onclick="selectMarkerStyle('🥬')">🥬</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="⛰️" onclick="selectMarkerStyle('⛰️')">⛰️</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="💧" onclick="selectMarkerStyle('💧')">💧</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🐍" onclick="selectMarkerStyle('🐍')">🐍</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🏠" onclick="selectMarkerStyle('🏠')">🏠</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🏢" onclick="selectMarkerStyle('🏢')">🏢</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🏭" onclick="selectMarkerStyle('🏭')">🏭</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚧" onclick="selectMarkerStyle('🚧')">🚧</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="⚠️" onclick="selectMarkerStyle('⚠️')">⚠️</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🔥" onclick="selectMarkerStyle('🔥')">🔥</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🧯" onclick="selectMarkerStyle('🧯')">🧯</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="👮" onclick="selectMarkerStyle('👮')">👮</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🧑‍🚒" onclick="selectMarkerStyle('🧑‍🚒')">🧑‍🚒</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚓" onclick="selectMarkerStyle('🚓')">🚓</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚒" onclick="selectMarkerStyle('🚒')">🚒</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚑" onclick="selectMarkerStyle('🚑')">🚑</button>
-                    <button class="emoji-btn marker-emoji-btn" data-emoji="☕️" onclick="selectMarkerStyle('☕️')">☕️</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="📍"
+                        onclick="selectMarkerStyle('📍')">📍</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="📌"
+                        onclick="selectMarkerStyle('📌')">📌</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚩"
+                        onclick="selectMarkerStyle('🚩')">🚩</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="⭐"
+                        onclick="selectMarkerStyle('⭐')">⭐</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="✅"
+                        onclick="selectMarkerStyle('✅')">✅</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="❌"
+                        onclick="selectMarkerStyle('❌')">❌</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="❗️"
+                        onclick="selectMarkerStyle('❗️')">❗️</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="❓"
+                        onclick="selectMarkerStyle('❓')">❓</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🟦"
+                        onclick="selectMarkerStyle('🟦')">🟦</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🔴"
+                        onclick="selectMarkerStyle('🔴')">🔴</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🔶"
+                        onclick="selectMarkerStyle('🔶')">🔶</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="📷"
+                        onclick="selectMarkerStyle('📷')">📷</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🗒️"
+                        onclick="selectMarkerStyle('🗒️')">🗒️</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌳"
+                        onclick="selectMarkerStyle('🌳')">🌳</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌲"
+                        onclick="selectMarkerStyle('🌲')">🌲</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🪾"
+                        onclick="selectMarkerStyle('🪾')">🪾</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🪵"
+                        onclick="selectMarkerStyle('🪵')">🪵</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌱"
+                        onclick="selectMarkerStyle('🌱')">🌱</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌸"
+                        onclick="selectMarkerStyle('🌸')">🌸</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🌾"
+                        onclick="selectMarkerStyle('🌾')">🌾</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🥬"
+                        onclick="selectMarkerStyle('🥬')">🥬</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="⛰️"
+                        onclick="selectMarkerStyle('⛰️')">⛰️</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="💧"
+                        onclick="selectMarkerStyle('💧')">💧</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🐍"
+                        onclick="selectMarkerStyle('🐍')">🐍</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🏠"
+                        onclick="selectMarkerStyle('🏠')">🏠</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🏢"
+                        onclick="selectMarkerStyle('🏢')">🏢</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🏭"
+                        onclick="selectMarkerStyle('🏭')">🏭</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚧"
+                        onclick="selectMarkerStyle('🚧')">🚧</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="⚠️"
+                        onclick="selectMarkerStyle('⚠️')">⚠️</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🔥"
+                        onclick="selectMarkerStyle('🔥')">🔥</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🧯"
+                        onclick="selectMarkerStyle('🧯')">🧯</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="👮"
+                        onclick="selectMarkerStyle('👮')">👮</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🧑‍🚒"
+                        onclick="selectMarkerStyle('🧑‍🚒')">🧑‍🚒</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚓"
+                        onclick="selectMarkerStyle('🚓')">🚓</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚒"
+                        onclick="selectMarkerStyle('🚒')">🚒</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="🚑"
+                        onclick="selectMarkerStyle('🚑')">🚑</button>
+                    <button class="emoji-btn marker-emoji-btn" data-emoji="☕️"
+                        onclick="selectMarkerStyle('☕️')">☕️</button>
                 </div>
                 <button type="button" id="style-marker-emoji-more-btn" class="style-btn marker-emoji-more-btn"
                     onclick="toggleMarkerEmojiOptions()">
@@ -6464,10 +6460,11 @@
                 <p style="margin:0 0 10px 0; font-weight:bold;">GeoJSON, SHP, GPX 파일을 불러올 수 있습니다.</p>
                 <ul
                     style="margin:0; padding-left:20px; color:#666; font-size:13px; display:flex; flex-direction:column; gap:6px;">
-                    <li><b>SHP파일</b>은 .shp, .shx, .dbf 파일을 <b>.ZIP</b> 파일로 압축한 후 불러올 수 있습니다.</li>
+                    <li><b>SHP파일</b>은 .shp, .shx, .dbf, .prj 파일을 <b>.ZIP</b> 파일로 압축한 후 불러올 수 있습니다. 그 외의 다른 파일이 포함되면
+                        불러오기가 실패할 수 있습니다.</li>
                     <li>여러 개의 파일을 한 번에 불러올 수 있습니다.</li>
                     <li>프로젝트 파일은 해당 프로젝트명으로 새로운 프로젝트가 추가되고, 단일 기록은 현재 프로젝트에 추가됩니다.</li>
-                    <li>도형이 50개 이상인 SHP파일은 추가 위치를 선택하는 안내창이 표시됩니다.</li>
+                    <li>도형이 많고 수정이 필요 없는 읽기 전용의 SHP파일은 사용자 지도에서 배경지도로 불러오는 것이 적합합니다.</li>
                 </ul>
             </div>
 
