@@ -1245,12 +1245,18 @@
             justify-content: center;
             flex-shrink: 0;
             box-sizing: border-box;
+            padding: 0;
         }
 
         #content-map .map-layer-style-placeholder svg {
-            width: 26px;
-            height: 26px;
+            width: 27px;
+            height: 27px;
             fill: currentColor;
+        }
+
+        #content-map button.map-layer-style-placeholder {
+            appearance: none;
+            cursor: pointer;
         }
 
         #content-map .map-layer-style-placeholder.group-icon {
@@ -4480,7 +4486,7 @@
             color: #555;
         }
     </style>
-  <script type="module" crossorigin src="./assets/index-BIQkYBT6.js"></script>
+  <script type="module" crossorigin src="./assets/index-duaw74D_.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-CzhGa0jY.css">
 </head>
 
@@ -6292,6 +6298,17 @@
                 </div>
             </div>
 
+            <!-- 타일지도 전용: 투명도 -->
+            <div class="setting-group" id="style-tile-opacity-section" style="display:none;">
+                <div class="setting-title">투명도</div>
+                <div style="display:flex; align-items:center; gap: 10px;">
+                    <input type="range" id="style-tile-opacity" min="0" max="1" value="1" step="0.05" style="flex:1;"
+                        oninput="updateTileOpacityLabel(this.value)" onchange="selectTileOpacity(this.value)">
+                    <span id="style-tile-opacity-label"
+                        style="font-weight:bold; font-size:14px; width:34px; text-align:center;">1</span>
+                </div>
+            </div>
+
 
             <div class="style-modal-actions">
                 <button class="style-modal-cancel-btn" onclick="closeStyleModal()">취소</button>
@@ -6352,6 +6369,13 @@
             </section>
 
             <section class="settings-section">
+                <div id="settings-coordinate-info-row" class="settings-row settings-link-row">
+                    <div>
+                        <div class="settings-label">좌표계 안내</div>
+                        <div class="settings-help">앱의 좌표 저장, 표시, 계산 기준을 확인합니다.</div>
+                    </div>
+                    <span class="settings-chevron"></span>
+                </div>
                 <div class="settings-row settings-link-row" onclick="openSettingsChoiceModal('coord')">
                     <div>
                         <div class="settings-label">좌표 표시 방식</div>
@@ -6466,13 +6490,6 @@
                     <li>프로젝트 파일은 해당 프로젝트명으로 새로운 프로젝트가 추가되고, 단일 기록은 현재 프로젝트에 추가됩니다.</li>
                     <li>도형이 많고 수정이 필요 없는 읽기 전용의 SHP파일은 사용자 지도에서 배경지도로 불러오는 것이 적합합니다.</li>
                 </ul>
-            </div>
-
-            <div style="display:flex; align-items:center; margin-bottom:20px; padding:0 5px;">
-                <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#666; cursor:pointer;">
-                    <input type="checkbox" id="chk-hide-import-warning" style="width:16px; height:16px;">
-                    다음부터 이 창 띄우지 않기
-                </label>
             </div>
 
             <div style="display:flex; gap:8px;">
