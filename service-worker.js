@@ -8,7 +8,7 @@
    - fetch 이벤트에서 요청 종류를 구분해 캐시/네트워크 전략을 선택하고, 새 워커는 메시지로 즉시 활성화할 수 있습니다.
    ========================================================================== */
 
-const STATIC_CACHE_NAME = 'F-field-v1.0.0';
+const STATIC_CACHE_NAME = 'F-field-v1.0.1';
 const MAP_CACHE_NAME = 'F-field-map-v1';
 const MAP_CACHE_MAX_ITEMS = 15000;
 const MAP_CACHE_TRIM_WRITE_INTERVAL = 100;
