@@ -440,6 +440,27 @@
             cursor: pointer;
         }
 
+        .leaflet-div-icon.leaflet-editing-icon:not(.leaflet-middle-icon) {
+            width: 14px !important;
+            height: 14px !important;
+            margin-left: -7px !important;
+            margin-top: -7px !important;
+            border: 1px solid #2563EB !important;
+            background: #FFFFFF !important;
+            box-sizing: border-box !important;
+        }
+
+        .leaflet-div-icon.leaflet-editing-icon.edit-selected-vertex:not(.leaflet-middle-icon) {
+            width: 18px !important;
+            height: 18px !important;
+            margin-left: -9px !important;
+            margin-top: -9px !important;
+            border: 2px solid #EF4444 !important;
+            background: #FEF08A !important;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95), 0 0 6px rgba(239, 68, 68, 0.75) !important;
+            z-index: 1000 !important;
+        }
+
         /* --- 우측 플로팅 버튼 (GPS) --- */
         .gps-btn-group {
             position: absolute;
@@ -746,6 +767,48 @@
             gap: var(--space-2);
         }
 
+        .edit-action-toolbar {
+            width: min(370px, calc(100vw - 86px));
+            max-width: 370px;
+        }
+
+        .edit-action-group {
+            display: flex;
+            min-width: 0;
+            gap: var(--space-1);
+            width: 100%;
+        }
+
+        .edit-vertex-action-group {
+            display: none;
+        }
+
+        .edit-confirm-action-group {
+            display: flex;
+        }
+
+        .edit-action-toolbar.vertex-selected .edit-vertex-action-group {
+            display: flex;
+        }
+
+        .edit-action-toolbar.vertex-selected .edit-confirm-action-group {
+            display: none;
+        }
+
+        .edit-action-toolbar.marker-edit .edit-vertex-action-group,
+        .edit-action-toolbar.marker-edit .edit-confirm-action-group {
+            display: contents;
+        }
+
+        .edit-action-toolbar.marker-edit .action-toolbar-main {
+            gap: var(--space-1);
+        }
+
+        .edit-action-toolbar.marker-edit .action-btn {
+            flex: 1 1 0;
+            width: 0;
+        }
+
         .action-btn {
             border: none;
             background: none;
@@ -768,6 +831,21 @@
             white-space: nowrap;
         }
 
+        .edit-action-group .action-btn {
+            min-height: 48px;
+            font-size: 10px;
+        }
+
+        .edit-vertex-action-group .action-btn {
+            background: #F3F4F6;
+            border: 1px solid #E5E7EB;
+            color: #374151;
+        }
+
+        .edit-vertex-action-group .action-btn svg {
+            fill: #4B5563 !important;
+        }
+
         .action-btn:active {
             background-color: rgba(0, 0, 0, 0.05);
             transform: scale(0.95);
@@ -785,6 +863,30 @@
 
         .btn-gps svg {
             fill: #3B82F6 !important;
+        }
+
+        .btn-delete-vertex {
+            color: #EF4444;
+        }
+
+        .btn-delete-vertex svg {
+            fill: #EF4444 !important;
+        }
+
+        .edit-vertex-action-group .action-btn.btn-gps {
+            color: #3B82F6;
+        }
+
+        .edit-vertex-action-group .action-btn.btn-gps svg {
+            fill: #3B82F6 !important;
+        }
+
+        .edit-vertex-action-group .action-btn.btn-delete-vertex {
+            color: #EF4444;
+        }
+
+        .edit-vertex-action-group .action-btn.btn-delete-vertex svg {
+            fill: #EF4444 !important;
         }
 
         .btn-done {
@@ -4486,7 +4588,7 @@
             color: #555;
         }
     </style>
-  <script type="module" crossorigin src="./assets/index-duaw74D_.js"></script>
+  <script type="module" crossorigin src="./assets/index-2muBYG49.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-CzhGa0jY.css">
 </head>
 
@@ -4882,28 +4984,52 @@
     </div>
 
     <!-- [중앙 하단] 수정 모드 액션바 (개별 도형 수정 중에만 표시됨) -->
-    <div id="edit-action-toolbar" class="action-toolbar" style="display:none;">
+    <div id="edit-action-toolbar" class="action-toolbar edit-action-toolbar" style="display:none;">
         <div class="action-toolbar-main">
-            <button class="action-btn btn-done" onclick="completeSingleEdit()">
-                <svg viewBox="0 0 24 24">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                </svg>
-                수정 완료
-            </button>
-            <button class="action-btn" onclick="revertSingleEdit()">
-                <svg viewBox="0 0 24 24">
-                    <path
-                        d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
-                </svg>
-                원상복구
-            </button>
-            <button class="action-btn" onclick="cancelSingleEdit()">
-                <svg viewBox="0 0 24 24">
-                    <path
-                        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                </svg>
-                취소
-            </button>
+            <div id="edit-vertex-action-group" class="edit-action-group edit-vertex-action-group">
+                <button id="btn-edit-move-gps" class="action-btn btn-gps" onclick="moveSelectedEditVertexToGps()" disabled>
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A9.004 9.004 0 0 0 13 3.06V1h-2v2.06A9.004 9.004 0 0 0 3.06 11H1v2h2.06A9.004 9.004 0 0 0 11 20.94V23h2v-2.06A9.004 9.004 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z" />
+                    </svg>
+                    현 위치로 이동
+                </button>
+                <button id="btn-edit-delete-vertex" class="action-btn btn-delete-vertex" onclick="deleteSelectedEditVertex()" disabled>
+                    <svg viewBox="0 0 24 24">
+                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                    </svg>
+                    버텍스 삭제
+                </button>
+                <button id="btn-edit-clear-vertex" class="action-btn" onclick="clearSelectedEditVertexSelection()" disabled>
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                    </svg>
+                    선택해제
+                </button>
+            </div>
+            <div class="edit-action-group edit-confirm-action-group">
+                <button class="action-btn btn-done" onclick="completeSingleEdit()">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    수정 완료
+                </button>
+                <button class="action-btn" onclick="revertSingleEdit()">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
+                    </svg>
+                    원상복구
+                </button>
+                <button class="action-btn" onclick="cancelSingleEdit()">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                    </svg>
+                    취소
+                </button>
+            </div>
         </div>
     </div>
 
@@ -6435,12 +6561,12 @@
             </section>
 
             <section class="settings-section">
-                <div class="settings-row settings-link-row" onclick="window.open('./privacy-policy.html', '_blank')">
+                <div class="settings-row settings-link-row" onclick="openSettingsDocument('./privacy-policy.html')">
                     <div class="settings-label">개인정보처리방침</div>
                     <span class="settings-chevron"></span>
                 </div>
                 <div class="settings-row settings-link-row"
-                    onclick="window.open('./open-source-licenses.html', '_blank')">
+                    onclick="openSettingsDocument('./open-source-licenses.html')">
                     <div class="settings-label">오픈소스 라이선스</div>
                     <span class="settings-chevron"></span>
                 </div>
