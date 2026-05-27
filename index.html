@@ -38,8 +38,8 @@
     ==========================================================================
     화면의 생김새와 배치를 담당하는 CSS 코드입니다.
     -->
-  <script type="module" crossorigin src="./assets/index-BanHU450.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-C0omO73G.css">
+  <script type="module" crossorigin src="./assets/index-CQaZPsqB.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-GBC9kO3g.css">
 </head>
 
 <body>
@@ -1782,6 +1782,23 @@
                         <label>
                             <input type="radio" name="viewport-simplify-select" value="true"
                                 onclick="setViewportSimplifyEnabled(true)">
+                        </label>
+                        <span class="settings-toggle-thumb"></span>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">도형 렌더링 지연</div>
+                        <div class="settings-help">지도를 빠르게 여러 번 이동 시 마지막 이동 후 도형을 렌더링합니다.</div>
+                    </div>
+                    <div class="settings-toggle" aria-label="도형 렌더링 지연">
+                        <label>
+                            <input type="radio" name="vector-render-delay-select" value="false"
+                                onclick="setVectorRenderDelayEnabled(false)">
+                        </label>
+                        <label>
+                            <input type="radio" name="vector-render-delay-select" value="true"
+                                onclick="setVectorRenderDelayEnabled(true)">
                         </label>
                         <span class="settings-toggle-thumb"></span>
                     </div>
