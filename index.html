@@ -38,8 +38,8 @@
     ==========================================================================
     화면의 생김새와 배치를 담당하는 CSS 코드입니다.
     -->
-  <script type="module" crossorigin src="./assets/index-wwZfMWCr.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-CopKdLfi.css">
+  <script type="module" crossorigin src="./assets/index-BRxlLqT6.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-Dgei3VsA.css">
 </head>
 
 <body>
@@ -354,10 +354,15 @@
                     <span class="icon-circle">
                         <span class="icon-box">
                             <svg class="svg-icon" viewBox="0 0 24 24">
-                                <path fill="currentColor" opacity="0.4"
-                                    d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
                                 <path fill="currentColor"
-                                    d="M14 9h-1.5l-1-1h-3l-1 1H6c-.55 0-1 .45-1 1v5c0 .55.45 1 1 1h8c.55 0 1-.45 1-1v-5c0-.55-.45-1-1-1zm-4 5.5c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" />
+                                    d="M8.2 2.1c-2.9 0-5.2 2.34-5.2 5.22 0 4.15 5.2 9.85 5.2 9.85s5.2-5.7 5.2-9.85c0-2.88-2.3-5.22-5.2-5.22z"
+                                    opacity="0.36" />
+                                <circle cx="8.2" cy="7.3" r="1.65" fill="white" opacity="0.9" />
+                                <path fill="currentColor"
+                                    d="M6.2 8.55c0-1.08.88-1.95 1.95-1.95h2.1l1.02-1.27c.34-.43.86-.68 1.41-.68h1.64c.55 0 1.07.25 1.41.68l1.02 1.27h2.1c1.07 0 1.95.87 1.95 1.95v8.55c0 1.08-.88 1.95-1.95 1.95H8.15c-1.07 0-1.95-.87-1.95-1.95V8.55z" />
+                                <circle cx="13.5" cy="13.15" r="4" fill="white" opacity="0.96" />
+                                <circle cx="13.5" cy="13.15" r="2.18" fill="currentColor" />
+                                <circle cx="18.1" cy="9.45" r="1.05" fill="white" opacity="0.95" />
                             </svg>
                         </span>
                     </span>
@@ -898,9 +903,14 @@
                         </div>
                     </div>
                     <div class="menu-section">
-                        <div class="menu-title accordion-header" onclick="toggleAccordion('section-user-map', this)"
+                        <div class="menu-title accordion-header user-map-section-header" onclick="toggleAccordion('section-user-map', this)"
                             style="cursor:pointer; display: flex; justify-content: space-between; align-items: center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:10px;">
-                            <span>사용자 지도</span>
+                            <span class="user-map-section-title">사용자 지도</span>
+                            <button type="button" class="btn-more user-map-section-more" title="더보기" onclick="openUserMapSectionMenu(event)">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                                </svg>
+                            </button>
                         </div>
                         <div id="section-user-map" class="accordion-content" style="display: block;">
                             <div id="user-map-list" style="margin-top: 6px;"></div>
@@ -1060,9 +1070,10 @@
                                 </div>
                                 <div class="dropdown-item" onclick="groupSelectedLayers()">
                                     <svg viewBox="0 0 24 24">
-                                        <path d="M7 4h13v10H7V4zm-3 3h2v8h11v2H4V7zm-3 3h2v8h11v2H1V10z" />
+                                        <path d="M6 3h8l4 4v5h-2V8h-3V5H6v14h7v2H6c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2z" />
+                                        <path d="M18 14v3h3v2h-3v3h-2v-3h-3v-2h3v-3h2z" />
                                     </svg>
-                                    선택 그룹화
+                                    그룹 만들기
                                 </div>
                                 <div class="dropdown-item" onclick="exportSelectedLayers()">
                                     <svg viewBox="0 0 24 24">
