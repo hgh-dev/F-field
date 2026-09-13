@@ -1,0 +1,1 @@
+import{t as e}from"./vendor-native-BVEWxlnX.js";export{e as ShareWeb};

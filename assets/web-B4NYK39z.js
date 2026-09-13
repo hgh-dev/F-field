@@ -1,0 +1,1 @@
+import{r as e}from"./vendor-native-BVEWxlnX.js";export{e as AppWeb};

@@ -10,9 +10,9 @@
     -->
     <title>F-Field</title>
 
-    <!-- 모바일 기기에서 화면 배율을 설정합니다. (확대/축소 방지) -->
+    <!-- 모바일 기기에서 화면 배율을 설정합니다. -->
     <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+        content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta charset="utf-8" />
 
     <!-- PWA (웹앱) 설정: 홈 화면에 추가할 때 앱처럼 보이게 합니다. -->
@@ -38,8 +38,19 @@
     ==========================================================================
     화면의 생김새와 배치를 담당하는 CSS 코드입니다.
     -->
-  <script type="module" crossorigin src="./assets/index-BRxlLqT6.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-Dgei3VsA.css">
+  <script type="module" crossorigin src="./assets/index-BXCCtSZl.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/rolldown-runtime-W7wSyTde.js">
+  <link rel="modulepreload" crossorigin href="./assets/vendor-map-DDcVAfDA.js">
+  <link rel="modulepreload" crossorigin href="./assets/vendor-native-BVEWxlnX.js">
+  <link rel="modulepreload" crossorigin href="./assets/config-EvM1pWLX.js">
+  <link rel="modulepreload" crossorigin href="./assets/native-bridge-gctyrcvy.js">
+  <link rel="modulepreload" crossorigin href="./assets/vendor-storage-DbxBgMu6.js">
+  <link rel="modulepreload" crossorigin href="./assets/user-maps-DiV5Sfqg.js">
+  <link rel="modulepreload" crossorigin href="./assets/auth-policy-eLRPT9Gr.js">
+  <link rel="modulepreload" crossorigin href="./assets/auth-access-BaBSGghy.js">
+  <link rel="stylesheet" crossorigin href="./assets/vendor-map-vh-t_kPv.css">
+  <link rel="stylesheet" crossorigin href="./assets/user-maps-Dke5sq8S.css">
+  <link rel="stylesheet" crossorigin href="./assets/index-Cl2DrZpO.css">
 </head>
 
 <body>
@@ -184,7 +195,7 @@
     <div id="bottom-sheet">
         <div id="bottom-sheet-handle" onclick="toggleBottomSheetState()"></div>
         <!-- 더보기 버튼 (수정, 삭제) -->
-        <button id="bottom-sheet-more-btn" onclick="toggleBottomSheetMoreMenu(event)">
+        <button id="bottom-sheet-more-btn" onclick="toggleBottomSheetMoreMenu(event)" aria-label="기록 메뉴 열기">
             <svg viewBox="0 0 24 24">
                 <path
                     d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
@@ -282,7 +293,7 @@
             </div>
         </div>
         <!-- 닫기 버튼은 컨테이너 내에서 우측 상단 절대 위치 -->
-        <button id="bottom-sheet-close" onclick="closeBottomSheet()">✕</button>
+        <button id="bottom-sheet-close" onclick="closeBottomSheet()" aria-label="상세 정보 닫기">✕</button>
         <div id="bottom-sheet-body"></div>
     </div>
 
@@ -418,13 +429,6 @@
                     <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                 </svg>
                 기록 완료
-            </button>
-            <button class="action-btn" onclick="startSleepMode()">
-                <svg viewBox="0 0 24 24">
-                    <path
-                        d="M9 2c-1.05 0-2.05.16-3 .46 4.06 1.27 7 5.06 7 9.54s-2.94 8.27-7 9.54c.95.3 1.95.46 3 .46 5.52 0 10-4.48 10-10S14.52 2 9 2z" />
-                </svg>
-                절전
             </button>
             <button id="btn-track-photo-point" class="action-btn" onclick="addTrackPhotoPoint(event)">
                 <svg viewBox="0 0 24 24">
@@ -1901,18 +1905,6 @@
 
     <!-- 불러오기 안내 모달 -->
     <!-- 앱 공용 모달은 src/templates/app-modals.js에서 주입합니다. -->
-
-    <!-- 절전 모드 까만 오버레이 -->
-    <div id="sleep-mode-overlay" class="sleep-mode-overlay" style="display:none;">
-        <div class="sleep-slider-container">
-            <div class="sleep-slider-text">오른쪽으로 밀어서 절전 해제</div>
-            <div id="sleep-slider-thumb" class="sleep-slider-thumb">
-                <svg viewBox="0 0 24 24" fill="#aaa" style="width:28px;height:28px;">
-                    <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-                </svg>
-            </div>
-        </div>
-    </div>
 
     <!-- 메인 스크립트 연결 -->
     <script>

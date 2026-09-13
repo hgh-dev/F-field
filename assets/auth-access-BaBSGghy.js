@@ -1,0 +1,1 @@
+import{i as e,r as t}from"./auth-policy-eLRPT9Gr.js";var n=6e5,r=new Map;function i(i,a=`권한이 필요한 기능입니다.`){return(r.get(i)||0)>Date.now()?!0:t(i,e())?(r.set(i,Date.now()+n),!0):(alert(a),!1)}function a(){r.clear()}export{a as n,i as t};
